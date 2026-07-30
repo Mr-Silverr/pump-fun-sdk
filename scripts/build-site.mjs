@@ -6,8 +6,8 @@
  *   /            -> website/  (SDK docs & marketing SPA)
  *   /live/       -> live/     (standalone dashboards: launches, trades, vanity)
  *
- * Top-level aliases (/live, /trades, /vanity, /chart) mirror the path
- * carve-outs in the root vercel.json so old links keep working.
+ * Top-level aliases (/live, /trades, /vanity, /chart) keep old links
+ * working via the _redirects file written below.
  *
  * Output is consumed by wrangler.jsonc (Cloudflare Workers static assets)
  * and by any static host (nginx, etc.).

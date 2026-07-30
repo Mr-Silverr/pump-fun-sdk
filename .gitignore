@@ -9,8 +9,9 @@ coverage/
 .DS_Store
 Thumbs.db
 
-# Lock files
+# Lock files (root package-lock.json is committed for reproducible `npm ci` installs)
 package-lock.json
+!/package-lock.json
 bun.lock
 yarn.lock
 pnpm-lock.yaml

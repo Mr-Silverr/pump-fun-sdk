@@ -485,3 +485,10 @@ We welcome contributions! See [CONTRIBUTING.md](./CONTRIBUTING.md) for:
 - **[Coral (Anchor)](https://www.anchor-lang.com/)** — IDL-based program interaction via `@coral-xyz/anchor`
 - **[bn.js](https://github.com/indutny/bn.js)** — Arbitrary-precision arithmetic for financial math
 - **[@pump-fun/pump-swap-sdk](https://www.npmjs.com/package/@pump-fun/pump-swap-sdk)** — AMM swap integration
+
+## Documentation
+
+Full documentation site: **https://nirholas.github.io/pump-fun-sdk/**
+
+- [Getting started](docs/getting-started.md) covers install and first run.
+- [Examples](docs/examples.md) has copy-paste snippets.

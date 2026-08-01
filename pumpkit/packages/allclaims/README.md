@@ -186,6 +186,45 @@ docker build -t pumpkit-allclaims .
 docker run --env-file .env -p 3000:3000 pumpkit-allclaims
 ```
 
+### Cloud Run (production)
+
+The feed runs as the `pumpfun-allclaims-bot` Cloud Run service (project
+`aerial-vehicle-466722-p5`, region `us-central1`), deployed 2026-08-01. Deploy or
+redeploy with:
+
+```bash
+PROJECT=aerial-vehicle-466722-p5 ./deploy-cloudrun.sh
+```
+
+The script stores `TELEGRAM_BOT_TOKEN` in Secret Manager
+(`pumpfun-allclaims-bot-token`, runtime SA needs `secretAccessor` on it), ships
+every other `.env` key through a YAML env file (never `--set-env-vars`: the RPC
+list contains commas), pins the `three-ws-build@` build SA and `three-ws@`
+runtime SA, and runs a single always-on instance (`--min-instances 1
+--no-cpu-throttling`) so the websocket subscription survives idle periods.
+`CHANNEL_ID` must be the numeric `-100...` chat id, and the script refuses
+anything else. The service is private; check it with:
+
+```bash
+curl -H "Authorization: Bearer $(gcloud auth print-identity-token)" \
+  "$(gcloud run services describe pumpfun-allclaims-bot --region us-central1 \
+    --project aerial-vehicle-466722-p5 --format='value(status.url)')/stats"
+```
+
+Local fallback if Cloud Run is ever down: `npm run build && npm start` from this
+directory (port 3901 locally; 3900 belongs to channel-bot). Kill a local
+instance by matching `/proc/<pid>/cwd` to this directory, never by the
+`node dist/index.js` cmdline, which also matches unrelated services.
+
+### Decoder provenance (do not resync from @pumpkit/core)
+
+The claim decoder in `src/claim-monitor.ts` is copied from
+`channel-bot/src/claim-monitor.ts`, which is the maintained source of truth.
+The `@pumpkit/core` and `@pumpkit/channel` decoders are March snapshots missing
+the post-2026-05-21 V2 layouts (quote-mint claims, lifetime claimed totals,
+fake social-claim detection). Any future bot in this monorepo should copy from
+channel-bot, not from pumpkit, until pumpkit itself is resynced.
+
 ## Related
 
 - [`@pumpkit/channel`](../channel/) — first-claims-only curated feed

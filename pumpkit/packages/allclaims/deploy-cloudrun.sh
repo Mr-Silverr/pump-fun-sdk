@@ -1,0 +1,135 @@
+#!/usr/bin/env bash
+# Deploy the all-claims firehose bot to Google Cloud Run.
+#
+#   ./deploy-cloudrun.sh
+#
+# Reads configuration from .env in this directory, stores the Telegram token in
+# Secret Manager, and deploys a single always-on instance. Re-running it is a
+# safe redeploy: the secret is versioned, not duplicated.
+#
+# This is the sibling of channel-bot/deploy-cloudrun.sh and deliberately mirrors
+# it. The two bots have separate tokens, separate channels and separate Cloud Run
+# services; nothing is shared between them but the shape of this script.
+#
+# Requires: gcloud authenticated (`gcloud auth login`) with run.admin,
+# secretmanager.admin and cloudbuild.builds.editor on the target project.
+
+set -euo pipefail
+
+cd "$(dirname "$0")"
+
+SERVICE="${SERVICE:-pumpfun-allclaims-bot}"
+REGION="${REGION:-us-central1}"
+PROJECT="${PROJECT:-$(gcloud config get-value project 2>/dev/null)}"
+SECRET_NAME="${SECRET_NAME:-pumpfun-allclaims-bot-token}"
+
+# The project's default compute service account was deleted, so both the build
+# and the runtime identity must be pinned explicitly or the deploy fails with an
+# opaque permissions error.
+BUILD_SA="${BUILD_SA:-three-ws-build@${PROJECT}.iam.gserviceaccount.com}"
+RUNTIME_SA="${RUNTIME_SA:-three-ws@${PROJECT}.iam.gserviceaccount.com}"
+
+if [[ -z "${PROJECT}" || "${PROJECT}" == "(unset)" ]]; then
+    echo "No GCP project set. Use: PROJECT=my-project $0" >&2
+    exit 1
+fi
+
+if [[ ! -f .env ]]; then
+    echo "No .env found in $(pwd). Copy .env.example and fill it in first." >&2
+    exit 1
+fi
+
+TOKEN="$(grep -E '^TELEGRAM_BOT_TOKEN=' .env | head -1 | cut -d= -f2-)"
+if [[ -z "${TOKEN}" ]]; then
+    echo "TELEGRAM_BOT_TOKEN is not set in .env" >&2
+    exit 1
+fi
+
+# The all-claims bot must never post to the first-claims channel. A numeric
+# -100... id is also the only form that survives a channel username change.
+CHANNEL="$(grep -E '^CHANNEL_ID=' .env | head -1 | cut -d= -f2-)"
+if [[ ! "${CHANNEL}" =~ ^-100[0-9]+$ ]]; then
+    echo "CHANNEL_ID must be the numeric -100... chat id, got: '${CHANNEL}'" >&2
+    echo "Recover it with: curl -s \"https://api.telegram.org/bot\${TOKEN}/getChat?chat_id=@handle\"" >&2
+    exit 1
+fi
+
+echo "Project: ${PROJECT}   Service: ${SERVICE}   Region: ${REGION}"
+echo "Channel: ${CHANNEL}   Build SA: ${BUILD_SA}   Runtime SA: ${RUNTIME_SA}"
+
+# Store (or rotate) the bot token in Secret Manager.
+if gcloud secrets describe "${SECRET_NAME}" --project "${PROJECT}" >/dev/null 2>&1; then
+    printf '%s' "${TOKEN}" | gcloud secrets versions add "${SECRET_NAME}" \
+        --data-file=- --project "${PROJECT}" >/dev/null
+    echo "Secret ${SECRET_NAME}: new version added"
+else
+    printf '%s' "${TOKEN}" | gcloud secrets create "${SECRET_NAME}" \
+        --data-file=- --replication-policy=automatic --project "${PROJECT}" >/dev/null
+    echo "Secret ${SECRET_NAME}: created"
+fi
+
+# Every non-secret key from .env becomes a runtime env var. This goes through a
+# YAML file, not --set-env-vars: values here legitimately contain commas
+# (SOLANA_RPC_URLS is a comma-separated list) and "@" (channel handles in
+# comments and refs), so both the default comma separator and the ^@^
+# alternate-delimiter trick would corrupt them. Quoting every value as a YAML
+# string is the only lossless path.
+ENV_YAML="$(mktemp -t allclaims-env-XXXXXX.yaml)"
+trap 'rm -f "${ENV_YAML}"' EXIT
+
+while IFS= read -r line || [[ -n "${line}" ]]; do
+    line="${line%$'\r'}"
+    [[ "${line}" =~ ^[[:space:]]*# || -z "${line// }" ]] && continue
+    [[ "${line}" != *=* ]] && continue
+    key="${line%%=*}"
+    value="${line#*=}"
+    [[ -z "${key}" ]] && continue
+    # The token ships from Secret Manager, and PORT is reserved by Cloud Run:
+    # including it makes the deploy fail outright. The container already reads
+    # process.env.PORT, which Cloud Run injects to match --port.
+    [[ "${key}" == "TELEGRAM_BOT_TOKEN" || "${key}" == "PORT" ]] && continue
+    printf '%s: "%s"\n' "${key}" "${value//\"/\\\"}" >> "${ENV_YAML}"
+done < .env
+
+echo "Shipping $(wc -l < "${ENV_YAML}") env vars (token comes from Secret Manager, PORT from Cloud Run)"
+
+# Typecheck before uploading. The image build runs `tsc`, so a type error here
+# would otherwise surface ~6 minutes later as an opaque "Build failed".
+echo "Typechecking..."
+npm run typecheck
+
+# Deploy from a snapshot, not from the live directory. Other agents edit this
+# worktree concurrently, and `gcloud run deploy --source .` uploads files one by
+# one: an edit landing mid-upload ships a torn tree that fails to compile in
+# Cloud Build even though the source on disk is fine. Copying first makes the
+# build context atomic with respect to those edits.
+STAGE="$(mktemp -d -t allclaims-src-XXXXXX)"
+trap 'rm -f "${ENV_YAML}"; rm -rf "${STAGE}"' EXIT
+cp -a package.json tsconfig.json Dockerfile .dockerignore .gcloudignore src "${STAGE}/"
+echo "Staged build context at ${STAGE}"
+
+# --min-instances 1 + --no-cpu-throttling keep the websocket subscription alive
+# between requests; a scale-to-zero service would drop the firehose. --max-instances 1
+# keeps it a singleton so the channel never receives duplicate posts.
+gcloud run deploy "${SERVICE}" \
+    --source "${STAGE}" \
+    --project "${PROJECT}" \
+    --region "${REGION}" \
+    --platform managed \
+    --build-service-account "projects/${PROJECT}/serviceAccounts/${BUILD_SA}" \
+    --service-account "${RUNTIME_SA}" \
+    --min-instances 1 \
+    --max-instances 1 \
+    --no-cpu-throttling \
+    --memory 2Gi \
+    --port 3000 \
+    --no-allow-unauthenticated \
+    --env-vars-file "${ENV_YAML}" \
+    --set-secrets "TELEGRAM_BOT_TOKEN=${SECRET_NAME}:latest"
+
+echo
+echo "Deployed. Logs:"
+echo "  gcloud run services logs tail ${SERVICE} --region ${REGION} --project ${PROJECT}"
+echo "Stats (service is private, so mint a token):"
+echo "  curl -H \"Authorization: Bearer \$(gcloud auth print-identity-token)\" \\"
+echo "    \$(gcloud run services describe ${SERVICE} --region ${REGION} --project ${PROJECT} --format='value(status.url)')/stats"

@@ -45,6 +45,13 @@ export interface ChannelBotConfig {
     webhookUrls: string[];
     /** HMAC-SHA256 secret for webhook signatures (optional) */
     webhookSecret?: string;
+    /** Follow-up performance updates on posted calls */
+    performance: {
+        enabled: boolean;
+        windowHours: number;
+        milestones: number[];
+        collapsePct: number;
+    };
 }
 
 export function loadConfig(): ChannelBotConfig {
@@ -131,10 +138,24 @@ export function loadConfig(): ChannelBotConfig {
             try { new URL(s); return true; } catch { return false; }
         });
 
+    const milestones = (process.env.PERFORMANCE_MILESTONES ?? '2,5,10,25,50,100')
+        .split(',')
+        .map((s) => Number.parseFloat(s.trim()))
+        .filter((n) => Number.isFinite(n) && n > 1)
+        .sort((a, b) => a - b);
+
+    const performance = {
+        collapsePct: Number.parseFloat(process.env.PERFORMANCE_COLLAPSE_PCT || '80'),
+        enabled: (process.env.PERFORMANCE_UPDATES || 'true').toLowerCase() === 'true',
+        milestones: milestones.length > 0 ? milestones : [2, 5, 10, 25, 50, 100],
+        windowHours: Number.parseFloat(process.env.PERFORMANCE_WINDOW_HOURS || '24'),
+    };
+
     return {
         adminUserIds,
         affiliates,
         channelId,
+        performance,
         feed,
         logLevel,
         pollIntervalSeconds,

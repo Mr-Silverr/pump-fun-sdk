@@ -28,7 +28,16 @@ import { EventStore } from './event-store.js';
 import { WebhookDispatcher } from './webhooks.js';
 import { registerAdminCommands, isMuted, type RuntimeState } from './admin.js';
 import { DeliveryReporter, verifyChannelAccess, DeliveryFailedError, isReportedDelivery } from './delivery.js';
+import { PerformanceTracker } from './performance-tracker.js';
+import { buildTokenKeyboard, buildTxKeyboard, type InlineKeyboard } from './keyboards.js';
 import type { FeeClaimEvent, GraduationEvent, TokenLaunchEvent, TradeAlertEvent, FeeDistributionEvent } from './types.js';
+
+interface PostOptions {
+    /** Message id this post should reply to (used by follow-up updates) */
+    replyTo?: number;
+    /** Inline keyboard rendered under the message */
+    keyboard?: InlineKeyboard;
+}
 
 async function main(): Promise<void> {
     const config = loadConfig();
@@ -93,14 +102,28 @@ async function main(): Promise<void> {
 
     const delivery = new DeliveryReporter(config.channelId);
 
-    /** Send a message to the channel. Throws on failure. */
-    async function postToChannel(message: string): Promise<void> {
+    // Follow-up tracker: scores every posted call in its own thread.
+    const performance = new PerformanceTracker({
+        windowHours: config.performance.windowHours,
+        milestones: config.performance.milestones,
+        collapsePct: config.performance.collapsePct,
+        postUpdate: async (text, replyToMessageId) => {
+            await postToChannel(text, { replyTo: replyToMessageId });
+            pipeline.posted++;
+        },
+    });
+
+    /** Send a message to the channel. Returns the message id. Throws on failure. */
+    async function postToChannel(message: string, opts: PostOptions = {}): Promise<number> {
         try {
-            await withRetry(() => bot.api.sendMessage(config.channelId, message, {
+            const sent = await withRetry(() => bot.api.sendMessage(config.channelId, message, {
                 parse_mode: 'HTML',
                 link_preview_options: { is_disabled: true },
+                ...(opts.replyTo ? { reply_parameters: { message_id: opts.replyTo, allow_sending_without_reply: true } } : {}),
+                ...(opts.keyboard ? { reply_markup: opts.keyboard } : {}),
             }));
             delivery.recordSuccess();
+            return sent.message_id;
         } catch (err) {
             // Already classified and logged here; the marker keeps callers
             // from logging the same failure again as a raw stack trace.
@@ -109,17 +132,19 @@ async function main(): Promise<void> {
     }
 
     /** Send a photo with caption to the channel. Falls back to text if photo fails. */
-    async function postPhotoToChannel(imageUrl: string, caption: string): Promise<void> {
+    async function postPhotoToChannel(imageUrl: string, caption: string, opts: PostOptions = {}): Promise<number> {
         try {
-            await withRetry(() => bot.api.sendPhoto(config.channelId, imageUrl, {
+            const sent = await withRetry(() => bot.api.sendPhoto(config.channelId, imageUrl, {
                 caption,
                 parse_mode: 'HTML',
+                ...(opts.keyboard ? { reply_markup: opts.keyboard } : {}),
             }));
             delivery.recordSuccess();
+            return sent.message_id;
         } catch (err) {
             // A photo can fail for reasons the text path survives (bad image
             // URL, size limits), so always try text before giving up.
-            await postToChannel(caption);
+            return await postToChannel(caption, opts);
         }
     }
 
@@ -267,14 +292,18 @@ async function main(): Promise<void> {
 
             const { imageUrl, caption } = formatGitHubClaimFeed(ctx);
             try {
-                if (imageUrl) {
-                    await postPhotoToChannel(imageUrl, caption);
-                } else {
-                    await postToChannel(caption);
-                }
+                const keyboard = mint
+                    ? buildTxKeyboard(mint, event.txSignature, config.affiliates)
+                    : undefined;
+                const messageId = imageUrl
+                    ? await postPhotoToChannel(imageUrl, caption, { keyboard })
+                    : await postToChannel(caption, { keyboard });
                 markGithubUserClaimed(event.githubUserId, mint);
                 pipeline.posted++;
                 store.markPosted(stored.seq);
+                if (mint && tokenInfo) {
+                    performance.track({ mint, messageId, symbol: tokenInfo.symbol, mcapUsd: tokenInfo.usdMarketCap });
+                }
                 log.info('✅ Posted GitHub claim by %s (%s) to %s',
                     event.githubUserId, githubUser?.login ?? '?', config.channelId);
             } catch (postErr) {
@@ -324,10 +353,13 @@ async function main(): Promise<void> {
 
             const { imageUrl, caption } = formatCreatorClaimFeed(ctx);
             try {
+                const keyboard = mint
+                    ? buildTxKeyboard(mint, event.txSignature, config.affiliates)
+                    : undefined;
                 if (imageUrl) {
-                    await postPhotoToChannel(imageUrl, caption);
+                    await postPhotoToChannel(imageUrl, caption, { keyboard });
                 } else {
-                    await postToChannel(caption);
+                    await postToChannel(caption, { keyboard });
                 }
                 pipeline.posted++;
                 store.markPosted(stored.seq);
@@ -368,7 +400,9 @@ async function main(): Promise<void> {
                     if (!config.feed.launches || postingMuted()) return;
 
                     const creator = await fetchCreatorProfile(event.creatorWallet);
-                    await postToChannel(formatLaunchFeed(event, creator));
+                    await postToChannel(formatLaunchFeed(event, creator), {
+                        keyboard: buildTokenKeyboard(event.mintAddress, config.affiliates),
+                    });
                     pipeline.posted++;
                     store.markPosted(stored.seq);
                     log.info('✅ Posted launch %s ($%s) to %s', event.name, event.symbol, config.channelId);
@@ -417,13 +451,20 @@ async function main(): Promise<void> {
                         { holders, trades, devWallet, xProfile, liquidity, bundle },
                     );
 
-                    if (imageUrl) {
-                        await postPhotoToChannel(imageUrl, caption);
-                    } else {
-                        await postToChannel(caption);
-                    }
+                    const keyboard = buildTokenKeyboard(event.mintAddress, config.affiliates);
+                    const messageId = imageUrl
+                        ? await postPhotoToChannel(imageUrl, caption, { keyboard })
+                        : await postToChannel(caption, { keyboard });
                     pipeline.posted++;
                     store.markPosted(stored.seq);
+                    if (token) {
+                        performance.track({
+                            mint: event.mintAddress,
+                            messageId,
+                            symbol: token.symbol,
+                            mcapUsd: token.usdMarketCap,
+                        });
+                    }
                     log.info('✅ Posted graduation for %s to %s', event.mintAddress.slice(0, 8), config.channelId);
                 } catch (err) {
                     if (!isReportedDelivery(err)) log.error('Graduation handler error: %s', err);
@@ -447,7 +488,9 @@ async function main(): Promise<void> {
                     if (!config.feed.whales || postingMuted()) return;
 
                     const token = await fetchTokenInfo(event.mintAddress);
-                    await postToChannel(formatWhaleFeed(event, token));
+                    await postToChannel(formatWhaleFeed(event, token), {
+                        keyboard: buildTokenKeyboard(event.mintAddress, config.affiliates),
+                    });
                     pipeline.posted++;
                     store.markPosted(stored.seq);
                     log.info('✅ Posted whale %s (%s SOL) to %s', side, event.solAmount.toFixed(1), config.channelId);
@@ -469,7 +512,9 @@ async function main(): Promise<void> {
                     if (!config.feed.feeDistributions || postingMuted()) return;
 
                     const token = await fetchTokenInfo(event.mintAddress);
-                    await postToChannel(formatFeeDistributionFeed(event, token));
+                    await postToChannel(formatFeeDistributionFeed(event, token), {
+                        keyboard: buildTxKeyboard(event.mintAddress, event.txSignature, config.affiliates),
+                    });
                     pipeline.posted++;
                     store.markPosted(stored.seq);
                     log.info('✅ Posted fee distribution for %s to %s', event.mintAddress.slice(0, 8), config.channelId);
@@ -487,6 +532,7 @@ async function main(): Promise<void> {
     await eventMonitor.start();
     state.getMode = () => eventMonitor.mode;
     log.info('Event monitor started (%s)', eventMonitor.mode);
+    if (config.performance.enabled) performance.start();
 
     // ── Telegram bot: admin commands + long polling ──────────────────
     const startedAt = Date.now();
@@ -533,6 +579,9 @@ async function main(): Promise<void> {
                 ? { status: 'ok' }
                 : { status: 'blocked', fault: delivery.lastFault, fix: delivery.lastFix, failures: delivery.failures },
             webhooks: webhooks.enabled ? { ...webhooks.stats } : undefined,
+            performance: config.performance.enabled
+                ? { openCalls: performance.activeCount, ...performance.stats }
+                : undefined,
             ...(claimMonitor ? { claimMonitor: claimMonitor.getMetrics() } : {}),
         }),
     });
@@ -542,6 +591,7 @@ async function main(): Promise<void> {
         log.info('Shutting down...');
         claimMonitor?.stop();
         eventMonitor.stop();
+        performance.stop();
         void bot.stop().catch(() => {});
         stopHealthServer();
         process.exit(0);

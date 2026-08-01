@@ -340,7 +340,18 @@ export function formatGitHubClaimFeed(ctx: ClaimFeedContext): { imageUrl: string
         }
         if (ctx.devWallet && ctx.devWallet.tokenSupplyPct > 0.001) {
             L.push(`🧑‍💻 Dev holds: ${ctx.devWallet.tokenSupplyPct.toFixed(1)}%`);
+        } else if (ctx.devWallet) {
+            // A dev holding nothing is a signal, not a blank. Staying silent
+            // here made "sold everything" look the same as "safe".
+            L.push(`🧑‍💻 Dev holds: 0% — sold or never held`);
         }
+        L.push('');
+    } else {
+        // Never let a failed lookup read as a clean bill of health. A card with
+        // no holder line looks identical to a card with safe holders, and the
+        // reader acts on that silence.
+        L.push(`👥 <b>Holders</b>`);
+        L.push(`⚪ Concentration unavailable — not yet indexed. Verify before buying.`);
         L.push('');
     }
 
@@ -392,6 +403,10 @@ export function formatGitHubClaimFeed(ctx: ClaimFeedContext): { imageUrl: string
         if (ctx.holders && ctx.holders.top10Pct >= 40) {
             signals.push(`⚠️ Top10 hold ${ctx.holders.top10Pct.toFixed(0)}% of supply`);
         }
+        // Base rate beats a raw launch count: "5 launches" reads as experience,
+        // "5 launches, 4 died under $5k" reads as what it is.
+        const track = summarizeCreatorTrackRecord(ctx.creatorProfile);
+        if (track) signals.push(track);
 
         if (signals.length > 0) {
             L.push(`⚡ <b>Signals</b>`);
@@ -942,6 +957,32 @@ export function formatFeeDistributionFeed(
 // ============================================================================
 // Utilities
 // ============================================================================
+
+/** A dead coin: never graduated and effectively worthless now. */
+const DEAD_MCAP_USD = 5_000;
+
+/**
+ * Turn a creator's launch history into the base rate a reader actually needs.
+ * Returns null when there is no history worth summarizing (first-time devs and
+ * missing profiles say nothing either way).
+ */
+export function summarizeCreatorTrackRecord(creator: CreatorProfile | null | undefined): string | null {
+    if (!creator || creator.totalLaunches < 2) return null;
+    const coins = creator.recentCoins ?? [];
+    if (coins.length === 0) return null;
+
+    const graduated = coins.filter((c) => c.complete).length;
+    const dead = coins.filter((c) => !c.complete && c.usdMarketCap < DEAD_MCAP_USD).length;
+    const sampled = coins.length < creator.totalLaunches ? ` of last ${coins.length}` : '';
+    const parts = [`${creator.totalLaunches} launches${sampled}`];
+    if (graduated > 0) parts.push(`${graduated} graduated`);
+    if (dead > 0) parts.push(`${dead} died under $${(DEAD_MCAP_USD / 1000).toFixed(0)}k`);
+    if (graduated === 0 && dead === 0) return null;
+
+    // Mostly-dead history is a warning; a real graduation record is not.
+    const icon = dead > graduated ? '⚠️' : '📈';
+    return `${icon} Dev record: ${parts.join(' · ')}`;
+}
 
 export function shortAddr(addr: string): string {
     if (!addr || addr.length <= 12) return addr || '???';

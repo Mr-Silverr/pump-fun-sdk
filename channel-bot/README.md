@@ -207,7 +207,16 @@ See [railway.json](railway.json) for the deployment config:
 
 ### 6. Deploy to Google Cloud Run
 
-The bot is a single container with an HTTP port, so it runs on Cloud Run as-is. Use [cloudbuild.yaml](cloudbuild.yaml) (substitutions: `_SERVICE`, `_REGION`, `_REPO`) or deploy straight from source:
+The bot is a single container with an HTTP port, so it runs on Cloud Run as-is. The quickest path is the bundled script, which reads `.env`, puts the bot token in Secret Manager, and deploys one always-on instance:
+
+```bash
+./deploy-cloudrun.sh                       # uses the active gcloud project
+PROJECT=my-project REGION=us-west1 ./deploy-cloudrun.sh
+```
+
+It ships env vars through a YAML file rather than `--set-env-vars` on purpose: `SOLANA_RPC_URLS` contains commas and `CHANNEL_ID` contains `@`, so both the default comma separator and the `^@^` alternate-delimiter trick would silently corrupt them.
+
+Otherwise use [cloudbuild.yaml](cloudbuild.yaml) (substitutions: `_SERVICE`, `_REGION`, `_REPO`) or deploy straight from source:
 
 ```bash
 gcloud run deploy pumpfun-channel-bot \
@@ -330,6 +339,7 @@ channel-bot/
 ├── Dockerfile                # Multi-stage Docker build
 ├── railway.json              # Railway deployment config
 ├── cloudbuild.yaml           # Google Cloud Run build + deploy config
+├── deploy-cloudrun.sh        # One-command Cloud Run deploy (secret + env from .env)
 ├── package.json
 └── tsconfig.json
 ```

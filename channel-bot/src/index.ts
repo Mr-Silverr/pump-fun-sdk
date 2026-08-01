@@ -19,12 +19,15 @@ import { hasGithubUserClaimed, markGithubUserClaimed, incrementGithubClaimCount,
 import { fetchTokenInfo, fetchTopHolders, fetchTokenTrades, fetchDevWalletInfo, fetchSolUsdPrice, fetchPoolLiquidity, fetchBundleInfo, fetchCreatorProfile, fetchSameNameTokens } from './pump-client.js';
 import { fetchGitHubUserById, fetchRepoFromUrls } from './github-client.js';
 import { fetchXProfile } from './x-client.js';
-import { formatGitHubClaimFeed, formatCreatorClaimFeed, formatGraduationFeed } from './formatters.js';
+import { formatGitHubClaimFeed, formatCreatorClaimFeed, formatGraduationFeed, formatLaunchFeed, formatWhaleFeed, formatFeeDistributionFeed } from './formatters.js';
 import type { ClaimFeedContext, CreatorClaimContext } from './formatters.js';
 import { log, setLogLevel } from './logger.js';
 import { startHealthServer, stopHealthServer } from './health.js';
 import { maskUrl } from './rpc-fallback.js';
-import type { FeeClaimEvent, GraduationEvent } from './types.js';
+import { EventStore } from './event-store.js';
+import { WebhookDispatcher } from './webhooks.js';
+import { registerAdminCommands, isMuted, type RuntimeState } from './admin.js';
+import type { FeeClaimEvent, GraduationEvent, TokenLaunchEvent, TradeAlertEvent, FeeDistributionEvent } from './types.js';
 
 async function main(): Promise<void> {
     const config = loadConfig();
@@ -46,6 +49,16 @@ async function main(): Promise<void> {
     bot.catch((err: BotError) => {
         log.error('Bot error:', err.error);
     });
+
+    // ── Runtime state: event store, webhooks, admin controls ──────────
+    const store = new EventStore();
+    const webhooks = new WebhookDispatcher({ urls: config.webhookUrls, secret: config.webhookSecret });
+    const state: RuntimeState = {
+        muteUntil: 0,
+        get posted() { return pipeline.posted; },
+        set posted(_v: number) { /* derived from the pipeline counter */ },
+        getMode: () => 'starting',
+    };
 
     /** Retry helper for transient Telegram errors (429, 5xx). */
     async function withRetry<T>(fn: () => Promise<T>, maxRetries = 3): Promise<T> {
@@ -99,6 +112,9 @@ async function main(): Promise<void> {
 
     // ── Pipeline Counters ─────────────────────────────────────────────
     const pipeline = { total: 0, socialClaims: 0, creatorClaims: 0, firstClaim: 0, posted: 0, skippedCashback: 0, repeatClaim: 0 };
+
+    /** True when the operator paused channel posting via /mute. */
+    const postingMuted = () => isMuted(state);
     setInterval(() => {
         log.info('Pipeline: %d total → %d social + %d creator → %d first / %d repeat → %d posted (skip: %d cashback)',
             pipeline.total, pipeline.socialClaims, pipeline.creatorClaims, pipeline.firstClaim, pipeline.repeatClaim, pipeline.posted, pipeline.skippedCashback);
@@ -221,6 +237,21 @@ async function main(): Promise<void> {
                 claimedMints: claimedMints.length > 0 ? claimedMints : undefined,
             };
 
+            const stored = store.record({
+                kind: 'claim',
+                mint: mint || undefined,
+                txSignature: event.txSignature,
+                summary: `First GitHub claim by ${githubUser?.login ?? event.githubUserId}: ${event.amountSol.toFixed(4)} SOL`,
+                posted: false,
+                data: { type: 'github_social_claim', githubUser: githubUser?.login ?? null, amountSol: event.amountSol, mint: mint || null },
+            });
+            void webhooks.dispatch(stored);
+
+            if (postingMuted()) {
+                log.info('Posting muted — skipped GitHub claim by %s', event.githubUserId);
+                return;
+            }
+
             const { imageUrl, caption } = formatGitHubClaimFeed(ctx);
             try {
                 if (imageUrl) {
@@ -230,6 +261,7 @@ async function main(): Promise<void> {
                 }
                 markGithubUserClaimed(event.githubUserId, mint);
                 pipeline.posted++;
+                store.markPosted(stored.seq);
                 log.info('✅ Posted GitHub claim by %s (%s) to %s',
                     event.githubUserId, githubUser?.login ?? '?', config.channelId);
             } catch (postErr) {
@@ -260,6 +292,21 @@ async function main(): Promise<void> {
                 creator,
             };
 
+            const stored = store.record({
+                kind: 'claim',
+                mint: mint || undefined,
+                txSignature: event.txSignature,
+                summary: `Creator fee claim ${event.amountSol.toFixed(4)} SOL by ${event.claimerWallet.slice(0, 8)}`,
+                posted: false,
+                data: { type: event.claimType, wallet: event.claimerWallet, amountSol: event.amountSol, mint: mint || null },
+            });
+            void webhooks.dispatch(stored);
+
+            if (postingMuted()) {
+                log.info('Posting muted — skipped creator claim by %s', event.claimerWallet.slice(0, 8));
+                return;
+            }
+
             const { imageUrl, caption } = formatCreatorClaimFeed(ctx);
             try {
                 if (imageUrl) {
@@ -268,6 +315,7 @@ async function main(): Promise<void> {
                     await postToChannel(caption);
                 }
                 pipeline.posted++;
+                store.markPosted(stored.seq);
                 log.info('✅ Posted creator claim by %s to %s', event.claimerWallet.slice(0, 8), config.channelId);
             } catch (postErr) {
                 log.error('Failed to post creator claim by %s: %s', event.claimerWallet.slice(0, 8), postErr);
@@ -279,15 +327,52 @@ async function main(): Promise<void> {
     });
     }
 
-    // ── Graduation Monitor ─────────────────────────────────────────────
-    let eventMonitor: EventMonitor | null = null;
-    if (config.feed.graduations) {
-        eventMonitor = new EventMonitor(
+    // ── On-chain Event Monitor: launches, graduations, whales, fee distributions ──
+    // The monitor always runs; each feed's toggle gates Telegram posting at
+    // event time so /feeds can flip them at runtime. Every detected event is
+    // recorded to the store and fanned out to webhooks regardless of toggles,
+    // which makes /events/recent and /events/stream a data API in their own right.
+    const eventMonitor = new EventMonitor(
             config,
-            () => {}, // launches — not used
+            async (event: TokenLaunchEvent) => {
+                try {
+                    const stored = store.record({
+                        kind: 'launch',
+                        mint: event.mintAddress,
+                        txSignature: event.txSignature,
+                        summary: `Launch: ${event.name} ($${event.symbol})${event.hasGithub ? ' [github]' : ''}`,
+                        posted: false,
+                        data: {
+                            name: event.name, symbol: event.symbol, creator: event.creatorWallet,
+                            hasGithub: event.hasGithub, mayhemMode: event.mayhemMode, cashbackEnabled: event.cashbackEnabled,
+                        },
+                    });
+                    void webhooks.dispatch(stored);
+                    if (!config.feed.launches || postingMuted()) return;
+
+                    const creator = await fetchCreatorProfile(event.creatorWallet);
+                    await postToChannel(formatLaunchFeed(event, creator));
+                    pipeline.posted++;
+                    store.markPosted(stored.seq);
+                    log.info('✅ Posted launch %s ($%s) to %s', event.name, event.symbol, config.channelId);
+                } catch (err) {
+                    log.error('Launch handler error: %s', err);
+                }
+            },
             async (event: GraduationEvent) => {
                 try {
                     log.info('🎓 Graduation detected: %s (migration=%s)', event.mintAddress, event.isMigration);
+
+                    const stored = store.record({
+                        kind: 'graduation',
+                        mint: event.mintAddress,
+                        txSignature: event.txSignature,
+                        summary: `Graduation: ${event.mintAddress.slice(0, 8)}…${event.isMigration ? ' (AMM migration)' : ''}`,
+                        posted: false,
+                        data: { isMigration: event.isMigration, solAmount: event.solAmount ?? null, poolAddress: event.poolAddress ?? null },
+                    });
+                    void webhooks.dispatch(stored);
+                    if (!config.feed.graduations || postingMuted()) return;
 
                     const [token, solUsdPrice] = await Promise.all([
                         fetchTokenInfo(event.mintAddress),
@@ -321,39 +406,97 @@ async function main(): Promise<void> {
                         await postToChannel(caption);
                     }
                     pipeline.posted++;
+                    store.markPosted(stored.seq);
                     log.info('✅ Posted graduation for %s to %s', event.mintAddress.slice(0, 8), config.channelId);
                 } catch (err) {
                     log.error('Graduation handler error: %s', err);
                 }
             },
-            () => {}, // whales — not used
-            () => {}, // fee distributions — not used
+            async (event: TradeAlertEvent) => {
+                try {
+                    const side = event.isBuy ? 'buy' : 'sell';
+                    const stored = store.record({
+                        kind: 'whale',
+                        mint: event.mintAddress,
+                        txSignature: event.txSignature,
+                        summary: `Whale ${side}: ${event.solAmount.toFixed(1)} SOL on ${event.mintAddress.slice(0, 8)}…`,
+                        posted: false,
+                        data: {
+                            isBuy: event.isBuy, solAmount: event.solAmount, trader: event.user,
+                            marketCapSol: event.marketCapSol, bondingCurveProgress: event.bondingCurveProgress,
+                        },
+                    });
+                    void webhooks.dispatch(stored);
+                    if (!config.feed.whales || postingMuted()) return;
+
+                    const token = await fetchTokenInfo(event.mintAddress);
+                    await postToChannel(formatWhaleFeed(event, token));
+                    pipeline.posted++;
+                    store.markPosted(stored.seq);
+                    log.info('✅ Posted whale %s (%s SOL) to %s', side, event.solAmount.toFixed(1), config.channelId);
+                } catch (err) {
+                    log.error('Whale handler error: %s', err);
+                }
+            },
+            async (event: FeeDistributionEvent) => {
+                try {
+                    const stored = store.record({
+                        kind: 'feeDistribution',
+                        mint: event.mintAddress,
+                        txSignature: event.txSignature,
+                        summary: `Fee distribution: ${event.distributedSol.toFixed(4)} SOL to ${event.shareholders.length} shareholder(s)`,
+                        posted: false,
+                        data: { distributedSol: event.distributedSol, shareholders: event.shareholders.length },
+                    });
+                    void webhooks.dispatch(stored);
+                    if (!config.feed.feeDistributions || postingMuted()) return;
+
+                    const token = await fetchTokenInfo(event.mintAddress);
+                    await postToChannel(formatFeeDistributionFeed(event, token));
+                    pipeline.posted++;
+                    store.markPosted(stored.seq);
+                    log.info('✅ Posted fee distribution for %s to %s', event.mintAddress.slice(0, 8), config.channelId);
+                } catch (err) {
+                    log.error('Fee distribution handler error: %s', err);
+                }
+            },
         );
-    }
 
     // ── Start ─────────────────────────────────────────────────────────
     if (config.feed.claims) {
         await claimMonitor!.start();
         log.info('Claim monitor started');
     }
-    if (eventMonitor) {
-        await eventMonitor.start();
-        log.info('Graduation monitor started');
-    }
+    await eventMonitor.start();
+    state.getMode = () => eventMonitor.mode;
+    log.info('Event monitor started (%s)', eventMonitor.mode);
 
-    // Start bot (needed for the API, but no commands registered)
+    // ── Telegram bot: admin commands + long polling ──────────────────
+    const startedAt = Date.now();
+    registerAdminCommands(bot, { config, state, store, webhooks, startedAt });
     await bot.init();
     log.info('Bot initialized: @%s', bot.botInfo.username);
+    if (config.adminUserIds.length > 0) {
+        // Long polling only exists to receive admin DMs; without admins the
+        // bot stays send-only and never pulls updates.
+        void bot.start({ drop_pending_updates: true }).catch((err) => {
+            log.error('Bot long polling stopped: %s', err);
+        });
+    }
     log.info('Channel feed is live → %s', config.channelId);
 
-    // ── Health check server ──────────────────────────────────────────
-    const startedAt = Date.now();
-
+    // ── HTTP API server ──────────────────────────────────────────────
     startHealthServer({
         startedAt,
+        store,
         getStats: () => ({
             channel: config.channelId,
+            transport: eventMonitor.mode,
+            feeds: { ...config.feed },
+            muted: postingMuted(),
+            whaleThresholdSol: config.whaleThresholdSol,
             messagesPosted: pipeline.posted,
+            webhooks: webhooks.enabled ? { ...webhooks.stats } : undefined,
             ...(claimMonitor ? { claimMonitor: claimMonitor.getMetrics() } : {}),
         }),
     });
@@ -362,7 +505,8 @@ async function main(): Promise<void> {
     const shutdown = () => {
         log.info('Shutting down...');
         claimMonitor?.stop();
-        eventMonitor?.stop();
+        eventMonitor.stop();
+        void bot.stop().catch(() => {});
         stopHealthServer();
         process.exit(0);
     };

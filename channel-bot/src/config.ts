@@ -39,6 +39,12 @@ export interface ChannelBotConfig {
         gmgn: string;
         padre: string;
     };
+    /** Telegram user IDs allowed to run admin commands (empty = disabled) */
+    adminUserIds: number[];
+    /** Webhook endpoints that receive every feed event as a signed JSON POST */
+    webhookUrls: string[];
+    /** HMAC-SHA256 secret for webhook signatures (optional) */
+    webhookSecret?: string;
 }
 
 export function loadConfig(): ChannelBotConfig {
@@ -112,7 +118,21 @@ export function loadConfig(): ChannelBotConfig {
         padre: process.env.PADRE_REF  ?? '',
     };
 
+    const adminUserIds = (process.env.ADMIN_USER_IDS ?? '')
+        .split(',')
+        .map((s) => Number.parseInt(s.trim(), 10))
+        .filter((n) => Number.isFinite(n) && n > 0);
+
+    const webhookUrls = (process.env.WEBHOOK_URLS ?? '')
+        .split(',')
+        .map((s) => s.trim())
+        .filter((s) => {
+            if (!s) return false;
+            try { new URL(s); return true; } catch { return false; }
+        });
+
     return {
+        adminUserIds,
         affiliates,
         channelId,
         feed,
@@ -123,6 +143,8 @@ export function loadConfig(): ChannelBotConfig {
         solanaRpcUrls,
         solanaWsUrl,
         telegramToken,
+        webhookSecret: process.env.WEBHOOK_SECRET || undefined,
+        webhookUrls,
         whaleThresholdSol,
     };
 }

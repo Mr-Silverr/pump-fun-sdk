@@ -57,6 +57,18 @@
             "LOG_LEVEL": {
                 "description": "Log level: debug | info | warn | error",
                 "required": false
+            },
+            "ADMIN_USER_IDS": {
+                "description": "Comma-separated Telegram user IDs allowed to run admin commands (unset = disabled)",
+                "required": false
+            },
+            "WEBHOOK_URLS": {
+                "description": "Comma-separated URLs that receive every feed event as a JSON POST",
+                "required": false
+            },
+            "WEBHOOK_SECRET": {
+                "description": "HMAC-SHA256 secret for webhook signatures (X-PumpFeed-Signature-256)",
+                "required": false
             }
         }
     }

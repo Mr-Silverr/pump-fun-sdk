@@ -49,6 +49,10 @@ const MAX_WS_ERRORS = 5;
 const DEFAULT_TOKEN_TOTAL_SUPPLY = 1_000_000_000_000_000;
 const WS_HEARTBEAT_INTERVAL_MS = 60_000;
 const WS_HEARTBEAT_TIMEOUT_MS = 90_000;
+/** After this many consecutive silent WS periods, fall back to polling. */
+const MAX_WS_STALLS = 3;
+/** While polling as a fallback, retry the WebSocket this often. */
+const WS_RETRY_INTERVAL_MS = 10 * 60_000;
 
 // ============================================================================
 // Event Monitor
@@ -75,6 +79,15 @@ export class EventMonitor {
     private isRunning = false;
     private lastWsEventTime = 0;
     private wsHeartbeatTimer?: ReturnType<typeof setInterval>;
+    private wsStallCount = 0;
+    private wsRetryTimer?: ReturnType<typeof setInterval>;
+    private pollingActive = false;
+    private currentMode: 'websocket' | 'polling' | 'stopped' = 'stopped';
+
+    /** Active transport: 'websocket', 'polling', or 'stopped'. */
+    get mode(): string {
+        return this.currentMode;
+    }
 
     constructor(
         config: ChannelBotConfig,
@@ -104,6 +117,7 @@ export class EventMonitor {
         if (this.config.solanaWsUrl && process.env.SOLANA_WS_URL) {
             try {
                 await this.startWebSocket();
+                this.currentMode = 'websocket';
                 log.info('Event monitor: WebSocket mode');
                 return;
             } catch (err) {
@@ -118,6 +132,12 @@ export class EventMonitor {
     stop(): void {
         this.stopped = true;
         this.isRunning = false;
+        this.currentMode = 'stopped';
+        this.pollingActive = false;
+        if (this.wsRetryTimer) {
+            clearInterval(this.wsRetryTimer);
+            this.wsRetryTimer = undefined;
+        }
         if (this.wsHeartbeatTimer) {
             clearInterval(this.wsHeartbeatTimer);
             this.wsHeartbeatTimer = undefined;
@@ -145,18 +165,35 @@ export class EventMonitor {
             this.programPubkey,
             async (logInfo: Logs) => {
                 this.lastWsEventTime = Date.now();
+                this.wsStallCount = 0;
+                // WS delivered a live event — if we had fallen back to polling,
+                // promote WS back to primary and stop the poll loop.
+                if (this.pollingActive) {
+                    log.info('Event monitor: WebSocket recovered — leaving polling mode');
+                    this.stopPollingLoop();
+                    this.currentMode = 'websocket';
+                    if (this.wsRetryTimer) {
+                        clearInterval(this.wsRetryTimer);
+                        this.wsRetryTimer = undefined;
+                    }
+                }
                 try { await this.handleLogEvent(logInfo); }
                 catch (err) { log.error('Event log error:', err); }
             },
             'confirmed',
         );
 
-        // Heartbeat: if no event received for too long, reconnect
+        // Heartbeat: if no event received for too long, reconnect. The pump
+        // program normally emits thousands of events per minute, so silence
+        // reliably means the socket is dead even when the client library keeps
+        // "reconnecting" underneath us (e.g. an endlessly-429ing endpoint).
         this.wsHeartbeatTimer = setInterval(() => {
-            if (this.stopped) return;
+            if (this.stopped || this.pollingActive) return;
             const elapsed = Date.now() - this.lastWsEventTime;
             if (elapsed > WS_HEARTBEAT_TIMEOUT_MS) {
-                log.warn('Event monitor WS silent for %ds — reconnecting...', Math.floor(elapsed / 1000));
+                this.wsStallCount++;
+                log.warn('Event monitor WS silent for %ds (stall %d/%d) — reconnecting...',
+                    Math.floor(elapsed / 1000), this.wsStallCount, MAX_WS_STALLS);
                 this.reconnectWebSocket();
             }
         }, WS_HEARTBEAT_INTERVAL_MS);
@@ -171,15 +208,34 @@ export class EventMonitor {
         this.wsSubscriptionId = undefined;
         this.wsConnection = undefined;
 
+        if (this.wsStallCount >= MAX_WS_STALLS) {
+            this.fallBackToPolling();
+            return;
+        }
+
         // Attempt to reconnect
         this.startWebSocket().catch((err) => {
-            log.warn('Event monitor WS reconnect failed, falling back to polling: %s', err);
-            if (this.wsHeartbeatTimer) {
-                clearInterval(this.wsHeartbeatTimer);
-                this.wsHeartbeatTimer = undefined;
-            }
-            this.startPolling();
+            log.warn('Event monitor WS reconnect failed: %s', err);
+            this.fallBackToPolling();
         });
+    }
+
+    /** Switch to polling and keep retrying the WebSocket in the background. */
+    private fallBackToPolling(): void {
+        if (this.stopped || this.pollingActive) return;
+        log.warn('Event monitor: WebSocket unusable — falling back to polling (every %ds), will retry WS every %dm',
+            this.config.pollIntervalSeconds, WS_RETRY_INTERVAL_MS / 60_000);
+        this.startPolling();
+        if (!this.wsRetryTimer) {
+            this.wsRetryTimer = setInterval(() => {
+                if (this.stopped || !this.pollingActive) return;
+                this.wsStallCount = 0;
+                log.info('Event monitor: retrying WebSocket...');
+                this.startWebSocket().catch((err) => {
+                    log.debug('WS retry failed: %s', err);
+                });
+            }, WS_RETRY_INTERVAL_MS);
+        }
     }
 
     private async handleLogEvent(logInfo: Logs, blockTime?: number | null): Promise<void> {
@@ -216,9 +272,20 @@ export class EventMonitor {
 
     // ── Polling ──────────────────────────────────────────────────────
 
+    private stopPollingLoop(): void {
+        this.pollingActive = false;
+        if (this.pollTimer) {
+            clearTimeout(this.pollTimer);
+            this.pollTimer = undefined;
+        }
+    }
+
     private startPolling(): void {
+        if (this.pollingActive) return;
+        this.pollingActive = true;
+        this.currentMode = 'polling';
         const poll = async () => {
-            if (this.stopped) return;
+            if (this.stopped || !this.pollingActive) return;
             try {
                 const opts: SignaturesForAddressOptions = { limit: 20 };
                 if (this.lastSignature) opts.until = this.lastSignature;
@@ -237,7 +304,7 @@ export class EventMonitor {
                 log.error('Event poll error:', err);
             }
 
-            if (!this.stopped) {
+            if (!this.stopped && this.pollingActive) {
                 this.pollTimer = setTimeout(poll, this.config.pollIntervalSeconds * 1000);
             }
         };

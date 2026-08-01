@@ -1,0 +1,36 @@
+# Cloud Build config for deploying the channel bot to Google Cloud Run.
+#
+# Usage (from the channel-bot directory):
+#   gcloud builds submit --config cloudbuild.yaml \
+#     --substitutions _SERVICE=pumpfun-channel-bot,_REGION=us-central1,_REPO=gcr.io/$PROJECT_ID
+#
+# Set runtime env vars and the TELEGRAM_BOT_TOKEN secret on the service itself
+# (gcloud run services update ... --update-env-vars / --set-secrets); this
+# config only builds and releases the image.
+
+substitutions:
+  _SERVICE: pumpfun-channel-bot
+  _REGION: us-central1
+  _REPO: gcr.io/$PROJECT_ID
+
+steps:
+  - name: gcr.io/cloud-builders/docker
+    args: ['build', '-t', '${_REPO}/${_SERVICE}:$SHORT_SHA', '-t', '${_REPO}/${_SERVICE}:latest', '.']
+  - name: gcr.io/cloud-builders/docker
+    args: ['push', '--all-tags', '${_REPO}/${_SERVICE}']
+  - name: gcr.io/google.com/cloudsdktool/cloud-sdk:slim
+    entrypoint: gcloud
+    args:
+      - run
+      - deploy
+      - '${_SERVICE}'
+      - '--image=${_REPO}/${_SERVICE}:$SHORT_SHA'
+      - '--region=${_REGION}'
+      - '--platform=managed'
+      - '--min-instances=1'
+      - '--max-instances=1'
+      - '--no-allow-unauthenticated'
+
+images:
+  - '${_REPO}/${_SERVICE}:$SHORT_SHA'
+  - '${_REPO}/${_SERVICE}:latest'

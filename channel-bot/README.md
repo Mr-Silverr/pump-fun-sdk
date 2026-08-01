@@ -13,7 +13,12 @@ Read-only Telegram channel feed that broadcasts PumpFun on-chain activity — Gi
 | Feed | Description | Toggle |
 |------|-------------|--------|
 | **GitHub Social Fee Claims** | GitHub devs claiming PumpFun social fee PDA rewards | `FEED_CLAIMS` |
+| **Token Launches** | New token mints with creator profile enrichment | `FEED_LAUNCHES` |
 | **Token Graduations** | Tokens graduating from bonding curve to PumpAMM | `FEED_GRADUATIONS` |
+| **Whale Trades** | Buys/sells over `WHALE_THRESHOLD_SOL` with curve progress | `FEED_WHALES` |
+| **Fee Distributions** | Creator fee payouts to shareholders | `FEED_FEE_DISTRIBUTIONS` |
+
+All toggles except `FEED_CLAIMS` can also be flipped at runtime with the `/feeds` admin command — no redeploy needed. Detection always runs for every feed; toggles only gate what gets posted to Telegram, so the HTTP API and webhooks below always carry the full event stream.
 
 ### Claim Intelligence
 
@@ -111,7 +116,10 @@ SOLANA_RPC_URLS=https://mainnet.helius-rpc.com/?api-key=key1,https://your-other-
 
 # ── Feed Toggles ──────────────────────────────────────────
 FEED_CLAIMS=true                 # GitHub social fee claims
+FEED_LAUNCHES=false              # New token launches
 FEED_GRADUATIONS=true            # Token graduations
+FEED_WHALES=false                # Large trades over WHALE_THRESHOLD_SOL
+FEED_FEE_DISTRIBUTIONS=false     # Creator fee distributions to shareholders
 
 # ── GitHub Enrichment ─────────────────────────────────────
 REQUIRE_GITHUB=true              # Only post claims with GitHub social fee PDA
@@ -120,8 +128,16 @@ GITHUB_TOKEN=ghp_your_token      # Optional: raises rate limit from 60 to 5000 r
 # ── AI Summaries (optional) ──────────────────────────────
 GROQ_API_KEY=gsk_your_key        # Groq API for AI one-liners
 
+# ── Admin Commands (optional) ────────────────────────────
+ADMIN_USER_IDS=123456789         # Telegram user IDs allowed to control the bot via DM
+
+# ── Webhooks (optional) ──────────────────────────────────
+WEBHOOK_URLS=https://example.com/pump-hook   # Every event POSTed as JSON
+WEBHOOK_SECRET=change-me                     # Enables HMAC-SHA256 signatures
+
 # ── Tuning ────────────────────────────────────────────────
 POLL_INTERVAL_SECONDS=30         # HTTP polling fallback interval
+WHALE_THRESHOLD_SOL=10           # Minimum SOL for whale alerts
 LOG_LEVEL=info                   # debug | info | warn | error
 ```
 
@@ -189,6 +205,75 @@ See [railway.json](railway.json) for the deployment config:
 }
 ```
 
+### 6. Deploy to Google Cloud Run
+
+The bot is a single container with an HTTP port, so it runs on Cloud Run as-is. Use [cloudbuild.yaml](cloudbuild.yaml) (substitutions: `_SERVICE`, `_REGION`, `_REPO`) or deploy straight from source:
+
+```bash
+gcloud run deploy pumpfun-channel-bot \
+  --source . \
+  --region us-central1 \
+  --min-instances 1 --max-instances 1 \
+  --set-env-vars "CHANNEL_ID=@your_channel,SOLANA_RPC_URL=...,SOLANA_WS_URL=...,FEED_GRADUATIONS=true" \
+  --set-secrets "TELEGRAM_BOT_TOKEN=telegram-bot-token:latest"
+```
+
+`--min-instances 1` matters: this is a long-lived monitor, not a request server, so it must not scale to zero. `/health` doubles as the container health check.
+
+## Admin Commands
+
+With `ADMIN_USER_IDS` set, the operator can DM the bot to inspect and steer it at runtime. Everyone else is ignored silently, and commands only work in private chats.
+
+| Command | Effect |
+|---------|--------|
+| `/status` | Uptime, transport (websocket/polling), feed toggles, counters, webhook stats |
+| `/feeds` | List feed toggles |
+| `/feeds graduations off` | Flip a feed at runtime (claims requires a restart to turn on) |
+| `/threshold 25` | Set the whale alert threshold in SOL |
+| `/mute 30` | Pause channel posting for 30 minutes (monitoring continues) |
+| `/unmute` | Resume posting |
+| `/recent 10` | Show the last 10 detected events |
+
+## HTTP API
+
+The health port (`PORT`, default 3000) serves a read-only JSON API over the same event pipeline. CORS is open — everything here is public on-chain data.
+
+| Endpoint | Description |
+|----------|-------------|
+| `GET /health` | Liveness probe: status, uptime, counters |
+| `GET /stats` | Transport mode, feed toggles, mute state, event counters, webhook stats |
+| `GET /events/recent?limit=50&kind=graduation` | Ring buffer of recent events, newest first |
+| `GET /events/stream?kind=whale` | Live [Server-Sent Events](https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events) stream |
+
+`kind` is one of `claim`, `launch`, `graduation`, `whale`, `feeDistribution`. Example consumer:
+
+```js
+const stream = new EventSource('http://localhost:3000/events/stream?kind=graduation');
+stream.addEventListener('graduation', (e) => {
+    const event = JSON.parse(e.data);
+    console.log('graduated:', event.mint, event.summary);
+});
+```
+
+## Webhooks
+
+Set `WEBHOOK_URLS` to fan every detected event out as a JSON POST — the push-based twin of the SSE stream, for consumers that can't hold a connection open. With `WEBHOOK_SECRET` set, each delivery carries an HMAC-SHA256 signature:
+
+```
+POST <your-url>
+Content-Type: application/json
+X-PumpFeed-Event: graduation
+X-PumpFeed-Signature-256: sha256=<hex hmac of the raw body>
+```
+
+Verify by recomputing the HMAC of the raw request body with your secret and comparing (timing-safe compare recommended). Deliveries retry up to 3 times on network errors and 5xx; 4xx responses are not retried.
+
+## Transport Resilience
+
+The monitor prefers a WebSocket subscription (real-time, complete) and falls back to HTTP polling only when the socket is genuinely unusable: after 3 consecutive silent heartbeat periods it switches to polling and retries the WebSocket every 10 minutes, promoting it back automatically the moment live events flow again. `/status` and `GET /stats` both report the active transport.
+
+Polling is a degraded mode by design — `getSignaturesForAddress` caps at 20 signatures per poll on one of the busiest programs on Solana, so a healthy WebSocket endpoint matters. Free endpoints that carry the full `logsSubscribe` stream exist (e.g. `wss://solana-rpc.publicnode.com`).
+
 ## Project Structure
 
 ```
@@ -206,13 +291,17 @@ channel-bot/
 │   ├── x-client.ts           # X/Twitter profile fetcher + influencer tier logic
 │   ├── groq-client.ts        # Groq AI one-liner summaries
 │   ├── rpc-fallback.ts       # Multi-RPC failover with round-robin
-│   ├── health.ts             # HTTP health check server
+│   ├── health.ts             # HTTP API: /health, /stats, /events/recent, /events/stream
+│   ├── event-store.ts        # Ring buffer of recent events + live subscriber fan-out
+│   ├── webhooks.ts           # Signed JSON webhook delivery with retries
+│   ├── admin.ts              # Telegram DM admin commands (/status, /feeds, /mute, ...)
 │   ├── types.ts              # Program IDs, discriminators, event types
 │   └── logger.ts             # Leveled console logger
 ├── data/                     # Persisted state (gitignored, Railway volume mount)
 │   └── github-first-claims.json
 ├── Dockerfile                # Multi-stage Docker build
 ├── railway.json              # Railway deployment config
+├── cloudbuild.yaml           # Google Cloud Run build + deploy config
 ├── package.json
 └── tsconfig.json
 ```

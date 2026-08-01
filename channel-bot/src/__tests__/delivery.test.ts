@@ -4,7 +4,13 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
-import { classifyDeliveryError, DeliveryReporter, verifyChannelAccess } from '../delivery.js';
+import {
+    classifyDeliveryError,
+    DeliveryReporter,
+    verifyChannelAccess,
+    DeliveryFailedError,
+    isReportedDelivery,
+} from '../delivery.js';
 
 const CHANNEL = '@trackpumpfun';
 
@@ -97,6 +103,24 @@ describe('DeliveryReporter', () => {
         reporter.report({ description: 'Too Many Requests: retry after 5' });
         expect(reporter.healthy).toBe(true);
         expect(reporter.failures).toBe(1);
+    });
+});
+
+describe('isReportedDelivery', () => {
+    it('marks an already-reported failure so callers stay quiet', () => {
+        const reporter = new DeliveryReporter(CHANNEL);
+        const original = { description: 'Forbidden: bot is not a member of the supergroup chat' };
+        const wrapped = new DeliveryFailedError(reporter.report(original), original);
+
+        expect(isReportedDelivery(wrapped)).toBe(true);
+        expect(wrapped.verdict.fault).toBe('not_a_member');
+        expect(wrapped.cause).toBe(original);
+    });
+
+    it('does not mark unrelated errors, so real bugs still log', () => {
+        expect(isReportedDelivery(new Error('enrichment blew up'))).toBe(false);
+        expect(isReportedDelivery('a string')).toBe(false);
+        expect(isReportedDelivery(undefined)).toBe(false);
     });
 });
 

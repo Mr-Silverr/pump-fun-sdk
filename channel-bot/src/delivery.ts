@@ -71,6 +71,28 @@ export function classifyDeliveryError(err: unknown, channelId: string): Delivery
     return { fault: 'unknown', retryable: true, fix: '' };
 }
 
+/**
+ * Thrown by the posting helpers once a failure has already been classified
+ * and logged. Callers rethrow-and-catch around posting for control flow, so
+ * without this marker every handler logs the same failure a second time as a
+ * raw stack trace, which is exactly the noise the reporter exists to remove.
+ */
+export class DeliveryFailedError extends Error {
+    readonly verdict: DeliveryVerdict;
+
+    constructor(verdict: DeliveryVerdict, cause: unknown) {
+        super(`Channel delivery failed (${verdict.fault})`);
+        this.name = 'DeliveryFailedError';
+        this.verdict = verdict;
+        this.cause = cause;
+    }
+}
+
+/** True when this error was already classified and logged by the reporter. */
+export function isReportedDelivery(err: unknown): boolean {
+    return err instanceof DeliveryFailedError;
+}
+
 export interface ChannelAccess {
     ok: boolean;
     fault?: DeliveryFault;

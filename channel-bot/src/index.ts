@@ -27,7 +27,7 @@ import { maskUrl } from './rpc-fallback.js';
 import { EventStore } from './event-store.js';
 import { WebhookDispatcher } from './webhooks.js';
 import { registerAdminCommands, isMuted, type RuntimeState } from './admin.js';
-import { DeliveryReporter, verifyChannelAccess } from './delivery.js';
+import { DeliveryReporter, verifyChannelAccess, DeliveryFailedError, isReportedDelivery } from './delivery.js';
 import type { FeeClaimEvent, GraduationEvent, TokenLaunchEvent, TradeAlertEvent, FeeDistributionEvent } from './types.js';
 
 async function main(): Promise<void> {
@@ -102,8 +102,9 @@ async function main(): Promise<void> {
             }));
             delivery.recordSuccess();
         } catch (err) {
-            delivery.report(err);
-            throw err;
+            // Already classified and logged here; the marker keeps callers
+            // from logging the same failure again as a raw stack trace.
+            throw new DeliveryFailedError(delivery.report(err), err);
         }
     }
 
@@ -277,8 +278,10 @@ async function main(): Promise<void> {
                 log.info('✅ Posted GitHub claim by %s (%s) to %s',
                     event.githubUserId, githubUser?.login ?? '?', config.channelId);
             } catch (postErr) {
-                log.error('Failed to post claim by %s — will retry on next claim event: %s',
-                    event.githubUserId, postErr);
+                if (!isReportedDelivery(postErr)) {
+                    log.error('Failed to post claim by %s — will retry on next claim event: %s',
+                        event.githubUserId, postErr);
+                }
             }
         }
 
@@ -330,11 +333,13 @@ async function main(): Promise<void> {
                 store.markPosted(stored.seq);
                 log.info('✅ Posted creator claim by %s to %s', event.claimerWallet.slice(0, 8), config.channelId);
             } catch (postErr) {
-                log.error('Failed to post creator claim by %s: %s', event.claimerWallet.slice(0, 8), postErr);
+                if (!isReportedDelivery(postErr)) {
+                    log.error('Failed to post creator claim by %s: %s', event.claimerWallet.slice(0, 8), postErr);
+                }
             }
         }
       } catch (err) {
-        log.error('Claim handler error: %s', err);
+        if (!isReportedDelivery(err)) log.error('Claim handler error: %s', err);
       }
     });
     }
@@ -368,7 +373,7 @@ async function main(): Promise<void> {
                     store.markPosted(stored.seq);
                     log.info('✅ Posted launch %s ($%s) to %s', event.name, event.symbol, config.channelId);
                 } catch (err) {
-                    log.error('Launch handler error: %s', err);
+                    if (!isReportedDelivery(err)) log.error('Launch handler error: %s', err);
                 }
             },
             async (event: GraduationEvent) => {
@@ -421,7 +426,7 @@ async function main(): Promise<void> {
                     store.markPosted(stored.seq);
                     log.info('✅ Posted graduation for %s to %s', event.mintAddress.slice(0, 8), config.channelId);
                 } catch (err) {
-                    log.error('Graduation handler error: %s', err);
+                    if (!isReportedDelivery(err)) log.error('Graduation handler error: %s', err);
                 }
             },
             async (event: TradeAlertEvent) => {
@@ -447,7 +452,7 @@ async function main(): Promise<void> {
                     store.markPosted(stored.seq);
                     log.info('✅ Posted whale %s (%s SOL) to %s', side, event.solAmount.toFixed(1), config.channelId);
                 } catch (err) {
-                    log.error('Whale handler error: %s', err);
+                    if (!isReportedDelivery(err)) log.error('Whale handler error: %s', err);
                 }
             },
             async (event: FeeDistributionEvent) => {
@@ -469,7 +474,7 @@ async function main(): Promise<void> {
                     store.markPosted(stored.seq);
                     log.info('✅ Posted fee distribution for %s to %s', event.mintAddress.slice(0, 8), config.channelId);
                 } catch (err) {
-                    log.error('Fee distribution handler error: %s', err);
+                    if (!isReportedDelivery(err)) log.error('Fee distribution handler error: %s', err);
                 }
             },
         );

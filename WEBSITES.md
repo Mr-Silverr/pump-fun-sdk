@@ -6,7 +6,7 @@ The repository contains two web directories, each with a distinct purpose. They 
 
 | Directory | Purpose | Tech | Deploys To |
 |-----------|---------|------|------------|
-| [`website/`](website/) | SDK documentation & marketing site | Vanilla HTML/CSS/JS SPA | Cloudflare Workers: [sdk.pumpk.it](https://sdk.pumpk.it) |
+| [`website/`](website/) | SDK docs, tutorials & marketing site | Vanilla HTML/CSS/JS SPA | Cloudflare Workers: [sdk.pumpk.it](https://sdk.pumpk.it) |
 | [`pumpfun-site/`](pumpfun-site/) | pump.fun UI design template | Vanilla HTML/CSS/JS (4 pages) | Cloudflare Workers: [demo.pumpk.it](https://demo.pumpk.it) |
 
 ## When to Use Each
@@ -26,8 +26,10 @@ cd website && npx serve .
 cd pumpfun-site && npx serve .
 ```
 
-`website/` reads the repository's markdown from `docs/`, which only sits beside
-the site after `node scripts/build-site.mjs` assembles `dist-site/`. Serving
+`website/` reads the repository's markdown from `docs/` and `tutorials/`, which
+only sits beside the site after `node scripts/build-site.mjs` assembles
+`dist-site/` (that build also regenerates `website/data/manifest.json`, the
+tutorial index and stats the site reads). Serving
 `website/` directly still works: the reader falls back to the copies on GitHub.
 To exercise the bundled path, run the build and `npx serve dist-site`. See
 [`website/README.md`](website/README.md) for the reader's routes and shortcuts.

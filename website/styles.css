@@ -2246,21 +2246,21 @@ a.token-card:focus-visible,
 /* ---------- Reading mode: give the article the room ---------- */
 /* The table-of-contents rail only exists while reading, so the card index
    spans the full width instead of leaving a dead column. */
-.page-docs:not(.reading) .docs-layout {
+.reader-page:not(.reading) .docs-layout {
   grid-template-columns: 220px minmax(0, 1fr);
 }
 
-.page-docs.reading .page-header {
+.reader-page.reading .page-header {
   padding-top: 24px;
   padding-bottom: 8px;
 }
 
-.page-docs.reading .page-header h1,
-.page-docs.reading .page-header p {
+.reader-page.reading .page-header h1,
+.reader-page.reading .page-header p {
   display: none;
 }
 
-.page-docs.reading .search-bar {
+.reader-page.reading .search-bar {
   margin-top: 0;
 }
 
@@ -2274,7 +2274,7 @@ a.token-card:focus-visible,
 }
 
 @media (max-width: 900px) {
-  .page-docs.reading .docs-sidebar {
+  .reader-page.reading .docs-sidebar {
     display: none;
   }
 }
@@ -2289,4 +2289,72 @@ a.token-card:focus-visible,
 .doc-article[hidden],
 .docs-toc[hidden] {
   display: none;
+}
+
+/* ---------- Tutorials ---------- */
+.tutorial-number {
+  font-family: var(--font-mono);
+  font-weight: 800;
+  letter-spacing: -1px;
+  background: linear-gradient(135deg, var(--green), var(--cyan));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.token-card-header .tutorial-number {
+  font-size: 44px;
+}
+
+.doc-head-icon .tutorial-number {
+  font-size: 26px;
+}
+
+.token-card[data-category^="track-"] .token-card-header {
+  background: linear-gradient(135deg, rgba(0, 255, 136, 0.08), rgba(0, 229, 255, 0.04));
+}
+
+.token-card[data-category="track-1"] .token-card-header {
+  background: linear-gradient(135deg, rgba(0, 229, 255, 0.08), rgba(179, 136, 255, 0.04));
+}
+
+.token-card[data-category="track-2"] .token-card-header {
+  background: linear-gradient(135deg, rgba(179, 136, 255, 0.08), rgba(255, 64, 129, 0.04));
+}
+
+.token-card[data-category="track-3"] .token-card-header,
+.token-card[data-category="track-4"] .token-card-header {
+  background: linear-gradient(135deg, rgba(255, 215, 64, 0.08), rgba(255, 82, 82, 0.04));
+}
+
+.doc-head[data-category^="track-"] .doc-head-icon {
+  background: linear-gradient(135deg, rgba(0, 255, 136, 0.1), rgba(0, 229, 255, 0.05));
+}
+
+.docs-link-number {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-right: 2px;
+}
+
+.docs-category-link.active .docs-link-number {
+  color: var(--green);
+}
+
+.docs-sidebar-loading {
+  padding: 10px 12px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.docs-search-note {
+  grid-column: 1 / -1;
+  font-size: 12px;
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+  border-left: 2px solid var(--yellow);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  background: var(--bg-card);
 }

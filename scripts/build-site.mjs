@@ -4,7 +4,8 @@
  *
  * Layout:
  *   /            -> website/  (SDK docs & marketing SPA)
- *   /docs/       -> docs/     (markdown the docs reader fetches and renders)
+ *   /docs/       -> docs/      (markdown the reader fetches and renders)
+ *   /tutorials/  -> tutorials/ (same, for the tutorial track)
  *   /live/       -> live/     (standalone dashboards: launches, trades, vanity)
  *
  * Top-level aliases (/live, /trades, /vanity, /chart) keep old links
@@ -14,11 +15,16 @@
  * and by any static host (nginx, etc.).
  */
 import { cpSync, mkdirSync, rmSync, writeFileSync, readdirSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const out = join(root, 'dist-site');
+
+// The manifest the site reads (tutorial index, extra docs, live stats) is
+// derived from the repository, so it is regenerated on every build.
+execFileSync(process.execPath, [join(root, 'scripts', 'build-manifest.mjs')], { stdio: 'inherit' });
 
 rmSync(out, { recursive: true, force: true });
 mkdirSync(out, { recursive: true });
@@ -28,21 +34,26 @@ cpSync(join(root, 'website'), out, {
   filter: (src) => !/vercel\.json$|README\.md$/.test(src),
 });
 
-// Markdown for the in-site documentation reader (website/app.js fetches
-// /docs/<file>.md). Top-level files only: nested folders are upstream vendor
-// copies that the reader links to on GitHub instead.
-const docsSrc = join(root, 'docs');
-const docsOut = join(out, 'docs');
-mkdirSync(docsOut, { recursive: true });
+// Markdown for the in-site reader (website/app.js fetches /docs/<file>.md and
+// /tutorials/<file>.md). Top-level files only: nested folders under docs/ are
+// upstream vendor copies that the reader links to on GitHub instead.
+function copyMarkdown(dir) {
+  const src = join(root, dir);
+  const dest = join(out, dir);
+  mkdirSync(dest, { recursive: true });
 
-let mdCount = 0;
-for (const entry of readdirSync(docsSrc, { withFileTypes: true })) {
-  if (entry.isFile() && entry.name.endsWith('.md')) {
-    cpSync(join(docsSrc, entry.name), join(docsOut, entry.name));
-    mdCount += 1;
+  let count = 0;
+  for (const entry of readdirSync(src, { withFileTypes: true })) {
+    if (entry.isFile() && entry.name.endsWith('.md')) {
+      cpSync(join(src, entry.name), join(dest, entry.name));
+      count += 1;
+    }
   }
+  return count;
 }
-cpSync(join(docsSrc, 'assets'), join(docsOut, 'assets'), { recursive: true });
+
+const mdCount = copyMarkdown('docs') + copyMarkdown('tutorials');
+cpSync(join(root, 'docs', 'assets'), join(out, 'docs', 'assets'), { recursive: true });
 
 mkdirSync(join(out, 'live'), { recursive: true });
 for (const f of readdirSync(join(root, 'live'))) {
@@ -75,9 +86,13 @@ writeFileSync(
     '  Cache-Control: public, max-age=86400',
     '/docs/*',
     '  Cache-Control: public, max-age=600',
+    '/tutorials/*',
+    '  Cache-Control: public, max-age=600',
+    '/data/*',
+    '  Cache-Control: public, max-age=600',
     '',
   ].join('\n'),
 );
 
 const files = readdirSync(out, { recursive: true }).length;
-console.log(`dist-site/ assembled (${files} entries, ${mdCount} docs)`);
+console.log(`dist-site/ assembled (${files} entries, ${mdCount} markdown pages)`);

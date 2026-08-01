@@ -1,7 +1,8 @@
 # Pump SDK Website
 
 > **Purpose:** SDK documentation and marketing site. Reads the repository's own
-> markdown docs in the browser, with search, syntax highlighting, and deep links.
+> markdown docs and tutorials in the browser, with search, syntax highlighting,
+> and deep links.
 
 Deployed to [sdk.pumpk.it](https://sdk.pumpk.it). This is one of two web
 directories in the repository:
@@ -15,9 +16,11 @@ directories in the repository:
 
 ```
 website/
-├── index.html      # Single-page app: home, docs, sdk, tools, ecosystem
-├── styles.css      # PumpFun-inspired dark theme + documentation reader
-├── app.js          # Router, doc reader, search, code tabs
+├── index.html      # Single-page app: home, docs, tutorials, sdk, tools, ecosystem
+├── styles.css      # PumpFun-inspired dark theme + reader
+├── app.js          # Router, markdown reader, search, code tabs
+├── data/
+│   └── manifest.json  # Generated: tutorial index, extra docs, live stats
 ├── vendor/         # marked, DOMPurify, highlight.js (see vendor/README.md)
 ├── vercel.json     # Static-host fallback config (SPA rewrite + headers)
 └── README.md       # This file
@@ -25,21 +28,21 @@ website/
 
 ## Pages
 
-- **Home** - Hero, stats, featured features, doc card grid, on-chain programs, quick start code
+- **Home** - Hero, live stats, featured features, doc card grid, on-chain programs, quick start code
 - **Docs** - Card index, sidebar, full-text search, and the in-site markdown reader
+- **Tutorials** - All numbered tutorials from `tutorials/`, in order, in the same reader
 - **SDK** - Architecture diagram, key types, import map, common pitfalls
 - **Tools** - MCP server, live dashboards, vanity generators, bots, PumpOS
 - **Ecosystem** - Project structure tree, performance metrics, security, links
 
-## How the documentation reader works
+## How the reader works
 
 Every card, sidebar entry, and search hit opens the actual markdown from
-[`docs/`](../docs/) inside the site. Nothing is duplicated: the doc list in
-`app.js` (`DOCS`) points at real filenames, and the page you read is the file in
-the repository.
+[`docs/`](../docs/) or [`tutorials/`](../tutorials/) inside the site. Nothing is
+duplicated: the page you read is the file in the repository.
 
-1. `scripts/build-site.mjs` copies `docs/*.md` and `docs/assets/` into
-   `dist-site/docs/`, next to the site.
+1. `scripts/build-site.mjs` copies `docs/*.md`, `tutorials/*.md`, and
+   `docs/assets/` into `dist-site/`, next to the site.
 2. `app.js` fetches `docs/<file>.md`, parses it with `marked`, sanitizes the HTML
    with `DOMPurify`, and highlights code blocks with `highlight.js`.
 3. If the bundled copy is missing (or the host answered with its SPA fallback
@@ -47,6 +50,19 @@ the repository.
    `raw.githubusercontent.com/nirholas/pump-fun-sdk/main/docs/`, so a link is
    never a dead end. If both fail, the page renders an error state with a retry
    button and a GitHub link.
+
+### What comes from the repository, not from this directory
+
+`scripts/build-manifest.mjs` (run automatically by `build-site.mjs`) writes
+`data/manifest.json` from the filesystem: every tutorial with its title, summary,
+and reading time; every documentation page; and the counts behind the home page
+stats bar (documentation pages, tutorials, MCP tools, on-chain programs). A new
+tutorial or doc therefore appears on the site as soon as it lands, and the stats
+cannot drift from the repository.
+
+The curated list in `app.js` (`DOCS`) only supplies editorial extras for the main
+documentation set: emoji, ticker, category, and a one-line description. Any
+`docs/*.md` file missing from it is listed automatically under **Project**.
 
 Post-processing gives each document a table of contents, anchored headings,
 copy-to-clipboard code blocks, horizontally scrollable tables, and previous/next
@@ -58,8 +74,9 @@ everything else points at GitHub.
 | Hash | Shows |
 |------|-------|
 | `#home`, `#sdk`, `#tools`, `#ecosystem` | Top-level pages |
-| `#docs` | Documentation card index |
+| `#docs`, `#tutorials` | Card index for that collection |
 | `#docs/getting-started.md` | A single document |
+| `#tutorials/01-create-token.md` | A single tutorial |
 | `#docs/getting-started.md~install` | A document scrolled to a heading |
 | `#getting-started` | Shorthand for the document with that filename |
 
@@ -67,7 +84,7 @@ everything else points at GitHub.
 
 | Key | Action |
 |-----|--------|
-| `/` | Jump to the docs page and focus search |
+| `/` | Focus the search box on the current collection (docs if elsewhere) |
 | `Esc` | Clear the search box, or return from a document to the index |
 
 ## Development
@@ -76,12 +93,13 @@ The site works standalone, but the bundled markdown only exists after a build,
 so serve the assembled bundle when you touch the docs reader:
 
 ```bash
-node scripts/build-site.mjs   # from the repository root
+node scripts/build-site.mjs   # from the repository root; regenerates the manifest
 npx serve dist-site
 ```
 
-Serving `website/` directly also works: `docs/` is missing there, so the reader
-falls back to the copies on GitHub.
+Serving `website/` directly also works: the markdown is missing there, so the
+reader falls back to the copies on GitHub. `data/manifest.json` is committed, so
+the tutorial index still loads.
 
 ```bash
 cd website && npx serve .

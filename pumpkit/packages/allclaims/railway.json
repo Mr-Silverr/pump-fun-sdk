@@ -1,0 +1,71 @@
+{
+    "$schema": "https://railway.com/railway.schema.json",
+    "build": {
+        "builder": "DOCKERFILE",
+        "dockerfilePath": "Dockerfile"
+    },
+    "deploy": {
+        "runtime": "V2",
+        "restartPolicyType": "ON_FAILURE",
+        "restartPolicyMaxRetries": 10,
+        "numReplicas": 1,
+        "envVars": {
+            "TELEGRAM_BOT_TOKEN": {
+                "description": "Telegram bot token from @BotFather. Must be its own bot, not the first-claims bot",
+                "required": true
+            },
+            "CHANNEL_ID": {
+                "description": "Telegram channel to post to (@channelname or -100xxx)",
+                "required": true
+            },
+            "SOLANA_RPC_URL": {
+                "description": "Solana RPC endpoint (mainnet)",
+                "required": true
+            },
+            "SOLANA_WS_URL": {
+                "description": "Solana WebSocket URL. Strongly recommended: without it the bot polls and misses claims",
+                "required": false
+            },
+            "SOLANA_RPC_URLS": {
+                "description": "Comma-separated fallback RPC endpoints",
+                "required": false
+            },
+            "INSTANT_THRESHOLD_USD": {
+                "description": "Claims worth this much USD or more post individually (default: 100)",
+                "required": false
+            },
+            "MIN_CLAIM_USD": {
+                "description": "Claims below this USD value are counted but not listed (default: 0)",
+                "required": false
+            },
+            "DIGEST_INTERVAL_SECONDS": {
+                "description": "Seconds between digest posts (default: 60)",
+                "required": false
+            },
+            "DIGEST_MAX_LINES": {
+                "description": "Claims listed per digest before summarizing (default: 12)",
+                "required": false
+            },
+            "MAX_POSTS_PER_MINUTE": {
+                "description": "Telegram post budget, max 19 (default: 15)",
+                "required": false
+            },
+            "INCLUDE_CASHBACK": {
+                "description": "Include cashback claims, which are user refunds (default: false)",
+                "required": false
+            },
+            "INCLUDE_DISTRIBUTIONS": {
+                "description": "Include distribute_creator_fees payouts (default: true)",
+                "required": false
+            },
+            "POLL_INTERVAL_SECONDS": {
+                "description": "Polling interval when no WebSocket is available (default: 30)",
+                "required": false
+            },
+            "LOG_LEVEL": {
+                "description": "Log level: debug | info | warn | error",
+                "required": false
+            }
+        }
+    }
+}

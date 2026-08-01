@@ -99,6 +99,7 @@ bot.launch();
 | [`@pumpkit/core`](packages/core/) | Shared framework — logger, health server, config, shutdown, types | ✅ Ready |
 | [`@pumpkit/monitor`](packages/monitor/) | All-in-one PumpFun monitor bot (DM + channel + API) | ✅ Ready |
 | [`@pumpkit/channel`](packages/channel/) | Read-only Telegram channel feed (broadcasts token events) | ✅ Ready |
+| [`@pumpkit/allclaims`](packages/allclaims/) | Channel feed for **every** fee claim — instant posts for large claims, digests for the rest | ✅ Ready |
 | [`@pumpkit/claim`](packages/claim/) | Fee claim tracker by token CA or X handle | ✅ Ready |
 | [`@pumpkit/tracker`](packages/tracker/) | Group call-tracking bot with leaderboards & PNL cards | ✅ Ready |
 | [`@pumpkit/web`](packages/web/) | Frontend dashboard and documentation site | 🏗️ Skeleton |
@@ -135,6 +136,18 @@ Consolidates 3 existing production bots into one:
 | **Webhooks** | telegram-bot | Outbound webhook dispatch for integrations |
 | **Twitter/X Tracking** | claim-bot, channel-bot | Track tokens by X handle, follower counts |
 | **GitHub Social Fees** | channel-bot | Social fee PDA lookup via GitHub |
+
+### All-Claims Bot (`@pumpkit/allclaims`)
+
+| Feature | Description |
+|---------|-------------|
+| **Every claim type** | Creator fees, AMM creator fees, distributions, social fee PDA, optional cashback |
+| **Instant posts** | Claims above a USD threshold get their own message |
+| **Digest batching** | Everything below the threshold is summarized on an interval |
+| **Post budget** | Sliding-window rate limit; instant claims demote to the digest rather than drop |
+| **No silent loss** | Every claim is posted, digested, or counted, and filtered counts are disclosed |
+| **V2 quote mints** | USDC-paired coins render in USDC, SOL-paired convert at spot |
+| **HTTP API + SSE** | `/health`, `/stats`, `/events/recent`, `/events/stream` |
 
 ### Tracker Bot (`@pumpkit/tracker`)
 

@@ -9,6 +9,7 @@
 | `@pumpkit/core` | 1.0.0 | ✅ Complete | Logger, config, health, shutdown, bot scaffold, formatter, monitors, storage, SDK bridge |
 | `@pumpkit/monitor` | 1.0.0 | ✅ Complete | DM bot + REST API + SSE stream. Copied from telegram-bot |
 | `@pumpkit/channel` | 1.0.0 | ✅ Complete | Channel broadcast bot. Copied from channel-bot |
+| `@pumpkit/allclaims` | 1.0.0 | ✅ Complete | All-claims channel feed. Instant + digest routing, verified against mainnet |
 | `@pumpkit/claim` | 1.0.0 | ✅ Complete | Fee claim tracker. Copied from claim-bot |
 | `@pumpkit/tracker` | 1.0.0 | ✅ Complete | Call-tracking leaderboard bot. Copied from outsiders-bot |
 | `@pumpkit/web` | 0.1.0 | 🔄 In Progress | Dashboard UI with mock + live SSE feed |

@@ -16,7 +16,7 @@ The repository contains two web directories, each with a distinct purpose. They 
 
 ## Quick Start
 
-All three are static sites with no build step:
+Both are static sites with no build step:
 
 ```bash
 # SDK docs site
@@ -25,6 +25,12 @@ cd website && npx serve .
 # pump.fun design template
 cd pumpfun-site && npx serve .
 ```
+
+`website/` reads the repository's markdown from `docs/`, which only sits beside
+the site after `node scripts/build-site.mjs` assembles `dist-site/`. Serving
+`website/` directly still works: the reader falls back to the copies on GitHub.
+To exercise the bundled path, run the build and `npx serve dist-site`. See
+[`website/README.md`](website/README.md) for the reader's routes and shortcuts.
 
 ## Color Palettes
 
@@ -37,7 +43,7 @@ Each site uses a different green accent by design:
 
 ## Security Headers
 
-All three `vercel.json` configs include:
+Both `vercel.json` configs include:
 - `X-Content-Type-Options: nosniff`
 - `X-Frame-Options: DENY`
 - `Referrer-Policy: strict-origin-when-cross-origin`

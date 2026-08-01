@@ -29,6 +29,8 @@ export interface RuntimeState {
     posted: number;
     /** Description of the active monitor transport */
     getMode: () => string;
+    /** Channel delivery health, when a reporter is wired */
+    getDelivery?: () => { healthy: boolean; fault?: string; fix?: string; failures: number };
 }
 
 export interface AdminContext {
@@ -86,6 +88,10 @@ export function registerAdminCommands(bot: Bot, ctx: AdminContext): void {
         const webhookLine = ctx.webhooks.enabled
             ? `\nWebhooks: ${ctx.webhooks.stats.delivered} delivered, ${ctx.webhooks.stats.failed} failed`
             : '';
+        const health = ctx.state.getDelivery?.();
+        const deliveryLine = health && !health.healthy
+            ? `\n\n⚠️ <b>Delivery blocked</b> (${health.fault}, ${health.failures} failures)\n${health.fix ?? ''}`
+            : '';
         await c.reply(
             `<b>Channel bot status</b>\n` +
             `Channel: ${config.channelId}\n` +
@@ -95,7 +101,7 @@ export function registerAdminCommands(bot: Bot, ctx: AdminContext): void {
             `Posted: ${ctx.state.posted}\n` +
             `Whale threshold: ${config.whaleThresholdSol} SOL\n` +
             `Events seen: ${counts}\n` +
-            `API subscribers: ${ctx.store.subscriberCount}${webhookLine}\n\n${feeds}`,
+            `API subscribers: ${ctx.store.subscriberCount}${webhookLine}\n\n${feeds}${deliveryLine}`,
             { parse_mode: 'HTML' },
         );
     });

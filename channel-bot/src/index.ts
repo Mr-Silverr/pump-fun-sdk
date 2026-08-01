@@ -27,6 +27,7 @@ import { maskUrl } from './rpc-fallback.js';
 import { EventStore } from './event-store.js';
 import { WebhookDispatcher } from './webhooks.js';
 import { registerAdminCommands, isMuted, type RuntimeState } from './admin.js';
+import { DeliveryReporter, verifyChannelAccess } from './delivery.js';
 import type { FeeClaimEvent, GraduationEvent, TokenLaunchEvent, TradeAlertEvent, FeeDistributionEvent } from './types.js';
 
 async function main(): Promise<void> {
@@ -58,6 +59,12 @@ async function main(): Promise<void> {
         get posted() { return pipeline.posted; },
         set posted(_v: number) { /* derived from the pipeline counter */ },
         getMode: () => 'starting',
+        getDelivery: () => ({
+            healthy: delivery.healthy,
+            fault: delivery.lastFault,
+            fix: delivery.lastFix,
+            failures: delivery.failures,
+        }),
     };
 
     /** Retry helper for transient Telegram errors (429, 5xx). */
@@ -84,6 +91,8 @@ async function main(): Promise<void> {
         throw new Error('Unreachable');
     }
 
+    const delivery = new DeliveryReporter(config.channelId);
+
     /** Send a message to the channel. Throws on failure. */
     async function postToChannel(message: string): Promise<void> {
         try {
@@ -91,8 +100,9 @@ async function main(): Promise<void> {
                 parse_mode: 'HTML',
                 link_preview_options: { is_disabled: true },
             }));
+            delivery.recordSuccess();
         } catch (err) {
-            log.error('Failed to post to channel %s: %s', config.channelId, err);
+            delivery.report(err);
             throw err;
         }
     }
@@ -104,8 +114,10 @@ async function main(): Promise<void> {
                 caption,
                 parse_mode: 'HTML',
             }));
+            delivery.recordSuccess();
         } catch (err) {
-            log.warn('Photo send failed, falling back to text: %s', err);
+            // A photo can fail for reasons the text path survives (bad image
+            // URL, size limits), so always try text before giving up.
             await postToChannel(caption);
         }
     }
@@ -476,6 +488,19 @@ async function main(): Promise<void> {
     registerAdminCommands(bot, { config, state, store, webhooks, startedAt });
     await bot.init();
     log.info('Bot initialized: @%s', bot.botInfo.username);
+
+    // Preflight: a bot that cannot reach its channel must say so at boot,
+    // not silently drop every event until someone reads a stack trace.
+    const access = await verifyChannelAccess(bot.api, config.channelId, bot.botInfo.id);
+    if (access.ok) {
+        log.info('Channel access verified: @%s can post to %s', bot.botInfo.username, config.channelId);
+    } else {
+        delivery.lastFault = access.fault;
+        delivery.lastFix = access.fix;
+        log.error('CHANNEL NOT REACHABLE (%s)', access.fault);
+        log.error('FIX: %s', access.fix);
+        log.error('Monitoring continues and events stay available on the HTTP API and webhooks.');
+    }
     if (config.adminUserIds.length > 0) {
         // Long polling only exists to receive admin DMs; without admins the
         // bot stays send-only and never pulls updates.
@@ -496,6 +521,12 @@ async function main(): Promise<void> {
             muted: postingMuted(),
             whaleThresholdSol: config.whaleThresholdSol,
             messagesPosted: pipeline.posted,
+            // A bot that cannot reach its channel is degraded, not healthy:
+            // /health returns 503 so an uptime check actually catches it.
+            degraded: !delivery.healthy,
+            delivery: delivery.healthy
+                ? { status: 'ok' }
+                : { status: 'blocked', fault: delivery.lastFault, fix: delivery.lastFix, failures: delivery.failures },
             webhooks: webhooks.enabled ? { ...webhooks.stats } : undefined,
             ...(claimMonitor ? { claimMonitor: claimMonitor.getMetrics() } : {}),
         }),

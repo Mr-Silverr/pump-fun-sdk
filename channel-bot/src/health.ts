@@ -144,7 +144,16 @@ export function startHealthServer(opts: HealthStats): void {
         log.info('HTTP API listening on port %d (/health, /stats, /events/recent, /events/stream)', port);
     });
 
-    server.on('error', (err) => {
+    server.on('error', (err: NodeJS.ErrnoException) => {
+        if (err.code === 'EADDRINUSE') {
+            // Under an orchestrator (Cloud Run, Railway, Docker) a bound port
+            // means another instance already owns this bot. Running on with a
+            // dead API would fail every health probe with no explanation, and
+            // two instances would double-post to the channel. Exit and let the
+            // supervisor restart us cleanly.
+            log.error('Port %d is already in use — another instance is running. Exiting.', port);
+            process.exit(1);
+        }
         log.warn('HTTP API error: %s', err);
     });
 }

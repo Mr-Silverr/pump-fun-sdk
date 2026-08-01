@@ -268,6 +268,33 @@ X-PumpFeed-Signature-256: sha256=<hex hmac of the raw body>
 
 Verify by recomputing the HMAC of the raw request body with your secret and comparing (timing-safe compare recommended). Deliveries retry up to 3 times on network errors and 5xx; 4xx responses are not retried.
 
+## Delivery Health
+
+The bot verifies at boot that it can actually post to `CHANNEL_ID` and says so on line one, rather than failing silently on the first event:
+
+```
+[INFO]  Channel access verified: @pumpgraduatedbot can post to @trackpumpfun
+```
+
+When it cannot, you get the fault and the fix instead of a stack trace, and the feed keeps running so the API and webhooks still carry every event:
+
+```
+[ERROR] CHANNEL NOT REACHABLE (not_a_member)
+[ERROR] FIX: Add the bot to @trackpumpfun and grant it post rights (Telegram → group → Add members → the bot, then promote it to admin).
+```
+
+The same state is machine-readable: `GET /health` returns **503** with `degraded: true` and a `delivery` object carrying the fault and the fix, so an uptime check catches a bot that is running but mute. Recognized faults:
+
+| Fault | Meaning | Fix |
+|-------|---------|-----|
+| `not_a_member` | Bot was never added, or was removed/kicked | Add the bot to the chat and promote it |
+| `chat_not_found` | `CHANNEL_ID` does not resolve | Correct the `@username` or use the numeric `-100…` ID |
+| `no_permission` | In the chat but cannot post | Promote to admin with Send Messages / Send Photos |
+| `blocked` | Bot is blocked in the chat | Unblock it |
+| `rate_limited`, `transient` | Telegram 429/5xx | None — retried automatically, health stays OK |
+
+Repeated failures of the same kind log once, then periodically, instead of once per event.
+
 ## Transport Resilience
 
 The monitor prefers a WebSocket subscription (real-time, complete) and falls back to HTTP polling only when the socket is genuinely unusable: after 3 consecutive silent heartbeat periods it switches to polling and retries the WebSocket every 10 minutes, promoting it back automatically the moment live events flow again. `/status` and `GET /stats` both report the active transport.
@@ -295,6 +322,7 @@ channel-bot/
 │   ├── event-store.ts        # Ring buffer of recent events + live subscriber fan-out
 │   ├── webhooks.ts           # Signed JSON webhook delivery with retries
 │   ├── admin.ts              # Telegram DM admin commands (/status, /feeds, /mute, ...)
+│   ├── delivery.ts           # Channel preflight + delivery fault classification
 │   ├── types.ts              # Program IDs, discriminators, event types
 │   └── logger.ts             # Leveled console logger
 ├── data/                     # Persisted state (gitignored, Railway volume mount)

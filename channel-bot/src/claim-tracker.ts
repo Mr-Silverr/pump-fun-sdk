@@ -262,6 +262,10 @@ export function isFirstClaimByWallet(wallet: string): boolean {
  */
 export function isFirstClaimByGithubUser(githubUserId: string): boolean {
     if (githubUserFirstClaim.has(githubUserId)) return false;
+    const prefix = `${githubUserId}:`;
+    for (const key of githubUserFirstClaim) {
+        if (key.startsWith(prefix)) return false;
+    }
     githubUserFirstClaim.add(githubUserId);
     scheduleSave();
     if (githubUserFirstClaim.size > MAX_ENTRIES) {

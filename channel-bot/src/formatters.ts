@@ -503,29 +503,6 @@ export function formatGitHubClaimFeed(ctx: ClaimFeedContext): { imageUrl: string
         L.push('');
         L.push(`CA: <code>${mint}</code>`);
     }
-    
-    return { caption: L.join('\n'), imageUrl: tokenInfo?.image || null };
-}
-        if (githubUser.publicRepos > 0) L.push(`📦 Repos: ${githubUser.publicRepos}`);
-        if (githubUser.followers > 0) L.push(`👁 Followers: ${githubUser.followers}`);
-        if (githubUser.createdAt) L.push(`📅 Account age: ${timeAgo(new Date(githubUser.createdAt).getTime() / 1000)}`);
-        L.push('');
-    }
-    if (ctx.repoInfo) {
-        L.push(`📂 GitHub Linked`);
-        L.push(`${esc(ctx.repoInfo.fullName)}`);
-    } else if (tokenInfo?.githubUrls?.length) {
-        const repoUrl = tokenInfo.githubUrls[0]!;
-        const repoPath = repoUrl.replace(/^https?:\/\/github\.com\//, '').replace(/\/+$/, '');
-        const isRepoUrl = repoPath.includes('/');
-        L.push(`📂 ${isRepoUrl ? 'Repo Linked' : 'GitHub Linked'}`);
-        L.push(`${esc(repoPath)}`);
-        if (!isRepoUrl) L.push(`<i>Profile linked — no specific repo</i>`);
-    }
-    L.push('');
-    if (mint) {
-        L.push(`CA: <code>${mint}</code>`);
-    }
 
     // Token image takes priority; fall back to GitHub avatar
     const imageUrl = tokenInfo?.imageUri || githubUser?.avatarUrl || null;

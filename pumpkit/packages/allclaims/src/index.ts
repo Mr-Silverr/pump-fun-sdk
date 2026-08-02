@@ -15,12 +15,23 @@ import { Bot, type BotError } from 'grammy';
 
 import { loadConfig } from './config.js';
 import { ClaimMonitor } from './claim-monitor.js';
-import { ClaimDispatcher } from './dispatcher.js';
+import { ClaimDispatcher, splitWindow } from './dispatcher.js';
 import { EventStore } from './event-store.js';
-import { formatDigest, formatInstantClaim, claimUsd, CLAIM_TYPE_SHORT, type ValuedClaim } from './formatters.js';
+import {
+    formatDigest,
+    formatInstantClaim,
+    cardImageUrl,
+    claimUsd,
+    resolveSubject,
+    CLAIM_TYPE_SHORT,
+    type DigestSubject,
+    type ValuedClaim,
+} from './formatters.js';
+import { buildClaimCard, resolveDigestSubject, subjectWallet } from './enrich.js';
+import { buildClaimKeyboard, type InlineKeyboard } from './keyboards.js';
 import { startHealthServer, stopHealthServer } from './health.js';
 import { log, setLogLevel } from './logger.js';
-import { fetchSolUsdPrice, fetchTokenInfo, type TokenInfo } from './pump-client.js';
+import { fetchSolUsdPrice, setRpcEndpoints } from './pump-client.js';
 import { maskUrl } from './rpc-fallback.js';
 import type { FeeClaimEvent } from './types.js';
 
@@ -31,8 +42,11 @@ async function main(): Promise<void> {
     log.info('PumpFun All-Claims Bot starting...');
     log.info('  Channel: %s', config.channelId);
     log.info('  RPC: %s', maskUrl(config.solanaRpcUrl));
-    log.info('  Instant threshold: $%d · digest every %ds · max %d posts/min',
-        config.instantThresholdUsd, config.digestIntervalSeconds, config.maxPostsPerMinute);
+    log.info('  Instant threshold: $%d · up to %d cards + 1 digest every %ds · max %d posts/min',
+        config.instantThresholdUsd, config.cardsPerWindow, config.digestIntervalSeconds, config.maxPostsPerMinute);
+
+    // Holder concentration is read from the chain: no HTTP API serves it now.
+    setRpcEndpoints(config.solanaRpcUrls);
 
     const bot = new Bot(config.telegramToken);
     bot.catch((err: BotError) => {
@@ -41,9 +55,6 @@ async function main(): Promise<void> {
 
     const store = new EventStore();
     const dispatcher = new ClaimDispatcher(config);
-
-    /** Token info for claims seen this digest window, so the digest can name symbols. */
-    const windowTokens = new Map<string, TokenInfo | null>();
 
     const stats = { detected: 0, instant: 0, digested: 0, dropped: 0, digestsPosted: 0, postFailures: 0 };
 
@@ -70,29 +81,40 @@ async function main(): Promise<void> {
         throw new Error('Unreachable');
     }
 
-    async function postToChannel(message: string): Promise<void> {
+    /**
+     * Post a card.
+     *
+     * When an image is available it rides on the link preview rather than a
+     * photo upload: `sendPhoto` caps captions at 1024 characters, which a full
+     * card exceeds, while a previewed message keeps the artwork AND the whole
+     * card. Telegram fetches the image itself, so a dead IPFS gateway costs a
+     * missing thumbnail, never a failed post.
+     */
+    async function postToChannel(
+        message: string,
+        imageUrl?: string | null,
+        keyboard?: InlineKeyboard,
+    ): Promise<void> {
         await withRetry(() => bot.api.sendMessage(config.channelId, message, {
+            link_preview_options: imageUrl
+                ? { url: imageUrl, prefer_large_media: true, show_above_text: true }
+                : { is_disabled: true },
             parse_mode: 'HTML',
-            link_preview_options: { is_disabled: true },
+            ...(keyboard ? { reply_markup: keyboard } : {}),
         }));
     }
 
-    /**
-     * Token info for a mint, cached for the life of the digest window.
-     * Capped so a window with no digest flush (all-instant traffic) cannot
-     * grow the map without bound.
-     */
-    const MAX_WINDOW_TOKENS = 1_000;
-    async function tokenFor(mint: string): Promise<TokenInfo | null> {
-        if (!mint) return null;
-        if (windowTokens.has(mint)) return windowTokens.get(mint) ?? null;
-        const info = await fetchTokenInfo(mint);
-        if (windowTokens.size >= MAX_WINDOW_TOKENS) {
-            const oldest = windowTokens.keys().next().value;
-            if (oldest !== undefined) windowTokens.delete(oldest);
-        }
-        windowTokens.set(mint, info);
-        return info;
+    /** Enrich one claim and post it as a full card with its action buttons. */
+    async function postCard(claim: ValuedClaim, solUsdPrice: number): Promise<void> {
+        const card = await buildClaimCard(claim.event, claim.usd, solUsdPrice, config.affiliates);
+        const mint = resolveSubject(card)?.mint ?? null;
+        const keyboard = buildClaimKeyboard(
+            mint,
+            claim.event.txSignature,
+            claim.event.recipientWallet ?? claim.event.creatorWallet ?? claim.event.claimerWallet,
+            config.affiliates,
+        );
+        await postToChannel(formatInstantClaim(card), cardImageUrl(card), keyboard);
     }
 
     function summarize(event: FeeClaimEvent, usd: number): string {
@@ -138,14 +160,11 @@ async function main(): Promise<void> {
 
             if (route === 'digest') {
                 stats.digested++;
-                // Warm the token cache now so the digest flush stays fast.
-                if (event.tokenMint) await tokenFor(event.tokenMint);
                 return;
             }
 
-            const token = event.tokenMint ? await tokenFor(event.tokenMint) : null;
             try {
-                await postToChannel(formatInstantClaim(event, token, solUsdPrice));
+                await postCard(claim, solUsdPrice);
                 store.markPosted(recorded.seq);
                 stats.instant++;
                 log.info('✅ Instant claim posted: $%s · %s', usd.toFixed(2), event.txSignature.slice(0, 8));
@@ -158,20 +177,66 @@ async function main(): Promise<void> {
         }
     });
 
-    // ── Digest flush loop ────────────────────────────────────────────
+    // ── Window flush: cards first, then a digest for the tail ────────
+    //
+    // The instant threshold alone leaves the channel digest-only whenever
+    // claims run small, which is most of the time. Every window therefore
+    // promotes its biggest distinct claims to full cards and digests only what
+    // is left, so the feed reads as cards no matter what the chain is paying.
     const digestTimer = setInterval(() => {
         void (async () => {
+            const window = dispatcher.flush();
+            if (!window) return;
+
+            const solUsdPrice = await fetchSolUsdPrice();
+
+            // One budget slot is already held for the digest by flush(); the
+            // rest of the minute is available for cards.
+            const cardBudget = Math.min(config.cardsPerWindow, dispatcher.budget.remaining());
+            const { cards: carded, digest: leftover } = splitWindow(
+                window.claims,
+                cardBudget,
+                (claim) => `${subjectWallet(claim.event)}|${claim.event.tokenMint}`,
+            );
+
+            for (const claim of carded) {
+                if (!dispatcher.budget.canPost()) break;
+                dispatcher.budget.consume();
+                try {
+                    await postCard(claim, solUsdPrice);
+                    stats.instant++;
+                    log.info('🃏 Card posted: $%s · %s', claim.usd.toFixed(2), claim.event.txSignature.slice(0, 8));
+                } catch (err) {
+                    stats.postFailures++;
+                    log.error('Card post failed for %s: %s', claim.event.txSignature.slice(0, 8), err);
+                }
+            }
+
+            // Nothing left to summarize: hand the reserved slot back rather
+            // than posting a digest that repeats the cards above it.
+            if (leftover.length === 0 && window.droppedBelowMin === 0) {
+                dispatcher.budget.refund();
+                return;
+            }
+
             try {
-                const window = dispatcher.flush();
-                if (!window) return;
+                // Only the lines that actually ship get enriched, so a busy
+                // window costs `digestMaxLines` lookups rather than hundreds.
+                const listed = [...leftover]
+                    .sort((a, b) => b.usd - a.usd)
+                    .slice(0, config.digestMaxLines);
+                const subjects = new Map<string, DigestSubject>();
+                await Promise.all(listed.map(async ({ event }) => {
+                    subjects.set(event.txSignature, await resolveDigestSubject(event));
+                }));
 
                 const message = formatDigest(
-                    window.claims,
-                    windowTokens,
+                    leftover,
+                    subjects,
                     {
                         droppedBelowMin: window.droppedBelowMin,
-                        totalClaims: window.totalClaims,
-                        totalUsd: window.totalUsd,
+                        totalClaims: leftover.length,
+                        totalUsd: leftover.reduce((sum, c) => sum + c.usd, 0),
                         windowSeconds: config.digestIntervalSeconds,
                     },
                     config.digestMaxLines,
@@ -179,13 +244,12 @@ async function main(): Promise<void> {
 
                 await postToChannel(message);
                 stats.digestsPosted++;
-                windowTokens.clear();
-                log.info('📊 Digest posted: %d claims · $%s', window.totalClaims, window.totalUsd.toFixed(2));
+                log.info('📊 Digest posted: %d claims · %d carded', leftover.length, carded.length);
             } catch (err) {
                 stats.postFailures++;
                 log.error('Digest post failed: %s', err);
             }
-        })();
+        })().catch((err) => log.error('Window flush failed: %s', err));
     }, config.digestIntervalSeconds * 1000);
 
     // ── Pipeline log ─────────────────────────────────────────────────

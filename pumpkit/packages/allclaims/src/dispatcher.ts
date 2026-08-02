@@ -36,6 +36,15 @@ export class PostBudget {
         this.timestamps.push(now);
     }
 
+    /**
+     * Give a consumed slot back. Used when a post was reserved and then turned
+     * out to be unnecessary (an empty digest), so the slot can carry a card
+     * instead of being burned on nothing.
+     */
+    refund(): void {
+        this.timestamps.pop();
+    }
+
     /** Posts remaining in the current window. */
     remaining(now = Date.now()): number {
         this.prune(now);
@@ -51,6 +60,38 @@ export class PostBudget {
 }
 
 export type Route = 'instant' | 'digest' | 'dropped';
+
+/**
+ * Split a window into the claims that deserve their own card and the tail that
+ * belongs in the digest.
+ *
+ * Two things happen here. First, repeats collapse: one payout routinely
+ * surfaces as several claims (the AMM vault and the pump vault swept in the
+ * same breath, or a claim bot firing repeatedly), and posting each as its own
+ * card fills the channel with the same coin. Second, what is left is ranked by
+ * value and the top `cardBudget` are promoted.
+ *
+ * Nothing is discarded: every claim that does not become a card comes back in
+ * `digest`, so the window's total still adds up.
+ */
+export function splitWindow(
+    claims: ValuedClaim[],
+    cardBudget: number,
+    subjectKey: (claim: ValuedClaim) => string,
+): { cards: ValuedClaim[]; digest: ValuedClaim[] } {
+    const best = new Map<string, ValuedClaim>();
+    const repeats: ValuedClaim[] = [];
+
+    for (const claim of [...claims].sort((a, b) => b.usd - a.usd)) {
+        const key = subjectKey(claim);
+        if (best.has(key)) repeats.push(claim);
+        else best.set(key, claim);
+    }
+
+    const ranked = [...best.values()].sort((a, b) => b.usd - a.usd);
+    const limit = Math.max(0, cardBudget);
+    return { cards: ranked.slice(0, limit), digest: [...ranked.slice(limit), ...repeats] };
+}
 
 export interface DigestWindow {
     claims: ValuedClaim[];

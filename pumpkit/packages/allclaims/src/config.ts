@@ -34,10 +34,21 @@ export interface AllClaimsConfig {
     maxPostsPerMinute: number;
     /** Max digest lines shown per digest message (rest are summarized) */
     digestMaxLines: number;
+    /**
+     * How many of a window's biggest claims are promoted to full cards.
+     *
+     * Without this the feed is digest-only whenever claims run small, which is
+     * most of the time: a $100 instant threshold never fires on a chain whose
+     * typical claim is a few dollars. Promoting the top of each window keeps
+     * the channel made of readable cards regardless of claim sizes.
+     */
+    cardsPerWindow: number;
     /** Include cashback claims (user refunds, not creator activity) */
     includeCashback: boolean;
     /** Include distribute_creator_fees payouts */
     includeDistributions: boolean;
+    /** Referral handles for the trade links on an instant card. Empty values render plain links. */
+    affiliates: { axiom: string; gmgn: string; padre: string };
 }
 
 function parseNumber(name: string, fallback: number, min: number, max: number): number {
@@ -99,6 +110,12 @@ export function loadConfig(): AllClaimsConfig {
         : 'info';
 
     return {
+        affiliates: {
+            axiom: process.env.AXIOM_REF ?? '',
+            gmgn: process.env.GMGN_REF ?? '',
+            padre: process.env.PADRE_REF ?? '',
+        },
+        cardsPerWindow: parseNumber('CARDS_PER_WINDOW', 6, 0, 18),
         channelId,
         digestIntervalSeconds: parseNumber('DIGEST_INTERVAL_SECONDS', 60, 10, 3600),
         digestMaxLines: parseNumber('DIGEST_MAX_LINES', 12, 1, 40),

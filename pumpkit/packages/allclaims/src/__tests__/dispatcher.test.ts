@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { ClaimDispatcher, PostBudget } from '../dispatcher.js';
+import { ClaimDispatcher, PostBudget, splitWindow } from '../dispatcher.js';
 import type { ValuedClaim } from '../formatters.js';
 import type { FeeClaimEvent } from '../types.js';
 
@@ -125,5 +125,70 @@ describe('ClaimDispatcher.flush', () => {
         const window = d.flush();
         expect(window?.totalClaims).toBe(600);
         expect(window?.claims.length).toBe(500);
+    });
+});
+
+describe('splitWindow', () => {
+    function claim(usd: number, key: string, sig = key): ValuedClaim {
+        return {
+            event: { txSignature: sig, tokenMint: key } as unknown as ValuedClaim['event'],
+            usd,
+        };
+    }
+    const byMint = (c: ValuedClaim) => c.event.tokenMint;
+
+    it('promotes the biggest claims of the window to cards', () => {
+        const { cards, digest } = splitWindow(
+            [claim(1, 'a'), claim(50, 'b'), claim(10, 'c')],
+            2,
+            byMint,
+        );
+        expect(cards.map((c) => c.usd)).toEqual([50, 10]);
+        expect(digest.map((c) => c.usd)).toEqual([1]);
+    });
+
+    /**
+     * The repetition that made the live channel unreadable: one payout surfaces
+     * as several claims on the same coin, and each became its own line.
+     */
+    it('cards a coin once and keeps its twins in the digest', () => {
+        const { cards, digest } = splitWindow(
+            [claim(5, 'a', 'sig1'), claim(5, 'a', 'sig2'), claim(4, 'b')],
+            6,
+            byMint,
+        );
+        expect(cards).toHaveLength(2);
+        expect(cards.map((c) => c.event.tokenMint)).toEqual(['a', 'b']);
+        expect(digest).toHaveLength(1);
+        expect(digest[0]!.event.txSignature).toBe('sig2');
+    });
+
+    it('loses nothing: every claim is either carded or digested', () => {
+        const claims = Array.from({ length: 25 }, (_, i) => claim(i + 1, `m${i % 7}`, `sig${i}`));
+        const { cards, digest } = splitWindow(claims, 3, byMint);
+        expect(cards.length + digest.length).toBe(claims.length);
+    });
+
+    it('sends the whole window to the digest when no card budget is left', () => {
+        const { cards, digest } = splitWindow([claim(9, 'a'), claim(3, 'b')], 0, byMint);
+        expect(cards).toHaveLength(0);
+        expect(digest).toHaveLength(2);
+    });
+
+    it('treats a negative budget as zero rather than slicing from the end', () => {
+        const { cards, digest } = splitWindow([claim(9, 'a')], -4, byMint);
+        expect(cards).toHaveLength(0);
+        expect(digest).toHaveLength(1);
+    });
+});
+
+describe('PostBudget.refund', () => {
+    it('returns a reserved slot that went unused', () => {
+        const budget = new PostBudget(3);
+        budget.consume();
+        budget.consume();
+        expect(budget.remaining()).toBe(1);
+        budget.refund();
+        expect(budget.remaining()).toBe(2);
     });
 });

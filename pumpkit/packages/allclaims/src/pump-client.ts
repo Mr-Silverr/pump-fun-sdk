@@ -5,9 +5,33 @@
  * from the PumpFun public HTTP API for rich channel feed messages.
  */
 
+import { PublicKey } from '@solana/web3.js';
+
 import { log } from './logger.js';
+import { RpcFallback } from './rpc-fallback.js';
+import { PUMP_PROGRAM_ID, WSOL_MINT } from './types.js';
 
 const PUMPFUN_API = 'https://frontend-api-v3.pump.fun';
+
+/**
+ * RPC lanes for the reads that no HTTP API serves any more (holder
+ * concentration). Set once at startup; unset means those reads return empty
+ * rather than inventing a number.
+ */
+let rpc: RpcFallback | null = null;
+
+export function setRpcEndpoints(urls: string[]): void {
+    try {
+        rpc = new RpcFallback(urls);
+    } catch (err) {
+        log.warn('Holder reads disabled: %s', err);
+        rpc = null;
+    }
+}
+
+function getRpc(): RpcFallback | null {
+    return rpc;
+}
 const LAMPORTS_PER_SOL = 1_000_000_000;
 const TOKEN_DECIMALS = 6;
 const ONE_TOKEN = 10 ** TOKEN_DECIMALS;
@@ -81,7 +105,22 @@ export interface CreatorProfile {
     /** Estimated scam/rug count — non-graduated coins with near-zero MC */
     scamEstimate: number;
     /** Names of recent coins created */
-    recentCoins: Array<{ name: string; symbol: string; mint: string; complete: boolean; usdMarketCap: number }>;
+    recentCoins: CreatorCoin[];
+    /** The creator's coins ranked by market cap, biggest first. */
+    topCoins: CreatorCoin[];
+    /** How many of this creator's coins graduated to the AMM. */
+    graduatedCount: number;
+}
+
+export interface CreatorCoin {
+    name: string;
+    symbol: string;
+    mint: string;
+    complete: boolean;
+    usdMarketCap: number;
+    /** Coin artwork, used as the card image for vault claims that name no mint. */
+    imageUri: string;
+    createdTimestamp: number;
 }
 
 // ============================================================================
@@ -305,6 +344,8 @@ export async function fetchCreatorProfile(wallet: string): Promise<CreatorProfil
         totalLaunches: 0,
         scamEstimate: 0,
         recentCoins: [],
+        topCoins: [],
+        graduatedCount: 0,
     };
 
     // Fetch user profile (username, avatar, followers)
@@ -337,13 +378,22 @@ export async function fetchCreatorProfile(wallet: string): Promise<CreatorProfil
                 const mc = Number(c.usd_market_cap ?? 0);
                 return !Boolean(c.complete) && mc < 500;
             }).length;
-            profile.recentCoins = coins.slice(0, 5).map((c) => ({
+            const parsed: CreatorCoin[] = coins.map((c) => ({
                 mint: String(c.mint ?? ''),
                 name: String(c.name ?? 'Unknown'),
                 symbol: String(c.symbol ?? '???'),
                 complete: Boolean(c.complete),
                 usdMarketCap: Number(c.usd_market_cap ?? 0),
+                imageUri: String(c.image_uri ?? ''),
+                createdTimestamp: Math.floor(Number(c.created_timestamp ?? 0) / 1000),
             }));
+            profile.graduatedCount = parsed.filter((c) => c.complete).length;
+            profile.recentCoins = [...parsed]
+                .sort((a, b) => b.createdTimestamp - a.createdTimestamp)
+                .slice(0, 5);
+            profile.topCoins = [...parsed]
+                .sort((a, b) => b.usdMarketCap - a.usdMarketCap)
+                .slice(0, 5);
         }
     } catch (err) {
         log.debug('Creator coins fetch failed for %s: %s', wallet.slice(0, 8), err);
@@ -425,28 +475,76 @@ export async function fetchTokenHolders(mint: string): Promise<TokenHolderInfo> 
 // Recent Trades / Volume
 // ============================================================================
 
-/** Fetch recent trade activity for a token. */
+/**
+ * Recent trade activity for a token, from the DexScreener pair.
+ *
+ * The `/coins/{mint}/trades` path this used to call was withdrawn from the
+ * pump.fun frontend API and now answers 404 for every mint, so the buy/sell
+ * split silently read as zero on every card. DexScreener publishes the same
+ * counts per window for both bonding-curve and graduated coins, and the pair
+ * lookup is cached, so this shares one request with the liquidity read.
+ */
 export async function fetchTokenTrades(mint: string): Promise<TokenTradeInfo> {
     const result: TokenTradeInfo = { recentTradeCount: 0, recentVolumeSol: 0, buyCount: 0, sellCount: 0 };
+    const pair = await fetchDexPair(mint);
+    if (!pair) return result;
+
+    const txns = pair.txns as Record<string, { buys?: number; sells?: number }> | undefined;
+    const window = txns?.h1 ?? txns?.h6 ?? txns?.h24;
+    if (window) {
+        result.buyCount = Number(window.buys ?? 0);
+        result.sellCount = Number(window.sells ?? 0);
+        result.recentTradeCount = result.buyCount + result.sellCount;
+    }
+
+    const volume = pair.volume as Record<string, number> | undefined;
+    const volumeUsd = Number(volume?.h1 ?? volume?.h6 ?? volume?.h24 ?? 0);
+    const priceUsd = Number(pair.priceUsd ?? 0);
+    const priceNative = Number(pair.priceNative ?? 0);
+    // DexScreener quotes volume in USD; the card wants SOL, and the pair's own
+    // USD/native price ratio is the SOL rate implied by this very market.
+    const solUsd = priceUsd > 0 && priceNative > 0 ? priceUsd / priceNative : 0;
+    if (volumeUsd > 0 && solUsd > 0) result.recentVolumeSol = volumeUsd / solUsd;
+
+    return result;
+}
+
+/** DexScreener pair lookup, cached briefly so trades and liquidity share one request. */
+const dexPairCache = new Map<string, CacheEntry<Record<string, unknown> | null>>();
+const DEX_PAIR_TTL = 30_000;
+
+async function fetchDexPair(mint: string): Promise<Record<string, unknown> | null> {
+    const cached = dexPairCache.get(mint);
+    if (cached && Date.now() < cached.expiresAt) return cached.data;
+
+    let pair: Record<string, unknown> | null = null;
     try {
         const resp = await fetch(
-            `${PUMPFUN_API}/coins/${encodeURIComponent(mint)}/trades?limit=50&offset=0`,
-            { headers: { Accept: 'application/json' }, signal: AbortSignal.timeout(8_000) },
+            `https://api.dexscreener.com/latest/dex/tokens/${encodeURIComponent(mint)}`,
+            { signal: AbortSignal.timeout(8_000) },
         );
         if (resp.ok) {
-            const trades = (await resp.json()) as Array<Record<string, unknown>>;
-            result.recentTradeCount = trades.length;
-            for (const t of trades) {
-                const sol = Number(t.sol_amount ?? 0) / LAMPORTS_PER_SOL;
-                result.recentVolumeSol += sol;
-                if (Boolean(t.is_buy)) result.buyCount++;
-                else result.sellCount++;
-            }
+            const data = (await resp.json()) as { pairs?: Array<Record<string, unknown>> };
+            // Deepest pool first: a coin can have a dust decoy pair listed too.
+            const pairs = data.pairs ?? [];
+            pair = pairs.length
+                ? pairs.reduce((best, p) => (liquidityOf(p) > liquidityOf(best) ? p : best), pairs[0]!)
+                : null;
         }
     } catch (err) {
-        log.debug('Trades fetch failed for %s: %s', mint.slice(0, 8), err);
+        log.debug('DexScreener pair fetch failed for %s: %s', mint.slice(0, 8), err);
     }
-    return result;
+
+    dexPairCache.set(mint, { data: pair, expiresAt: Date.now() + DEX_PAIR_TTL });
+    if (dexPairCache.size > 200) {
+        const oldest = dexPairCache.keys().next().value;
+        if (oldest) dexPairCache.delete(oldest);
+    }
+    return pair;
+}
+
+function liquidityOf(pair: Record<string, unknown>): number {
+    return Number((pair.liquidity as Record<string, number> | undefined)?.usd ?? 0);
 }
 
 // ============================================================================
@@ -472,16 +570,22 @@ export async function fetchSolUsdPrice(): Promise<number> {
     return cachedSolPrice;
 }
 
-/** Jupiter Price API v2 — primary SOL/USD source. */
+/**
+ * Jupiter Price API v3, the primary SOL/USD source.
+ *
+ * The v2 host this used to call now answers 404 for every id, which returned 0
+ * and quietly stripped the USD figure off every card and every routing decision
+ * downstream. v3 lives on the lite host and keys the price by mint directly.
+ */
 async function fetchSolPriceJupiter(): Promise<number> {
     try {
         const resp = await fetch(
-            'https://api.jup.ag/price/v2?ids=So11111111111111111111111111111111111111112',
+            `https://lite-api.jup.ag/price/v3?ids=${WSOL_MINT}`,
             { headers: { Accept: 'application/json' }, signal: AbortSignal.timeout(5_000) },
         );
         if (!resp.ok) return 0;
-        const data = (await resp.json()) as Record<string, Record<string, Record<string, unknown>>>;
-        return Number(data?.data?.['So11111111111111111111111111111111111111112']?.price ?? 0);
+        const data = (await resp.json()) as Record<string, { usdPrice?: number }>;
+        return Number(data?.[WSOL_MINT]?.usdPrice ?? 0);
     } catch {
         return 0;
     }
@@ -540,41 +644,130 @@ export interface HolderDetails {
     top10Pct: number;
 }
 
-/** Fetch top holders for a token from the PumpFun API. */
-export async function fetchTopHolders(mint: string): Promise<HolderDetails> {
+/**
+ * Top holders and concentration, read from the chain.
+ *
+ * The `/coins/{mint}/holders` path this used to call was withdrawn from the
+ * pump.fun frontend API and answers 404 for every mint, so every card printed
+ * "concentration unavailable" no matter how concentrated the coin was, which
+ * is the exact case where a reader most needs the number. `getTokenLargestAccounts`
+ * is authoritative, free, and served by every RPC lane we run.
+ *
+ * The bonding curve (or the AMM pool once graduated) holds most of the supply
+ * and is not a holder, so its token account is derived and excluded rather than
+ * guessed at from a size threshold.
+ *
+ * `totalHolders` stays 0: the RPC returns the top 20 accounts, not a census.
+ * Reporting 20 as the holder count would be a fabricated number.
+ */
+export async function fetchTopHolders(mint: string, poolAddress?: string): Promise<HolderDetails> {
     const result: HolderDetails = { totalHolders: 0, topHolders: [], top10Pct: 0 };
+    const rpc = getRpc();
+    if (!rpc) return result;
+
     try {
-        const resp = await fetch(
-            `${PUMPFUN_API}/coins/${encodeURIComponent(mint)}/holders?limit=20&offset=0`,
-            { headers: { Accept: 'application/json' }, signal: AbortSignal.timeout(8_000) },
-        );
-        if (!resp.ok) return result;
+        const mintKey = new PublicKey(mint);
+        const [largest, supply] = await Promise.all([
+            rpc.withFallback((conn) => conn.getTokenLargestAccounts(mintKey)),
+            rpc.withFallback((conn) => conn.getTokenSupply(mintKey)),
+        ]);
 
-        const data = await resp.json();
-        const holders = Array.isArray(data) ? data : (data as Record<string, unknown>).holders;
-        if (!Array.isArray(holders)) return result;
+        const total = Number(supply.value.amount);
+        if (!Number.isFinite(total) || total <= 0) return result;
 
-        if (typeof data === 'object' && data !== null && 'total' in data) {
-            result.totalHolders = Number((data as Record<string, unknown>).total ?? holders.length);
-        } else {
-            result.totalHolders = holders.length;
+        const funded = largest.value
+            .slice(0, 20)
+            .filter((a) => Number.isFinite(Number(a.amount)) && Number(a.amount) > 0);
+        if (funded.length === 0) return result;
+
+        const owners = await tokenAccountOwners(rpc, funded.map((a) => a.address));
+        const knownPools = new Set(poolTokenAccounts(mintKey, poolAddress));
+
+        for (const account of funded) {
+            const address = account.address.toBase58();
+            const owner = owners.get(address);
+            result.topHolders.push({
+                address: owner ?? address,
+                isPool: knownPools.has(address) || (owner != null && isProgramOwned(owner)),
+                pct: (Number(account.amount) / total) * 100,
+            });
         }
 
-        for (const h of holders.slice(0, 20)) {
-            const raw = h as Record<string, unknown>;
-            const address = String(raw.address ?? raw.owner ?? '');
-            const pct = Number(raw.percentage ?? raw.pct ?? 0);
-            const isPool = Boolean(raw.is_bonding_curve ?? raw.isPool ?? false);
-            result.topHolders.push({ address, pct, isPool });
-        }
-
-        // top10 excluding pool
-        const nonPool = result.topHolders.filter(h => !h.isPool);
+        const nonPool = result.topHolders.filter((h) => !h.isPool);
         result.top10Pct = nonPool.slice(0, 10).reduce((sum, h) => sum + h.pct, 0);
     } catch (err) {
         log.debug('Top holders fetch failed for %s: %s', mint.slice(0, 8), err);
     }
     return result;
+}
+
+/**
+ * Owner wallet for each token account, in one RPC round trip.
+ *
+ * The largest-accounts call returns token accounts, not owners, and a card that
+ * lists token accounts is listing addresses nobody can look up.
+ */
+async function tokenAccountOwners(
+    rpcLanes: RpcFallback,
+    addresses: PublicKey[],
+): Promise<Map<string, string>> {
+    const owners = new Map<string, string>();
+    try {
+        const infos = await rpcLanes.withFallback((conn) => conn.getMultipleParsedAccounts(addresses));
+        infos.value.forEach((info, i) => {
+            const parsed = info?.data;
+            if (!parsed || !('parsed' in parsed)) return;
+            const owner = (parsed.parsed as { info?: { owner?: string } })?.info?.owner;
+            if (owner) owners.set(addresses[i]!.toBase58(), owner);
+        });
+    } catch (err) {
+        log.debug('Token account owner lookup failed: %s', err);
+    }
+    return owners;
+}
+
+/**
+ * True when an address is program-derived rather than a keypair.
+ *
+ * Bonding curves, AMM pools, and program vaults are all PDAs, and every pump
+ * program version derives them differently, so matching known seeds misses the
+ * next one. Counting the curve as a holder is how a coin whose supply had never
+ * left it rendered as "top10 hold 100%".
+ */
+function isProgramOwned(address: string): boolean {
+    try {
+        return !PublicKey.isOnCurve(new PublicKey(address).toBytes());
+    } catch {
+        return false;
+    }
+}
+
+const TOKEN_PROGRAM_ID = new PublicKey('TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA');
+const ASSOCIATED_TOKEN_PROGRAM_ID = new PublicKey('ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL');
+
+/** The token accounts that hold market-making supply rather than a holder's balance. */
+function poolTokenAccounts(mint: PublicKey, poolAddress?: string): string[] {
+    const owners: PublicKey[] = [];
+    try {
+        const [bondingCurve] = PublicKey.findProgramAddressSync(
+            [Buffer.from('bonding-curve'), mint.toBuffer()],
+            new PublicKey(PUMP_PROGRAM_ID),
+        );
+        owners.push(bondingCurve);
+    } catch {
+        // A malformed mint cannot produce a curve address; concentration still renders.
+    }
+    if (poolAddress) {
+        try { owners.push(new PublicKey(poolAddress)); } catch { /* not a pubkey, ignore */ }
+    }
+
+    return owners.map((owner) => {
+        const [ata] = PublicKey.findProgramAddressSync(
+            [owner.toBuffer(), TOKEN_PROGRAM_ID.toBuffer(), mint.toBuffer()],
+            ASSOCIATED_TOKEN_PROGRAM_ID,
+        );
+        return ata.toBase58();
+    });
 }
 
 // ============================================================================
@@ -662,26 +855,14 @@ export interface PoolLiquidityInfo {
     liquidityMultiplier: number;
 }
 
-/** Fetch pool liquidity from DexScreener. */
+/** Fetch pool liquidity from DexScreener. Shares the cached pair with the trade read. */
 export async function fetchPoolLiquidity(mint: string, usdMarketCap: number): Promise<PoolLiquidityInfo | null> {
-    try {
-        const resp = await fetch(
-            `https://api.dexscreener.com/latest/dex/tokens/${encodeURIComponent(mint)}`,
-            { signal: AbortSignal.timeout(8_000) },
-        );
-        if (!resp.ok) return null;
-        const data = (await resp.json()) as { pairs?: Array<Record<string, unknown>> };
-        const pair = data.pairs?.[0];
-        if (!pair) return null;
-        const liqObj = pair.liquidity as Record<string, number> | undefined;
-        const liquidityUsd = liqObj?.usd ?? 0;
-        if (liquidityUsd <= 0) return null;
-        const liquidityMultiplier = usdMarketCap > 0 ? Math.round(usdMarketCap / liquidityUsd) : 0;
-        return { liquidityUsd, liquidityMultiplier };
-    } catch (err) {
-        log.debug('Pool liquidity fetch failed for %s: %s', mint.slice(0, 8), err);
-        return null;
-    }
+    const pair = await fetchDexPair(mint);
+    if (!pair) return null;
+    const liquidityUsd = liquidityOf(pair);
+    if (liquidityUsd <= 0) return null;
+    const liquidityMultiplier = usdMarketCap > 0 ? Math.round(usdMarketCap / liquidityUsd) : 0;
+    return { liquidityUsd, liquidityMultiplier };
 }
 
 // ============================================================================

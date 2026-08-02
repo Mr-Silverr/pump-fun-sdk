@@ -26,6 +26,7 @@ The SDK never sends transactions itself. It returns `TransactionInstruction[]` t
 ## 📋 Table of Contents
 
 - [Quick Start](#-quick-start)
+- [50 Runnable Examples](#-50-runnable-examples)
 - [Usage Examples](#-usage-examples)
   - [Create a Token](#create-a-token)
   - [Create a Token With a `...pump` Vanity Mint](#create-a-token-with-a-pump-vanity-mint)
@@ -46,6 +47,7 @@ The SDK never sends transactions itself. It returns `TransactionInstruction[]` t
 ---
 ## 🚀 Live Demos & Resources
 
+- **[Token Launchpad](https://sdk.pumpk.it/live/launchpad)**: launch and trade real Pump tokens from your browser, built entirely on this SDK
 - **[SDK Docs & Live Dashboards](https://sdk.pumpk.it)** (trades, launches, vanity: [sdk.pumpk.it/live](https://sdk.pumpk.it/live/))
 - **[pump.fun UI Template](https://demo.pumpk.it)**
 - **[DeFi Agents API](https://agents.pumpk.it)**
@@ -131,6 +133,29 @@ console.log("Market Cap:", summary.marketCap.toString(), "lamports");
 console.log("Graduated:", summary.isGraduated);
 console.log("Progress:", summary.progressBps / 100, "%");
 ```
+
+---
+
+## 🧪 50 Runnable Examples
+
+The repo ships fifty tested, runnable examples covering the entire SDK surface. Each one runs with a single command, exports its logic for offline testing, and has a matching step-by-step tutorial.
+
+```bash
+git clone https://github.com/nirholas/pump-fun-sdk && cd pump-fun-sdk && npm install
+npm run example        # list all 50
+npm run example 11     # offline buy quotes
+npm run test:examples  # run every example's test suite offline
+```
+
+| Range | Category |
+|-------|----------|
+| 01-10 | Token Lifecycle: create, buy, sell, mayhem mode, cashback |
+| 11-20 | Curve Math & Fees: offline quotes, tiers, price impact |
+| 21-30 | Accounts & Events: every PDA, every decoder |
+| 31-40 | Live Data: mainnet reads, batching, WebSocket feeds |
+| 41-50 | AMM & Advanced: pools, liquidity, fee sharing, incentives, vanity mints |
+
+Full catalog: [docs/examples.md](docs/examples.md) · Browse: [examples/](examples/) · Tutorials: [tutorials/examples/](tutorials/examples/)
 
 ---
 

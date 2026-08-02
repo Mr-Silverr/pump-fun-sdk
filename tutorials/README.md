@@ -1,6 +1,8 @@
 # Pump SDK Tutorials
 
-> 43 hands-on tutorials for building on the Pump protocol with `@nirholas/pump-sdk`.
+> Hands-on tutorials for building on the Pump protocol with `@nirholas/pump-sdk`: 44 integration-scale tutorials here, plus one focused tutorial for each of the 50 runnable examples in [`examples/`](examples/).
+
+Looking for the example walkthroughs? Each runnable example in the repo's top-level [`examples/`](../examples/) directory has a matching tutorial in [`examples/`](examples/) here (same number, same name), covering one SDK capability each. The numbered tutorials below are broader: full applications, bots, dashboards, and integrations.
 
 ## Getting Started
 

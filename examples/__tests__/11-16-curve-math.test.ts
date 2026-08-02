@@ -50,12 +50,13 @@ describe("example 12: offline sell quotes", () => {
   it("breaks proceeds into net and fees that sum to gross", () => {
     const q = quoteSellBreakdown(makeGlobal(), activeCurve, new BN("50000000000000"));
     expect(q.netSol.gtn(0)).toBe(true);
-    expect(q.netSol.add(q.feesLamports).eq(q.grossSol)).toBe(true);
+    expect(q.netSol.add(q.feeSol).eq(q.grossSol)).toBe(true);
   });
 
   it("a creator-owned curve nets less than a creatorless one", () => {
     const cmp = compareCreatorFeeImpact(makeGlobal(), new BN("50000000000000"));
-    expect(cmp.withCreatorFee.netSol.lte(cmp.withoutCreatorFee.netSol)).toBe(true);
+    expect(cmp.netWithCreator.lte(cmp.netWithoutCreator)).toBe(true);
+    expect(cmp.creatorFeeCost.gten(0)).toBe(true);
   });
 });
 

@@ -61,10 +61,10 @@
     "prepublishOnly": "npm run build"
   },
   "dependencies": {
-    "@coral-xyz/anchor": "^0.31.1",
+    "@coral-xyz/anchor": "^0.32.1",
     "@pump-fun/pump-swap-sdk": "^1.19.0",
-    "@solana/spl-token": "^0.4.13",
-    "@solana/web3.js": "^1.98.2",
+    "@solana/spl-token": "^0.4.15",
+    "@solana/web3.js": "^1.98.4",
     "bn.js": "^5.2.2"
   },
   "devDependencies": {

@@ -1,6 +1,6 @@
 # Performance & Benchmarks
 
-Performance characteristics, benchmarks, and optimization tips for every component.
+> Performance characteristics, benchmarks, and optimization tips for the SDK and every companion component.
 
 ---
 
@@ -13,7 +13,7 @@ Performance characteristics, benchmarks, and optimization tips for every compone
 | Rust (`rust/`) | ~100K+ keys/sec | Rust | Multi-threaded (Rayon) |
 | TypeScript (`typescript/`) | ~1K keys/sec | TypeScript | Single-threaded |
 
-The Rust generator is **~100x faster** — use it for production vanity generation.
+The Rust generator is **~100x faster**; use it for production vanity generation. For short patterns inside a Node process, the SDK's `generateVanityMint` avoids shelling out entirely.
 
 ### Time Estimates by Pattern Length
 
@@ -37,8 +37,8 @@ For the Rust generator on an 8-core machine:
 # Use all CPU cores (Rayon auto-detects)
 cd rust && cargo run --release -- --prefix SOL --output key.json
 
-# Case-insensitive doubles match rate
-cargo run --release -- --prefix sol --case-insensitive --output key.json
+# Case-insensitive roughly doubles the match rate per cased letter
+cargo run --release -- --prefix sol --ignore-case --output key.json
 
 # Suffix matching (checks end of address)
 cargo run --release -- --suffix pump --output key.json
@@ -50,7 +50,7 @@ cargo run --release -- --suffix pump --output key.json
 
 ### Instruction Building (Offline)
 
-All `PumpSdk` methods are synchronous I/O-free operations:
+All `PumpSdk` methods are I/O-free and complete in well under a millisecond:
 
 | Operation | Time | Memory |
 |-----------|------|--------|
@@ -61,7 +61,7 @@ All `PumpSdk` methods are synchronous I/O-free operations:
 | Bonding curve math (quote) | < 0.1ms | < 100B |
 | PDA derivation | < 0.5ms | < 200B |
 
-These are pure functions with no async overhead — safe to call in hot paths.
+These have no network overhead and are safe to call in hot paths (the instruction builders are `async` only because of Anchor's builder API; they resolve immediately).
 
 ### Online SDK (With RPC)
 
@@ -70,10 +70,12 @@ Performance depends entirely on RPC latency:
 | Operation | RPC Calls | Typical Latency |
 |-----------|-----------|-----------------|
 | `fetchBondingCurve(mint)` | 1 | 50-200ms |
-| `fetchTokenInfo(mint)` | 1 HTTP | 100-500ms |
-| `fetchCreatorProfile(address)` | 1 HTTP | 100-500ms |
+| `fetchBuyState(mint, user)` | 2 | 100-400ms |
+| `fetchBondingCurveSummary(mint)` | 3 (parallel) | 100-400ms |
+| `fetchMultipleBondingCurves(mints)` | 1 | 50-200ms for up to 100 mints |
 | `getCreatorVaultBalanceBothPrograms()` | 2 | 100-400ms |
 | `getTotalUnclaimedTokensBothPrograms()` | 4 | 200-800ms |
+| `quoteBuy` / `quoteSell` | 3 (parallel) | 100-400ms |
 
 ### BN.js Performance
 
@@ -85,7 +87,7 @@ Performance depends entirely on RPC latency:
 | Multiplication | ~400ns | ~1ns |
 | Division | ~600ns | ~1ns |
 
-This is negligible in practice — a full quote calculation with BN takes < 0.1ms.
+This is negligible in practice: a full quote calculation with BN takes < 0.1ms.
 
 ---
 
@@ -106,8 +108,8 @@ This is negligible in practice — a full quote calculation with BN takes < 0.1m
 | Source | Default Interval | Configurable |
 |--------|-----------------|--------------|
 | PumpFun HTTP API | 5s | `POLL_INTERVAL_MS` |
-| Solana RPC WebSocket | Real-time | — |
-| Heartbeat | 30s | — |
+| Solana RPC WebSocket | Real-time | No |
+| Heartbeat | 30s | No |
 
 ---
 
@@ -143,7 +145,7 @@ This is negligible in practice — a full quote calculation with BN takes < 0.1m
 | Trades (`trades.html`) | ~250KB | ~30MB | < 2% |
 | Vanity Generator (`vanity.html`) | ~150KB | ~15MB | Up to 100% (during generation) |
 
-> The vanity generator runs in the browser's main thread — it will use one CPU core at 100% during generation. Consider using Web Workers for non-blocking generation.
+> The vanity generator runs in the browser's main thread; it will use one CPU core at 100% during generation. Consider using Web Workers for non-blocking generation.
 
 ---
 
@@ -171,30 +173,30 @@ Vercel Edge Functions have near-zero cold start (~5ms). No concern for latency.
 
 ### For Trading Bots
 
-1. **Use offline SDK for quoting** — No RPC call needed for price calculations
-2. **Cache bonding curve state** — Fetch once, quote multiple times
-3. **Batch instructions** — Combine buy + fee claim in one transaction
-4. **Pre-compute PDAs** — PDA derivation is deterministic, cache the results
-5. **Use `confirmed` commitment** — Faster than `finalized`, reliable enough for trading
+1. **Use offline SDK for quoting**: No RPC call needed for price calculations
+2. **Cache bonding curve state**: Fetch once, quote multiple times
+3. **Batch instructions**: Combine buy + fee claim in one transaction
+4. **Pre-compute PDAs**: PDA derivation is deterministic, cache the results
+5. **Use `confirmed` commitment**: Faster than `finalized`, reliable enough for trading
 
 ### For Monitoring
 
-1. **Prefer WebSocket over polling** — 10x lower latency, 95% less RPC usage
-2. **Implement HTTP polling fallback** — WebSocket connections drop; polling is reliable
-3. **Deduplicate events** — Keep a rolling set of processed TX signatures
-4. **Batch account lookups** — `getMultipleAccountsInfo` for multiple mints at once
-5. **Cache token metadata** — Metadata doesn't change after creation
+1. **Prefer WebSocket over polling**: 10x lower latency, 95% less RPC usage
+2. **Implement HTTP polling fallback**: WebSocket connections drop; polling is reliable
+3. **Deduplicate events**: Keep a rolling set of processed TX signatures
+4. **Batch account lookups**: `getMultipleAccountsInfo` for multiple mints at once
+5. **Cache token metadata**: Metadata doesn't change after creation
 
 ### For Frontend
 
-1. **Use the WebSocket relay** — Don't connect directly to Solana RPC from browsers
-2. **Lazy-load chart data** — Only fetch price history when user opens a chart
-3. **Debounce user input** — Don't fire RPC calls on every keystroke
-4. **Show cached data immediately** — Update in background, show stale data with a "refreshing" indicator
+1. **Use the WebSocket relay**: Don't connect directly to Solana RPC from browsers
+2. **Lazy-load chart data**: Only fetch price history when user opens a chart
+3. **Debounce user input**: Don't fire RPC calls on every keystroke
+4. **Show cached data immediately**: Update in background, show stale data with a "refreshing" indicator
 
 ### For CI/CD
 
-1. **Use public RPC for tests** — No paid plan needed for CI
-2. **Mock RPC in unit tests** — Never hit the network in unit tests
-3. **Run Rust and TypeScript tests in parallel** — They're independent
-4. **Set `--max-workers=2` for Jest** — Prevents CPU contention in containers
+1. **Use public RPC for tests**: No paid plan needed for CI
+2. **Mock RPC in unit tests**: Never hit the network in unit tests
+3. **Run Rust and TypeScript tests in parallel**: They're independent
+4. **Set `--max-workers=2` for Jest**: Prevents CPU contention in containers

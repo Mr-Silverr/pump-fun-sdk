@@ -229,62 +229,56 @@ After migration, the token trades on the PumpAMM program with pool-based swaps.
 
 After migration, buy and sell tokens on the AMM pool:
 
+The simplest path is the online wrappers, which fetch the pool state and compute slippage bounds for you:
+
 ```typescript
-import { canonicalPumpPoolPda } from "@nirholas/pump-sdk";
-
-const pool = canonicalPumpPoolPda(mint.publicKey);
-
-// Buy tokens on AMM
-const ammBuyIx = await PUMP_SDK.ammBuyInstruction({
-  user: wallet.publicKey,
-  pool,
+// Buy 0.1 SOL worth with 5% slippage
+const ammBuyIxs = await sdk.ammBuyInstructions({
   mint: mint.publicKey,
-  baseAmountOut: new BN(1_000_000),
-  maxQuoteAmountIn: new BN(0.1 * 1e9),
+  user: wallet.publicKey,
+  solAmount: new BN(100_000_000),
+  slippageBps: 500,
 });
 
-const ammBuyTx = new Transaction().add(ammBuyIx);
+const ammBuyTx = new Transaction().add(...ammBuyIxs);
 await sendAndConfirmTransaction(connection, ammBuyTx, [wallet]);
 
-// Sell tokens on AMM
-const ammSellIx = await PUMP_SDK.ammSellInstruction({
-  user: wallet.publicKey,
-  pool,
+// Sell 500k raw token units with 5% slippage
+const ammSellIxs = await sdk.ammSellInstructions({
   mint: mint.publicKey,
-  baseAmountIn: new BN(500_000),
-  minQuoteAmountOut: new BN(0.01 * 1e9),
+  user: wallet.publicKey,
+  tokenAmount: new BN(500_000),
+  slippageBps: 500,
 });
 
-const ammSellTx = new Transaction().add(ammSellIx);
+const ammSellTx = new Transaction().add(...ammSellIxs);
 await sendAndConfirmTransaction(connection, ammSellTx, [wallet]);
 ```
+
+Even simpler: `sdk.routedBuyInstructions` / `sdk.routedSellInstructions` check `bondingCurve.complete` and route to the curve or the AMM automatically, so the same code works before and after graduation. Low-level single-instruction builders (`PUMP_SDK.ammBuyInstruction`, `ammSellInstruction`) are covered in the [AMM Trading Guide](./amm-trading.md).
 
 ## Step 5c: Provide Liquidity (Optional)
 
 Deposit liquidity into the AMM pool and earn LP fees:
 
 ```typescript
-// Deposit
-const depositIx = await PUMP_SDK.ammDepositInstruction({
-  user: wallet.publicKey,
-  pool,
+// Deposit: start from a token amount, let the SDK match the SOL side
+const depositIxs = await sdk.depositByBaseAmount({
   mint: mint.publicKey,
-  maxBaseAmountIn: new BN(10_000_000),
-  maxQuoteAmountIn: new BN(1 * 1e9),
-  minLpTokenAmountOut: new BN(1),
+  user: wallet.publicKey,
+  baseAmount: new BN(10_000_000),
+  slippage: 1,
 });
 
-const depositTx = new Transaction().add(depositIx);
+const depositTx = new Transaction().add(...depositIxs);
 await sendAndConfirmTransaction(connection, depositTx, [wallet]);
 
-// Withdraw later
-const withdrawIx = await PUMP_SDK.ammWithdrawInstruction({
-  user: wallet.publicKey,
-  pool,
+// Withdraw later by LP amount
+const withdrawIxs = await sdk.withdrawByLpAmount({
   mint: mint.publicKey,
-  lpTokenAmountIn: new BN(50_000),
-  minBaseAmountOut: new BN(1),
-  minQuoteAmountOut: new BN(1),
+  user: wallet.publicKey,
+  lpAmount: new BN(50_000),
+  slippage: 1,
 });
 ```
 
@@ -331,7 +325,7 @@ await sendAndConfirmTransaction(connection, configTx, [wallet]);
 const shareholderIx = await PUMP_SDK.updateFeeShares({
   authority: wallet.publicKey,
   mint: mint.publicKey,
-  currentShareholders: [],  // PublicKey[] — empty on first setup
+  currentShareholders: [],  // PublicKey[]: empty on first setup
   newShareholders: [
     { address: wallet.publicKey, shareBps: 7000 },     // 70%
     { address: new PublicKey("..."), shareBps: 3000 },  // 30%
@@ -404,8 +398,8 @@ const closeIx = await PUMP_SDK.closeUserVolumeAccumulator(wallet.publicKey);
  3. bondingCurveMarketCap()              → Monitor price & market cap
  4. sellInstructions()                   → Sell tokens, price decreases
  5. migrateInstruction()                 → Graduate to AMM pool
-5b. ammBuyInstruction() / ammSellInstruction()  → Trade on AMM
-5c. ammDepositInstruction()              → Provide liquidity
+5b. ammBuyInstructions() / ammSellInstructions() → Trade on AMM
+5c. depositByBaseAmount()                → Provide liquidity
  6. collectCoinCreatorFeeInstructions()  → Collect creator fees
  7. createFeeSharingConfig()             → Set up fee sharing
  8. claimTokenIncentivesBothPrograms()   → Claim volume rewards
@@ -413,16 +407,21 @@ const closeIx = await PUMP_SDK.closeUserVolumeAccumulator(wallet.publicKey);
 10. createSocialFeePdaInstruction()      → Social fee integration
 ```
 
-Each step builds `TransactionInstruction[]` — you combine them into transactions and sign with your wallet.
+Each step builds `TransactionInstruction[]`; you combine them into transactions and sign with your wallet.
 
 ---
 
+## Runnable examples
+
+Token Lifecycle examples 01-10 walk this exact flow step by step without broadcasting anything: `npm run example 01` (create) through `npm run example 08` (sell to a SOL target).
+
 ## Related
 
-- [Getting Started](./getting-started.md) — Quick start guide
-- [Bonding Curve Math](./bonding-curve-math.md) — Price calculation formulas
-- [Fee Sharing](./fee-sharing.md) — Shareholder setup details
-- [Token Incentives](./token-incentives.md) — Volume reward mechanics
-- [Examples](./examples.md) — More code samples
-- [Troubleshooting](./TROUBLESHOOTING.md) — Common issues and fixes
+- [Getting Started](./getting-started.md): quick start guide
+- [Bonding Curve Math](./bonding-curve-math.md): price calculation formulas
+- [AMM Trading](./amm-trading.md): post-graduation trading in depth
+- [Fee Sharing](./fee-sharing.md): shareholder setup details
+- [Token Incentives](./token-incentives.md): volume reward mechanics
+- [Examples](./examples.md): the full example catalog
+- [Troubleshooting](./TROUBLESHOOTING.md): common issues and fixes
 

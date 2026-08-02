@@ -1,6 +1,38 @@
 # RPC Best Practices
 
-How to configure, optimize, and troubleshoot Solana RPC connections in the Pump SDK ecosystem.
+> How to configure, optimize, and troubleshoot Solana RPC connections in the Pump SDK ecosystem, including the SDK's built-in multi-endpoint failover.
+
+---
+
+## Built-in Failover (use this first)
+
+The SDK ships an automatic failover layer, so you rarely need to hand-roll retry or multi-provider logic:
+
+```typescript
+import { OnlinePumpSdk, createFallbackConnection, parseEndpoints } from "@nirholas/pump-sdk";
+
+// One call: an OnlinePumpSdk over a failover Connection
+const sdk = OnlinePumpSdk.withFallback([
+  process.env.PRIMARY_RPC_URL!,          // dedicated provider
+  "https://api.mainnet-beta.solana.com", // public (last resort)
+]);
+
+// Or build the Connection yourself and use it anywhere web3.js expects one
+const connection = createFallbackConnection(
+  parseEndpoints(process.env.RPC_URLS, "https://api.mainnet-beta.solana.com"),
+  { commitment: "confirmed" },
+  {
+    maxRetriesPerEndpoint: 2, // per-endpoint retries before moving on (default 2)
+    baseDelayMs: 500,         // exponential backoff base (default 500)
+    timeoutMs: 10_000,        // request timeout (default 10s)
+    cooldownMs: 60_000,       // how long a failed endpoint sits out (default 60s)
+  },
+);
+```
+
+On each RPC failure the connection rotates to the next healthy endpoint, applies exponential backoff, and puts failing endpoints on a cooldown timer. Non-retryable errors (failed simulations, invalid params, expired blockhashes) are surfaced immediately instead of being retried. `parseEndpoints` reads a comma-separated list from an env var, so a single `RPC_URLS` variable upgrades every consumer.
+
+The sections below apply whether or not you use the built-in layer.
 
 ---
 
@@ -59,10 +91,10 @@ const connection = new Connection(
 | `finalized` | ~12-15s | 31+ slots | Financial settlements, irreversible |
 
 **Rule of thumb:**
-- **Monitoring / feeds:** `confirmed` — fast enough for notifications
-- **Trade execution:** `confirmed` — wait for confirmation before showing success
-- **Balance queries:** `confirmed` — accurate within seconds
-- **Fee collection:** `finalized` — must be irreversible
+- **Monitoring / feeds:** `confirmed`: fast enough for notifications
+- **Trade execution:** `confirmed`: wait for confirmation before showing success
+- **Balance queries:** `confirmed`: accurate within seconds
+- **Fee collection:** `finalized`: must be irreversible
 
 ---
 
@@ -99,14 +131,16 @@ async function rpcWithRetry<T>(
 Combine multiple calls into batched RPC requests:
 
 ```typescript
-// ❌ Bad: 10 sequential calls
+// Bad: 10 sequential calls
 for (const mint of mints) {
   const info = await connection.getAccountInfo(mint);
 }
 
-// ✅ Good: 1 batched call
+// Good: 1 batched call
 const infos = await connection.getMultipleAccountsInfo(mints);
 ```
+
+The SDK exposes batched variants for its own accounts: `fetchMultipleBondingCurves(mints)`, `fetchMultiplePools(mints)`, and `fetchMultipleSharingConfigs(mints)` each cost one RPC call regardless of list size.
 
 ### Rate Limit Guidelines
 
@@ -122,6 +156,8 @@ const infos = await connection.getMultipleAccountsInfo(mints);
 ## Failover & Redundancy
 
 ### Multi-Provider Setup
+
+Prefer the built-in `createFallbackConnection` / `OnlinePumpSdk.withFallback` from the top of this page: it already handles rotation, backoff, health tracking, and cooldowns. Roll your own only if you need custom selection policy:
 
 ```typescript
 const RPC_ENDPOINTS = [
@@ -156,7 +192,7 @@ async function checkRpcHealth(connection: Connection): Promise<boolean> {
     const lag = now - (blockTime || 0);
 
     if (lag > 30) {
-      console.warn(`RPC is ${lag}s behind — may be degraded`);
+      console.warn(`RPC is ${lag}s behind, may be degraded`);
       return false;
     }
     return true;
@@ -249,12 +285,12 @@ async function getSolPrice(): Promise<number> {
 
 | Data | Cache? | TTL | Reason |
 |------|--------|-----|--------|
-| SOL/USD price | ✅ | 10-60s | Changes slowly relative to query volume |
-| Bonding curve state | ✅ | 5s | Changes with every trade |
-| Token metadata | ✅ | 1 hour | Immutable after creation |
-| Creator profile | ✅ | 5 min | Rarely changes |
-| Transaction status | ❌ | — | Must be real-time |
-| Account balances | ❌ | — | Must be current for trading |
+| SOL/USD price | Yes | 10-60s | Changes slowly relative to query volume |
+| Bonding curve state | Yes | 5s | Changes with every trade |
+| Token metadata | Yes | 1 hour | Immutable after creation |
+| Creator profile | Yes | 5 min | Rarely changes |
+| Transaction status | No | n/a | Must be real-time |
+| Account balances | No | n/a | Must be current for trading |
 
 ---
 

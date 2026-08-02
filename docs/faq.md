@@ -8,7 +8,7 @@
 
 ### What is pump-fun-sdk?
 
-The official community PumpFun SDK for the [Pump](https://pump.fun) protocol on Solana. It lets you create tokens, trade on bonding curves, collect creator fees, distribute fees to shareholders, and earn volume-based rewards — all programmatically.
+The official community PumpFun SDK for the [Pump](https://pump.fun) protocol on Solana. It lets you create tokens, trade on bonding curves and graduated AMM pools, collect creator fees, distribute fees to shareholders, and earn volume-based rewards, all programmatically.
 
 ### Is this the official PumpFun SDK?
 
@@ -16,13 +16,13 @@ This is the official community PumpFun SDK. It is published as `@nirholas/pump-s
 
 ### Is it free to use?
 
-Yes. pump-fun-sdk is open-source under the [MIT License](LICENSE). Use it for personal projects, commercial products, bots, agents — anything.
+Yes. pump-fun-sdk is open-source under the [MIT License](../LICENSE). Use it for personal projects, commercial products, bots, agents, anything.
 
 ### What languages are supported?
 
-- **TypeScript/JavaScript** — Core SDK, vanity generator, MCP server
-- **Rust** — High-performance vanity address generator
-- **Shell** — Batch scripts, verification tools, test runners
+- **TypeScript/JavaScript**: core SDK, vanity generator, MCP server
+- **Rust**: high-performance vanity address generator
+- **Shell**: batch scripts, verification tools, test runners
 
 ---
 
@@ -87,7 +87,11 @@ const solOut = getSellSolAmountFromTokenAmount({ global, feeConfig, mintSupply, 
 
 ### What does slippage mean?
 
-Slippage is the maximum percentage price movement you're willing to accept. A slippage of `1` means 1%. If the price moves more than 1% between when you build the transaction and when it executes, the transaction will fail to protect you.
+Slippage is the maximum percentage price movement you're willing to accept. In `buyInstructions` / `sellInstructions` a slippage of `1` means 1%. If the price moves more than 1% between when you build the transaction and when it executes, the transaction will fail to protect you. Note that the AMM online wrappers (`ammBuyInstructions`, `ammSellInstructions`) take `slippageBps` instead, where `500` = 5%.
+
+### Why does everything use BN instead of number?
+
+Token and SOL amounts routinely exceed JavaScript's safe integer range (2^53), and financial math must be exact. Every amount in the SDK is a `BN` from bn.js: lamports for SOL, raw units (6 decimals) for tokens. Write `new BN(1_000_000_000)` for 1 SOL, never `1e9` as a float.
 
 ### What happens when a token graduates?
 
@@ -97,16 +101,18 @@ When the bonding curve fills up (`bondingCurve.complete === true`), the token mi
 - Creator fees are still collected but from the AMM
 - You may need to use `transferCreatorFeesToPump` before claiming
 
-The SDK handles this automatically in methods with `BothPrograms` in the name.
+The SDK handles this automatically in methods with `BothPrograms` in the name, and `routedBuyInstructions` / `routedSellInstructions` pick the right venue per trade.
 
 ### Can I create tokens on devnet?
 
-Yes. Pass a devnet connection:
+The Pump program is deployed on devnet, so you can point the SDK at it for testing:
 
 ```typescript
 const connection = new Connection("https://api.devnet.solana.com", "confirmed");
 const sdk = new OnlinePumpSdk(connection);
 ```
+
+Devnet protocol state (fee tiers, global config) can differ from mainnet, so verify final behavior on mainnet with small amounts.
 
 ---
 
@@ -156,17 +162,17 @@ Yes. We use only official Solana keypair generation (`solana-sdk` in Rust, `@sol
 
 ### What is MCP?
 
-Model Context Protocol — Anthropic's open standard for connecting AI assistants (like Claude) to external tools. Our MCP server exposes **67 tools** covering the entire Pump protocol: quoting, building transactions, fee management, analytics, AMM operations, social fees, and wallet operations.
+Model Context Protocol: an open standard for connecting AI assistants (like Claude) to external tools. Our MCP server exposes **67 tools** covering the entire Pump protocol: quoting, building transactions, fee management, analytics, AMM operations, social fees, and wallet operations.
 
 ### What can it do?
 
 | Category | Examples |
 |----------|---------|
-| Quoting | `quote_buy`, `quote_sell`, `get_market_cap`, `get_bonding_curve` |
-| Building TXs | `build_create_token`, `build_buy`, `build_sell`, `build_migrate` |
-| Fees | `calculate_fees`, `build_distribute_fees`, `get_creator_vault_balance` |
+| Quoting | `get_buy_quote`, `get_sell_quote`, `get_market_cap`, `get_bonding_curve_state` |
+| Building TXs | `build_create_token`, `build_buy_instructions`, `build_sell_instructions`, `build_migrate_instructions` |
+| Fees | `get_fee_breakdown`, `build_distribute_fees`, `get_creator_vault_balance` |
 | Analytics | `get_price_impact`, `get_graduation_progress`, `get_token_price` |
-| AMM | `build_amm_buy`, `build_amm_sell`, `build_amm_deposit`, `build_amm_withdraw` |
+| AMM | `build_amm_swap`, `build_amm_deposit`, `build_amm_withdraw`, `get_amm_quote` |
 | Wallet | `generate_keypair`, `sign_message`, `verify_signature`, `validate_address` |
 
 ### How do I set it up with Claude Desktop?
@@ -213,13 +219,13 @@ Yes. Private keys are:
 The SDK is published on npm and used in production applications. However, you should:
 
 - Always review code that handles private keys
-- Use the security checklist in [SECURITY_CHECKLIST.md](security/SECURITY_CHECKLIST.md)
+- Use the security checklist in [SECURITY_CHECKLIST.md](../security/SECURITY_CHECKLIST.md)
 - Test thoroughly on devnet before mainnet
 - Never commit keypair files to version control
 
 ### How do I report a vulnerability?
 
-See [SECURITY.md](SECURITY.md). Do NOT open a public issue. Use GitHub's private security advisory feature or email the maintainer directly.
+See [SECURITY.md](../SECURITY.md). Do NOT open a public issue. Use GitHub's private security advisory feature or email the maintainer directly.
 
 ---
 
@@ -227,7 +233,7 @@ See [SECURITY.md](SECURITY.md). Do NOT open a public issue. Use GitHub's private
 
 ### How do I contribute?
 
-See [CONTRIBUTING.md](CONTRIBUTING.md). The short version:
+See [CONTRIBUTING.md](../CONTRIBUTING.md). The short version:
 
 1. Fork → Branch → Code → Test → PR
 2. Follow existing code style
@@ -236,6 +242,12 @@ See [CONTRIBUTING.md](CONTRIBUTING.md). The short version:
 ### Can AI agents contribute?
 
 Yes! We actively use AI agents (via SperaxOS and GitHub Copilot) to improve the codebase. If you have an agent that can write and test code, point it at the repo.
+
+---
+
+## Where can I see working code?
+
+The repository ships 50 numbered runnable examples under `examples/` (Token Lifecycle 01-10, Curve Math & Fees 11-20, Accounts & Events 21-30, Live Data 31-40, AMM & Advanced 41-50). Run any of them with `npm run example NN`. The [Examples](./examples.md) page catalogs them all.
 
 ---
 

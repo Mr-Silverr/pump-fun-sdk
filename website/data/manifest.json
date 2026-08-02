@@ -18,9 +18,9 @@
     {
       "file": "amm-trading.md",
       "title": "AMM Trading Guide",
-      "summary": "Buy, sell, deposit, and withdraw on graduated PumpAMM pools.",
-      "words": 914,
-      "minutes": 4
+      "summary": "Buy, sell, deposit, and withdraw on graduated PumpAMM pools, with both low-level instruction builders and one-call online wrappers.",
+      "words": 1325,
+      "minutes": 6
     },
     {
       "file": "analytics.md",
@@ -53,9 +53,9 @@
     {
       "file": "bonding-curve-math.md",
       "title": "Bonding Curve Math",
-      "summary": "A deep dive into how the Pump protocol calculates token prices using a constant-product bonding curve.",
-      "words": 892,
-      "minutes": 4
+      "summary": "How the Pump protocol prices tokens with a constant-product bonding curve, and the SDK functions that mirror the on-chain math exactly.",
+      "words": 1114,
+      "minutes": 5
     },
     {
       "file": "cashback.md",
@@ -109,8 +109,8 @@
     {
       "file": "end-to-end-workflow.md",
       "title": "End-to-End Workflow",
-      "summary": "A complete walkthrough covering the full token lifecycle: create → buy → graduate → migrate → AMM trade → fee sharing → claim rewards.",
-      "words": 1228,
+      "summary": "A complete walkthrough of the full token lifecycle in code: create, buy, monitor, sell, graduate, migrate, trade on the AMM, share fees, and claim rewards.",
+      "words": 1318,
       "minutes": 6
     },
     {
@@ -144,15 +144,15 @@
     {
       "file": "fee-sharing.md",
       "title": "Fee Sharing Guide",
-      "summary": "Set up and manage creator fee distribution among multiple shareholders.",
-      "words": 765,
-      "minutes": 3
+      "summary": "Set up and manage creator fee distribution among up to 10 shareholders, from config creation through distribution and authority management.",
+      "words": 981,
+      "minutes": 4
     },
     {
       "file": "fee-tiers.md",
       "title": "Fee Tiers",
-      "summary": "How the Pump protocol dynamically adjusts fees based on a token's market cap.",
-      "words": 796,
+      "summary": "How the Pump protocol dynamically adjusts protocol and creator fees based on a token's market cap, and how the SDK selects the right tier for every quote.",
+      "words": 959,
       "minutes": 4
     },
     {
@@ -263,8 +263,8 @@
     {
       "file": "token-incentives.md",
       "title": "Token Incentives Guide",
-      "summary": "Volume-based token reward system for traders on the Pump platform.",
-      "words": 572,
+      "summary": "How traders earn PUMP token rewards proportional to their SOL trading volume, and the SDK methods to track, claim, and compute them.",
+      "words": 647,
       "minutes": 3
     },
     {

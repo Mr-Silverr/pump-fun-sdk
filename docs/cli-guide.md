@@ -1,6 +1,8 @@
 # Solana Vanity Address CLI Guide
 
-A comprehensive guide to generating custom Solana wallet addresses using the official Solana CLI tools.
+> Generate custom Solana addresses with `solana-keygen grind`: command reference, performance estimates, and the security rules for handling the resulting keypairs.
+
+This guide covers the official Solana CLI. The repository also ships its own generators: a multi-threaded Rust CLI in `rust/` (fastest), a TypeScript one in `typescript/`, and the in-process SDK function `generateVanityMint` (see the [API Reference](./api-reference.md#vanity-mint-generation)) for grinding a `pump`-suffixed mint directly inside your app.
 
 ## Table of Contents
 
@@ -143,7 +145,7 @@ solana-keygen grind --starts-and-ends-with My:App:1
 
 #### `--ignore-case`
 
-Perform case-insensitive matching (increases success rate ~64x for each letter).
+Perform case-insensitive matching. Each letter in the pattern then matches both cases, roughly doubling the match rate per cased letter (a 4-letter pattern becomes ~16x faster).
 
 ```bash
 # Match "sol", "Sol", "SOL", "soL", etc.
@@ -172,7 +174,7 @@ Output the keypair to stdout instead of saving to a file.
 solana-keygen grind --starts-with AB:1 --no-outfile
 ```
 
-**⚠️ Warning**: This displays the secret key! Use only for testing or piping to secure storage.
+**Warning**: This displays the secret key! Use only for testing or piping to secure storage.
 
 #### `--use-mnemonic`
 
@@ -277,7 +279,7 @@ Using `--ignore-case` dramatically reduces search time:
 
 ## Security Best Practices
 
-### ⚠️ Critical Security Rules
+### Critical Security Rules
 
 1. **NEVER share your secret key** - Anyone with the secret key controls the wallet
 2. **NEVER upload keypair files** to cloud storage, GitHub, or any online service
@@ -388,11 +390,12 @@ Ensure your prefix only contains valid Base58 characters:
 - Invalid: `0`, `O`, `I`, `l`
 
 ```bash
-# This will fail - contains "0" (zero)
+# These will fail: "0" (zero) and "O" (capital o) are not in the Base58 alphabet
 solana-keygen grind --starts-with A0B:1
+solana-keygen grind --starts-with AOB:1
 
-# Use this instead
-solana-keygen grind --starts-with AOB:1  # "O" is valid
+# Use a prefix made only of valid Base58 characters
+solana-keygen grind --starts-with ABC:1
 ```
 
 #### Generation Taking Too Long
@@ -495,6 +498,12 @@ These scripts automatically handle file permissions (`0600`), verification, and 
 
 ---
 
-*This documentation is part of the Solana Vanity Address Toolkit. Always prioritize security when handling cryptocurrency private keys.*
+## Related
+
+- [Performance & Benchmarks](./performance.md): Rust vs TypeScript generator throughput
+- [Error Reference](./errors.md#vanity-mint-errors): SDK vanity errors
+- [API Reference](./api-reference.md#vanity-mint-generation): `generateVanityMint` in-process grinding
+
+*Always prioritize security when handling cryptocurrency private keys.*
 
 

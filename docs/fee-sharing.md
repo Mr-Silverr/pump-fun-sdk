@@ -3,7 +3,7 @@
 > Set up and manage creator fee distribution among up to 10 shareholders, from config creation through distribution and authority management.
 
 <div align="center">
-  <img src="assets/pump.svg" alt="Fee sharing flow — trades to creator vault to shareholders" width="720">
+  <img src="assets/pump.svg" alt="Fee sharing flow: trades to creator vault to shareholders" width="720">
 </div>
 
 ## Overview

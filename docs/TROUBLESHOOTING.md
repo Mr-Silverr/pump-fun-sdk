@@ -81,10 +81,10 @@ const [accountA, accountB] = await connection.getMultipleAccountsInfo([pdaA, pda
 
 Common causes:
 
-- **Insufficient SOL** — Make sure the signer has enough SOL for the transaction + fees
-- **Slippage exceeded** — The price moved more than your slippage tolerance. Increase slippage or retry
-- **Bonding curve completed** — The token graduated. Use AMM methods instead
-- **Stale data** — Re-fetch the bonding curve state before building the transaction
+- **Insufficient SOL**: Make sure the signer has enough SOL for the transaction + fees
+- **Slippage exceeded**: The price moved more than your slippage tolerance. Increase slippage or retry
+- **Bonding curve completed**: The token graduated. Use AMM methods instead
+- **Stale data**: Re-fetch the bonding curve state before building the transaction
 
 ---
 
@@ -97,10 +97,10 @@ The bonding curve's `virtualTokenReserves` is 0, meaning the token has been full
 ```typescript
 const bc = await sdk.fetchBondingCurve(mint);
 if (bc.complete) {
-  console.log("Token graduated — use AMM for trading");
+  console.log("Token graduated: use AMM for trading");
 }
 if (bc.virtualTokenReserves.eq(new BN(0))) {
-  console.log("Bonding curve migrated — no tokens left");
+  console.log("Bonding curve migrated: no tokens left");
 }
 ```
 
@@ -108,13 +108,36 @@ if (bc.virtualTokenReserves.eq(new BN(0))) {
 
 Remember:
 - Slippage is in **percentage**, not basis points: `slippage: 1` = 1%, `slippage: 0.5` = 0.5%
-- All amounts use `BN` — never JavaScript `number` for financial math
+- All amounts use `BN`, never JavaScript `number`, for financial math
 - SOL amounts are in **lamports** (1 SOL = 1,000,000,000 lamports)
 
 ```typescript
-const solAmount = new BN(0.1 * 1e9); // 0.1 SOL in lamports — correct
-const solAmount = 0.1;                // WRONG — don't use raw decimals
+const solAmount = new BN(100_000_000); // 0.1 SOL in lamports: correct
+const solAmount = 0.1;                 // WRONG: don't use raw decimals
 ```
+
+### Sell fails with `SellOverflowError` (or on-chain AnchorError 6024)
+
+The pump program computes `amount * virtualSolReserves` as a u64. For very large sells on curves with high SOL reserves, that product overflows and the program aborts with error 6024 (Overflow). The SDK detects this before broadcasting and throws `SellOverflowError` instead.
+
+Fix: split the sell.
+
+```typescript
+// Option 1: let the SDK chunk and send for you
+const signatures = await sdk.sellChunked({
+  mint, user, totalAmount, slippage: 1,
+  sendTx: async (ixs) => {
+    // build, sign, and send the transaction; return the signature
+    return await sendMyTransaction(ixs);
+  },
+});
+
+// Option 2: check the limit yourself
+import { maxSafeSellAmount } from "@nirholas/pump-sdk";
+const max = maxSafeSellAmount(bondingCurve.virtualSolReserves);
+```
+
+`quoteSell` also reports `maxSafeAmount` and `willOverflow` so you can warn before the user submits.
 
 ### Market cap calculation returns unexpected values
 
@@ -134,10 +157,10 @@ If the bonding curve is in **Mayhem mode** (`isMayhemMode: true`), the actual mi
 
 Possible causes:
 
-1. **No trades have occurred** — Fees accumulate from trading activity
-2. **Fees already claimed** — Check if `collectCoinCreatorFee` was already called
-3. **Wrong creator address** — The creator vault is derived from the creator who launched the token
-4. **Graduated token** — For graduated tokens, fees accumulate in the AMM vault. Use `getCreatorVaultBalanceBothPrograms` to check both
+1. **No trades have occurred**: Fees accumulate from trading activity
+2. **Fees already claimed**: Check if `collectCoinCreatorFee` was already called
+3. **Wrong creator address**: The creator vault is derived from the creator who launched the token
+4. **Graduated token**: For graduated tokens, fees accumulate in the AMM vault. Use `getCreatorVaultBalanceBothPrograms` to check both
 
 ```typescript
 // Check both programs
@@ -149,10 +172,10 @@ console.log("Total fees:", balance.toString());
 
 Common issues:
 
-- **Shares don't total 10,000 BPS** — All shareholder percentages must sum to exactly 10,000 (100%)
-- **No distributable fees** — Check with `getMinimumDistributableFee` first
-- **Admin revoked** — If `adminRevoked` is true, the sharing config can't be changed
-- **Duplicate shareholders** — Each address can only appear once
+- **Shares don't total 10,000 BPS**: All shareholder percentages must sum to exactly 10,000 (100%)
+- **No distributable fees**: Check with `getMinimumDistributableFee` first
+- **Admin revoked**: If `adminRevoked` is true, the sharing config can't be changed
+- **Duplicate shareholders**: Each address can only appear once
 
 ```typescript
 const result = await sdk.getMinimumDistributableFee(mint);
@@ -183,9 +206,9 @@ solana-vanity --prefix PUMP --dry-run
 ```
 
 Consider:
-- Using `--ignore-case` to increase matches by ~32x for alphabetic patterns
+- Using `--ignore-case` (roughly doubles the match rate per cased letter)
 - Reducing pattern length
-- Using more threads: `--threads 0` (all CPUs)
+- Using more threads (omit `--threads` to use all CPUs)
 
 ### Keypair file won't load in Solana CLI
 
@@ -217,9 +240,9 @@ solana config set --keypair my-vanity-key.json
 
 The MCP server communicates over stdio. Common causes:
 
-- The server crashed — check stderr output
-- Wrong path in config — use absolute paths
-- Node.js not in PATH — use the full path to `node`
+- The server crashed: check stderr output
+- Wrong path in config: use absolute paths
+- Node.js not in PATH: use the full path to `node`
 
 ---
 
@@ -250,9 +273,9 @@ This usually means you're missing a required signer:
 - **Migration** requires the withdraw authority
 
 ```typescript
-// Common mistake — forgot to sign with mint
+// Common mistake: forgot to sign with mint
 tx.sign([wallet]);        // WRONG for create transactions
-tx.sign([wallet, mint]);  // CORRECT — mint must sign
+tx.sign([wallet, mint]);  // CORRECT: mint must sign
 ```
 
 ### `Error: Blockhash not found` or `TransactionExpiredBlockheightExceededError`
@@ -307,7 +330,7 @@ Public Solana RPC nodes aggressively rate-limit WebSocket subscriptions:
 ### Channel bot doesn't post messages
 
 1. Verify the bot is added as an **admin** in the Telegram channel
-2. Check `CHANNEL_ID` format — use `@channel_name` or numeric `-100xxx` ID
+2. Check `CHANNEL_ID` format: use `@channel_name` or numeric `-100xxx` ID
 3. Test with `FEED_CLAIMS=true` first (most frequent events)
 
 ---
@@ -317,7 +340,7 @@ Public Solana RPC nodes aggressively rate-limit WebSocket subscriptions:
 ### Dashboard shows "Disconnected"
 
 1. Verify the relay server is running: `curl http://localhost:3099/health`
-2. Check if the port is correct — default is 3099
+2. Check if the port is correct (default is 3099)
 3. If using HTTPS, the WebSocket URL must use `wss://` not `ws://`
 4. Check browser console for WebSocket errors
 
@@ -325,8 +348,8 @@ Public Solana RPC nodes aggressively rate-limit WebSocket subscriptions:
 
 The relay server uses a dual-source strategy:
 
-1. **PumpFun API** — polls every 5s (primary)
-2. **Solana RPC** — `logsSubscribe` (supplementary, often rate-limited)
+1. **PumpFun API**: polls every 5s (primary)
+2. **Solana RPC**: `logsSubscribe` (supplementary, often rate-limited)
 
 If the PumpFun API is unreachable, check `SOLANA_RPC_WS` and network connectivity.
 
@@ -334,8 +357,10 @@ If the PumpFun API is unreachable, check `SOLANA_RPC_WS` and network connectivit
 
 ## Still Stuck?
 
-1. Search [existing issues](https://github.com/nirholas/pump-fun-sdk/issues)
-2. Check [Discussions](https://github.com/nirholas/pump-fun-sdk/discussions)
-3. Open a [new issue](https://github.com/nirholas/pump-fun-sdk/issues/new?template=bug_report.md) with your error message, environment, and reproduction steps
+1. Compare against the runnable examples in `examples/` (`npm run example NN`); they exercise every major flow with working code
+2. Check the [Error Reference](./errors.md) and [FAQ](./faq.md)
+3. Search [existing issues](https://github.com/nirholas/pump-fun-sdk/issues)
+4. Check [Discussions](https://github.com/nirholas/pump-fun-sdk/discussions)
+5. Open a [new issue](https://github.com/nirholas/pump-fun-sdk/issues/new?template=bug_report.md) with your error message, environment, and reproduction steps
 
 

@@ -2,7 +2,19 @@
 
 Read-only Telegram channel feed that broadcasts PumpFun on-chain activity — GitHub social fee claims, token graduations, and more. Posts rich, intelligence-enriched cards to a Telegram channel in real time.
 
-> **Live channel**: [@pumpfunclaims](https://t.me/pumpfunclaims) — powered by [@pumpclaimsbot](https://t.me/pumpclaimsbot)
+> **Live deployment**: this code runs as the graduation/migration feed, posting to
+> [@trackpumpfun](https://t.me/trackpumpfun) ("PumpFun Tracker Chat", chat id
+> `-1003965305979`) as [@pumpgraduatedbot](https://t.me/pumpgraduatedbot). It runs on
+> Cloud Run as `pumpfun-channel-bot`; see [Deploy to Google Cloud Run](#6-deploy-to-google-cloud-run).
+> That chat is the discussion supergroup linked to channel `@migratedpumpfun`
+> (`-1003818751043`); posting targets the supergroup, which is where the audience is.
+>
+> The separate all-claims firehose is [`@pumpkit/allclaims`](../pumpkit/packages/allclaims/),
+> a **different bot, token, channel and Cloud Run service**. Never share a bot token
+> between them: one token cannot serve two feeds, and reusing it crosses the streams.
+>
+> **Claim decoder**: this file's `src/claim-monitor.ts` is a copy. The canonical decoder
+> lives in `@pumpkit/allclaims`; see [DECODERS.md](../DECODERS.md) before changing it.
 >
 > **Looking for interactive monitoring?** The [telegram-bot](../telegram-bot/) supports watch management, group chats, REST API, SSE streaming, and webhooks. Use this channel-bot for simple broadcast-only channels.
 
@@ -105,7 +117,7 @@ cp .env.example .env
 ```env
 # ── Required ──────────────────────────────────────────────
 TELEGRAM_BOT_TOKEN=your-bot-token-from-botfather
-CHANNEL_ID=@your_channel_name    # or numeric chat ID like -100xxx
+CHANNEL_ID=-1001234567890        # numeric -100... chat id (see below)
 
 # ── Solana RPC ────────────────────────────────────────────
 SOLANA_RPC_URL=https://mainnet.helius-rpc.com/?api-key=your-key
@@ -177,7 +189,7 @@ railway link
 
 # Set environment variables
 railway variables set TELEGRAM_BOT_TOKEN=your-token
-railway variables set CHANNEL_ID=@your_channel_name
+railway variables set CHANNEL_ID=-1001234567890
 railway variables set SOLANA_RPC_URL=https://mainnet.helius-rpc.com/?api-key=your-key
 railway variables set SOLANA_WS_URL=wss://mainnet.helius-rpc.com/?api-key=your-key
 railway variables set FEED_CLAIMS=true
@@ -214,20 +226,27 @@ The bot is a single container with an HTTP port, so it runs on Cloud Run as-is. 
 PROJECT=my-project REGION=us-west1 ./deploy-cloudrun.sh
 ```
 
-It ships env vars through a YAML file rather than `--set-env-vars` on purpose: `SOLANA_RPC_URLS` contains commas and `CHANNEL_ID` contains `@`, so both the default comma separator and the `^@^` alternate-delimiter trick would silently corrupt them.
+It ships env vars through a YAML file rather than `--set-env-vars` on purpose: `SOLANA_RPC_URLS` contains commas and affiliate refs contain `@`, so both the default comma separator and the `^@^` alternate-delimiter trick would silently corrupt them. **Never hand-roll a `--set-env-vars` deploy for this service.** Use the script, or [cloudbuild.yaml](cloudbuild.yaml) (substitutions: `_SERVICE`, `_REGION`, `_REPO`, `_RUNTIME_SA`) for an image-only release against a service whose env is already set.
 
-Otherwise use [cloudbuild.yaml](cloudbuild.yaml) (substitutions: `_SERVICE`, `_REGION`, `_REPO`) or deploy straight from source:
+Live as of 2026-08-01 in project `aerial-vehicle-466722-p5`, region `us-central1`, as the `pumpfun-channel-bot` service. What the script does that a hand-run `gcloud run deploy` will not:
+
+- **Pins both service accounts.** The project's default compute SA was deleted, so the build (`three-ws-build@`) and runtime (`three-ws@`) identities must be explicit or the deploy dies with an opaque permissions error.
+- **Refuses a non-numeric `CHANNEL_ID`.** It must be the `-100…` chat id. A `@handle` is not reliable across chat types and does not survive a username change.
+- **Skips `PORT`.** Cloud Run reserves it and rejects the deploy outright if it appears in the env file. The container already reads `process.env.PORT`.
+- **Stages a snapshot of `src/` before uploading.** Other agents edit this worktree concurrently and `--source .` uploads file by file, so an edit landing mid-upload ships a torn tree that fails `tsc` in Cloud Build while the source on disk is fine. That failure is indistinguishable from a real type error and costs a six-minute build to diagnose.
+- **Typechecks first**, so a genuine type error fails in seconds instead of six minutes.
+
+`--min-instances 1` with `--no-cpu-throttling` matters: this is a long-lived websocket monitor, not a request server, so it must not scale to zero or lose CPU between requests. `--max-instances 1` keeps it a singleton so the channel never gets duplicate posts. `/health` doubles as the container health check. Memory is 2 GiB against a 1536 MB Node heap cap; keep the cap below the container limit or Cloud Run kills the instance.
+
+The service is private. To read its stats:
 
 ```bash
-gcloud run deploy pumpfun-channel-bot \
-  --source . \
-  --region us-central1 \
-  --min-instances 1 --max-instances 1 \
-  --set-env-vars "CHANNEL_ID=@your_channel,SOLANA_RPC_URL=...,SOLANA_WS_URL=...,FEED_GRADUATIONS=true" \
-  --set-secrets "TELEGRAM_BOT_TOKEN=telegram-bot-token:latest"
+curl -H "Authorization: Bearer $(gcloud auth print-identity-token)" \
+  "$(gcloud run services describe pumpfun-channel-bot --region us-central1 \
+    --project aerial-vehicle-466722-p5 --format='value(status.url)')/stats"
 ```
 
-`--min-instances 1` matters: this is a long-lived monitor, not a request server, so it must not scale to zero. `/health` doubles as the container health check.
+Local fallback if Cloud Run is ever down: `npm run build && npm start` from this directory (port 3900 locally; 3901 belongs to `@pumpkit/allclaims`). Kill a local instance by matching `/proc/<pid>/cwd` to this directory, never by the `node dist/index.js` cmdline, which is relative: `pkill -f "channel-bot/dist/index.js"` matches nothing, and a bare `dist/index.js` pattern also matches unrelated services under `/workspaces/three.ws` that must never be killed.
 
 ## Admin Commands
 
@@ -304,6 +323,69 @@ The same state is machine-readable: `GET /health` returns **503** with `degraded
 
 Repeated failures of the same kind log once, then periodically, instead of once per event.
 
+## Call Follow-Ups
+
+Every card the bot posts is scored in public, in its own thread. When a called
+token crosses a multiple of its market cap at alert time, the bot replies to the
+original message:
+
+```
+🚀 $CATE 5x since this call
+$120.4K → $610.2K in 41m
+```
+
+It also reports the two outcomes a feed usually hides:
+
+```
+💀 $CATE -86% since this call
+$120.4K → $16.8K in 3h20m
+Peak was $610.2K (5.1x)
+
+🚨 $CATE dev is selling
+Dev position 8.0% → 1.1% of supply (-86%)
+14m after this call
+```
+
+Only the highest milestone crossed since the last sweep is announced, so a token
+that 12x'd between checks posts once rather than firing 2x, 5x and 10x in a row.
+Each milestone, the collapse, and the dev alert fire at most once per call.
+
+Open calls are persisted to disk, so a restart or redeploy does not abandon them.
+Baselines under `$1,000` are ignored because a dust market cap manufactures
+enormous multiples out of noise.
+
+| Variable | Default | Meaning |
+|----------|---------|---------|
+| `PERFORMANCE_UPDATES` | `true` | Master switch for follow-ups |
+| `PERFORMANCE_WINDOW_HOURS` | `24` | How long a call stays tracked |
+| `PERFORMANCE_MILESTONES` | `2,5,10,25,50,100` | Multiples that trigger a reply |
+| `PERFORMANCE_COLLAPSE_PCT` | `80` | Drawdown that counts as a collapse |
+
+Live counts are on `GET /stats` under `performance`.
+
+## Reading the Cards
+
+Two conventions worth knowing, because both are deliberate.
+
+**Missing data is stated, never implied.** A card with no holder line used to look
+exactly like a card with safe holders. Concentration that could not be fetched now
+says so, and a dev holding nothing says `Dev holds: 0% — sold or never held` rather
+than printing nothing. Absence of a warning is not evidence of safety, and the
+cards no longer pretend otherwise.
+
+**Base rates, not raw counts.** `Launches: 5` reads as experience. The cards show
+`⚠️ Dev record: 5 launches · 1 graduated · 4 died under $5k` instead, and only warn
+when the dead outnumber the graduations.
+
+The flow bar shows which side is in control:
+
+```
+⚖️ Flow: [███████░░░] 72% buys — 🟢 buyers in control
+```
+
+Under 8 recent trades it is omitted entirely rather than turning a handful of
+trades into a trend.
+
 ## Transport Resilience
 
 The monitor prefers a WebSocket subscription (real-time, complete) and falls back to HTTP polling only when the socket is genuinely unusable: after 3 consecutive silent heartbeat periods it switches to polling and retries the WebSocket every 10 minutes, promoting it back automatically the moment live events flow again. `/status` and `GET /stats` both report the active transport.
@@ -332,6 +414,8 @@ channel-bot/
 │   ├── webhooks.ts           # Signed JSON webhook delivery with retries
 │   ├── admin.ts              # Telegram DM admin commands (/status, /feeds, /mute, ...)
 │   ├── delivery.ts           # Channel preflight + delivery fault classification
+│   ├── performance-tracker.ts # Follow-up replies: milestones, collapses, dev dumps
+│   ├── keyboards.ts          # Inline keyboards for trade/chart/tx links
 │   ├── types.ts              # Program IDs, discriminators, event types
 │   └── logger.ts             # Leveled console logger
 ├── data/                     # Persisted state (gitignored, Railway volume mount)
@@ -440,7 +524,7 @@ Axiom · GMGN · Padre
 ### Bot Not Posting Messages
 
 1. **Check bot permissions** — The bot must be an admin in the channel with "Post Messages" permission
-2. **Verify CHANNEL_ID** — Use `@channel_name` for public channels or the numeric ID (e.g., `-100xxx`) for private channels. To find the numeric ID, forward a channel message to [@userinfobot](https://t.me/userinfobot)
+2. **Verify CHANNEL_ID** — Always use the numeric `-100…` chat id, never the `@handle`. The shared `t.me` link is not always the username, `getChat?chat_id=@handle` can return `chat not found` even with the bot already an admin, and a handle stops resolving if the chat is renamed. Recover the numeric id with `curl -s "https://api.telegram.org/bot<TOKEN>/getChat?chat_id=@handle"`, or from `getUpdates?allowed_updates=["my_chat_member"]`, whose promotion event carries the chat id, username and full admin rights
 3. **Telegram 403 error** — Means the bot is NOT a member/admin of the channel. Add it via channel settings → Administrators → Add Administrator
 4. **Check logs** — Set `LOG_LEVEL=debug` to see all events the bot processes
 

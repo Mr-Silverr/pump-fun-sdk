@@ -1,10 +1,10 @@
 # Token Incentives Guide
 
-Volume-based token reward system for traders on the Pump platform.
+> How traders earn PUMP token rewards proportional to their SOL trading volume, and the SDK methods to track, claim, and compute them.
 
 ## Overview
 
-The token incentives system rewards traders based on their SOL trading volume. Rewards are distributed daily from a configurable token supply pool. The system tracks volume across both the Pump bonding curve program and the PumpAMM program.
+The token incentives system rewards traders based on their SOL trading volume. Rewards are paid in the PUMP token (`PUMP_TOKEN_MINT`) and distributed daily from a configurable token supply pool. The system tracks volume across both the Pump bonding curve program and the PumpAMM program.
 
 ## How It Works
 
@@ -30,7 +30,10 @@ Before a user can earn incentives, they need a volume accumulator account:
 ```typescript
 import { PUMP_SDK, OnlinePumpSdk } from "@nirholas/pump-sdk";
 
-const connection = new Connection("https://api.devnet.solana.com", "confirmed");
+const connection = new Connection(
+  process.env.PUMP_RPC_URL ?? "https://api.mainnet-beta.solana.com",
+  "confirmed",
+);
 const sdk = new OnlinePumpSdk(connection);
 
 // Initialize (one-time setup)
@@ -156,22 +159,31 @@ interface UserVolumeAccumulatorTotalStats {
 These are restricted to program administrators:
 
 ```typescript
-// Configure incentives for pump program
+// Configure incentives for the pump program (all positional, times in seconds)
 const ix = await sdk.adminUpdateTokenIncentives(
-  startTime,          // BN - program start
-  endTime,            // BN - program end
-  dayNumber,          // number - which day to configure
+  startTime,          // BN - program start timestamp
+  endTime,            // BN - program end timestamp
+  dayNumber,          // BN - which day to configure
   tokenSupplyPerDay,  // BN - tokens allocated for that day
-  secondsInADay?,     // BN - optional, defaults to 86400
-  mint?,              // PublicKey - reward token
-  tokenProgram?,      // PublicKey - Token program ID
+  // optional trailing args:
+  // secondsInADay     BN, defaults to 86_400
+  // mint              PublicKey, defaults to PUMP_TOKEN_MINT
+  // tokenProgram      PublicKey, defaults to TOKEN_2022_PROGRAM_ID
 );
 
-// Configure for both programs at once
+// Configure for both programs at once (same signature, returns TransactionInstruction[])
 const ixs = await sdk.adminUpdateTokenIncentivesBothPrograms(
   startTime, endTime, dayNumber, tokenSupplyPerDay,
-  secondsInADay?, mint?, tokenProgram?,
 );
 ```
+
+## Runnable examples
+
+Accounts & Events examples 21-30 include decoding volume accumulator accounts and incentive events; run them with `npm run example NN`.
+
+## Related
+
+- [API Reference](./api-reference.md): all incentive methods and types
+- [Cashback](./cashback.md): the separate SOL cashback reward lane
 
 

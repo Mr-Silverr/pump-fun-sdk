@@ -32,15 +32,15 @@
     {
       "file": "api-reference.md",
       "title": "API Reference",
-      "summary": "Complete reference for all public classes, functions, types, and constants exported by @nirholas/pump-sdk.",
-      "words": 4337,
-      "minutes": 20
+      "summary": "Complete reference for the public classes, functions, types, and constants exported by @nirholas/pump-sdk, grouped by module.",
+      "words": 5030,
+      "minutes": 23
     },
     {
       "file": "architecture.md",
       "title": "Architecture",
-      "summary": "An overview of how the Pump SDK is organized and the key design decisions behind it.",
-      "words": 1706,
+      "summary": "How the SDK is organized: the offline/online split, the four on-chain programs, PDA derivation, the fee system, and the companion components in this repository.",
+      "words": 1789,
       "minutes": 8
     },
     {

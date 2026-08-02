@@ -1,6 +1,6 @@
 # Bonding Curve Math
 
-A deep dive into how the Pump protocol calculates token prices using a constant-product bonding curve.
+> How the Pump protocol prices tokens with a constant-product bonding curve, and the SDK functions that mirror the on-chain math exactly.
 
 ## Overview
 
@@ -14,10 +14,10 @@ The bonding curve tracks two sets of reserves:
 
 | Reserve | Purpose |
 |---------|---------|
-| `virtualTokenReserves` | Token side of the constant-product formula — includes both real and virtual liquidity |
-| `virtualSolReserves` | SOL side of the constant-product formula — includes both real and virtual liquidity |
-| `realTokenReserves` | Actual tokens available for purchase — decreases as users buy |
-| `realSolReserves` | Actual SOL deposited by buyers — increases as users buy |
+| `virtualTokenReserves` | Token side of the constant-product formula; includes both real and virtual liquidity |
+| `virtualSolReserves` | SOL side of the constant-product formula; includes both real and virtual liquidity |
+| `realTokenReserves` | Actual tokens available for purchase; decreases as users buy |
+| `realSolReserves` | Actual SOL deposited by buyers; increases as users buy |
 
 The "virtual" reserves are larger than the "real" reserves. This virtual liquidity ensures the price starts at a reasonable level instead of zero.
 
@@ -38,6 +38,7 @@ const curve = newBondingCurve(global);
 //   complete: false,
 //   creator: PublicKey.default,
 //   isMayhemMode: global.mayhemModeEnabled,
+//   isCashbackCoin: false,
 // }
 ```
 
@@ -80,7 +81,7 @@ $$inputAmount = \frac{(solAmount - 1) \times 10000}{(protocolFeeBps + creatorFee
 
 $$tokensOut = \frac{inputAmount \times virtualTokenReserves}{virtualSolReserves + inputAmount}$$
 
-3. **Cap at real reserves** — you can never buy more than `realTokenReserves`:
+3. **Cap at real reserves**: you can never buy more than `realTokenReserves`:
 
 $$result = \min(tokensOut, realTokenReserves)$$
 
@@ -134,6 +135,24 @@ Then fees are subtracted:
 
 $$solOut = solOut_{raw} - fees(solOut_{raw})$$
 
+The result is clamped to 0: for dust amounts, ceiling-rounded fees can exceed the gross SOL.
+
+### The u64 sell overflow limit
+
+The deployed pump program computes `amount * virtualSolReserves` as a u64 before dividing. If that intermediate product would exceed `u64::MAX` (~1.84e19), the program aborts on-chain with AnchorError 6024 (Overflow). The SDK mirrors this bound offline:
+
+```typescript
+import { maxSafeSellAmount, validateSellAmount, getTokenAmountForTargetSol } from "@nirholas/pump-sdk";
+
+// Largest amount sellable in one instruction (with a 10% safety margin)
+const max = maxSafeSellAmount(bondingCurve.virtualSolReserves);
+
+// Throws SellOverflowError if amount is too large; sellInstructions calls this for you
+validateSellAmount(amount, bondingCurve);
+```
+
+For oversized positions, split the sell with `OnlinePumpSdk.sellChunked()`. To sell "enough tokens to get X SOL", `getTokenAmountForTargetSol({ global, feeConfig, mintSupply, bondingCurve, targetSol })` binary-searches the amount and stays inside the safe limit.
+
 ## Market Cap
 
 The bonding curve market cap is computed as:
@@ -155,7 +174,7 @@ The market cap is used by the [fee tier system](./fee-tiers.md) to determine whi
 
 ## Graduation
 
-A bonding curve is "complete" when `realTokenReserves` reaches zero — all available tokens have been purchased. At that point:
+A bonding curve is "complete" when `realTokenReserves` reaches zero: all available tokens have been purchased. At that point:
 
 1. `bondingCurve.complete` becomes `true`
 2. The token is eligible for migration to a PumpAMM pool
@@ -163,14 +182,26 @@ A bonding curve is "complete" when `realTokenReserves` reaches zero — all avai
 4. Use `migrateInstruction()` to move the token to an AMM pool
 
 ```typescript
+import { TOKEN_PROGRAM_ID } from "@solana/spl-token";
+
 if (bondingCurve.complete) {
-  // Token has graduated — migrate to AMM
+  // Token has graduated: migrate to AMM
   const ix = await PUMP_SDK.migrateInstruction({
     withdrawAuthority: global.withdrawAuthority,
     mint,
     user: wallet.publicKey,
+    tokenProgram: TOKEN_PROGRAM_ID,
   });
 }
+```
+
+Track progress toward graduation without any extra math:
+
+```typescript
+import { getGraduationProgress } from "@nirholas/pump-sdk";
+
+const progress = getGraduationProgress(global, bondingCurve, feeConfig);
+// { progressBps, isGraduated, tokensRemaining, tokensTotal, solAccumulated, solNeededToGraduate }
 ```
 
 ## Migrated Curves
@@ -201,10 +232,10 @@ $$price = \frac{virtualSolReserves}{virtualTokenReserves} = \frac{30 \times 10^9
 
 **Buying 0.1 SOL worth of tokens (ignoring fees):**
 
-$$tokens = \frac{0.1 \times 10^9 \times 1.073 \times 10^{15}}{30 \times 10^9 + 0.1 \times 10^9} \approx 3,563,120,053,120$$
+$$tokens = \frac{0.1 \times 10^9 \times 1.073 \times 10^{15}}{30 \times 10^9 + 0.1 \times 10^9} = 3,564,784,053,156$$
 
-After this trade, the new reserves would be:
-- `virtualTokenReserves` ≈ 1,069,436,879,946,880
+That is about 3.56M whole tokens (raw units at 6 decimals). After this trade, the new reserves would be:
+- `virtualTokenReserves` = 1,069,435,215,946,844
 - `virtualSolReserves` = 30,100,000,000
 
 The price has increased slightly because the ratio changed.
@@ -213,16 +244,19 @@ The price has increased slightly because the ratio changed.
 
 Larger trades cause more price impact (slippage). The constant-product formula naturally provides:
 
-- **Small trades** → minimal price impact
-- **Large trades** → significant price impact
-- **Approaching graduation** → very high price impact (fewer `realTokenReserves` left)
+- **Small trades**: minimal price impact
+- **Large trades**: significant price impact
+- **Approaching graduation**: very high price impact (fewer `realTokenReserves` left)
 
-Use the `slippage` parameter in `buyInstructions()` / `sellInstructions()` to set maximum acceptable slippage as a percentage.
+Quantify it before trading with `calculateBuyPriceImpact` / `calculateSellPriceImpact` (offline) or `OnlinePumpSdk.quoteBuy` / `quoteSell` (fetches state for you). Use the `slippage` parameter in `buyInstructions()` / `sellInstructions()` to set the maximum acceptable slippage as a percentage.
+
+## Runnable examples
+
+Curve Math & Fees examples 11-20 exercise everything on this page: offline buy/sell quotes, market cap, target-SOL sells, and the max-safe-sell limit. Run them with `npm run example 11` through `npm run example 20`.
 
 ## Related
 
-- [Fee Tiers](./fee-tiers.md) — How fee rates are determined by market cap
-- [Token Lifecycle](../README.md#-token-lifecycle) — Full lifecycle from creation to AMM
-- [API Reference](./api-reference.md) — Complete function signatures
-- [Examples](./examples.md) — Working code samples
+- [Fee Tiers](./fee-tiers.md): how fee rates are determined by market cap
+- [API Reference](./api-reference.md): complete function signatures
+- [Examples](./examples.md): the full example catalog
 

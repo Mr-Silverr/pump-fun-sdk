@@ -1,6 +1,6 @@
 # Fee Sharing Guide
 
-Set up and manage creator fee distribution among multiple shareholders.
+> Set up and manage creator fee distribution among up to 10 shareholders, from config creation through distribution and authority management.
 
 <div align="center">
   <img src="assets/pump.svg" alt="Fee sharing flow — trades to creator vault to shareholders" width="720">
@@ -21,7 +21,10 @@ import {
   feeSharingConfigPda,
 } from "@nirholas/pump-sdk";
 
-const connection = new Connection("https://api.devnet.solana.com", "confirmed");
+const connection = new Connection(
+  process.env.PUMP_RPC_URL ?? "https://api.mainnet-beta.solana.com",
+  "confirmed",
+);
 const onlineSdk = new OnlinePumpSdk(connection);
 ```
 
@@ -113,17 +116,24 @@ For graduated tokens, the method automatically includes a `transferCreatorFeesTo
 
 ## Checking Fee Sharing Status
 
-Verify whether a creator has already set up fee sharing:
+When a creator migrates to fee sharing, the creator address stored on-chain (in `BondingCurve.creator` or, after graduation, `Pool.coinCreator`) is replaced with the fee sharing config PDA. `isCreatorUsingSharingConfig` checks exactly that, so pass the on-chain creator field, not the human creator's wallet:
 
 ```typescript
-const isSharing = isCreatorUsingSharingConfig({ mint, creator });
+// Ungraduated token
+const bondingCurve = await onlineSdk.fetchBondingCurve(mint);
+const isSharing = isCreatorUsingSharingConfig({ mint, creator: bondingCurve.creator });
+
+// Graduated token
+const pool = await onlineSdk.fetchPool(mint);
+const isSharingAmm = isCreatorUsingSharingConfig({ mint, creator: pool.coinCreator });
 
 if (isSharing) {
-  // Fee sharing is active
-  const configAddress = feeSharingConfigPda(mint);
-  // ... decode and inspect the config
+  const config = await onlineSdk.fetchSharingConfig(mint);
+  console.log(config.shareholders);
 }
 ```
+
+To check whether a config can still be edited, use `isSharingConfigEditable({ sharingConfig })`: legacy v1 configs and revoked v2 configs are immutable.
 
 ## Updating Shareholders
 
@@ -164,22 +174,38 @@ console.log("Uncollected fees:", balance.toString(), "lamports");
 
 ## Social Fee PDAs
 
-For platform-based fee routing (e.g., tipping by username rather than wallet address), the SDK supports social fee PDAs.
+For platform-based fee routing (paying a shareholder by platform identity rather than wallet address), the SDK supports social fee PDAs. Only GitHub is currently supported (`SUPPORTED_SOCIAL_PLATFORMS`), and the `userId` is the numeric GitHub user id (from `https://api.github.com/users/<username>`) as a string.
 
 ```typescript
+import { Platform } from "@nirholas/pump-sdk";
+
 // Create a social fee PDA for a platform user
 const ix = await PUMP_SDK.createSocialFeePdaInstruction({
   payer: wallet.publicKey,
-  userId: "user123",
-  platform: 1,   // platform identifier
+  userId: "583231",
+  platform: Platform.GitHub,
 });
 
-// Claim fees routed to a social fee PDA
+// Claim fees routed to a social fee PDA (signed by the social claim authority)
 const ix2 = await PUMP_SDK.claimSocialFeePdaInstruction({
   recipient: wallet.publicKey,
   socialClaimAuthority: authorityKeypair.publicKey,
-  userId: "user123",
-  platform: 1,
+  userId: "583231",
+  platform: Platform.GitHub,
+});
+```
+
+To mix wallet and social shareholders in one config, use the wrappers that resolve identities and create any missing PDAs for you:
+
+```typescript
+const ixs = await PUMP_SDK.updateSharingConfigWithSocialRecipients({
+  authority: creator,
+  mint,
+  currentShareholders: [],
+  newShareholders: [
+    { address: wallet.publicKey, shareBps: 7000 },
+    { userId: "583231", platform: Platform.GitHub, shareBps: 3000 },
+  ],
 });
 ```
 
@@ -223,5 +249,15 @@ const ix = await PUMP_SDK.revokeFeeSharingAuthorityInstruction({
 ```
 
 > **Warning:** Revoking is permanent. The `adminRevoked` flag in `SharingConfig` will be set to `true` and no further changes are possible.
+
+## Runnable examples
+
+Accounts & Events examples 21-30 include fetching and decoding sharing configs; run `npm run example NN` to try them.
+
+## Related
+
+- [Fee Tiers](./fee-tiers.md): how the creator fee rate itself is determined
+- [Error Reference](./errors.md): the shareholder validation errors
+- [Social Fees](./social-fees.md): platform-identity fee routing in depth
 
 

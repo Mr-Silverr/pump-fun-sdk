@@ -1,6 +1,8 @@
 # End-to-End Workflow
 
-A complete walkthrough covering the full token lifecycle: create → buy → graduate → migrate → AMM trade → fee sharing → claim rewards.
+> A complete walkthrough of the full token lifecycle in code: create, buy, monitor, sell, graduate, migrate, trade on the AMM, share fees, and claim rewards.
+
+Everything below builds real mainnet transactions and spends real SOL when sent. To dry-run any step without broadcasting, build the instructions and stop before `sendAndConfirmTransaction`; the runnable examples under `examples/` do exactly that.
 
 ## Prerequisites
 
@@ -25,7 +27,10 @@ import {
   isCreatorUsingSharingConfig,
 } from "@nirholas/pump-sdk";
 
-const connection = new Connection("https://api.devnet.solana.com", "confirmed");
+const connection = new Connection(
+  process.env.PUMP_RPC_URL ?? "https://api.mainnet-beta.solana.com",
+  "confirmed",
+);
 const sdk = new OnlinePumpSdk(connection);
 const wallet = Keypair.fromSecretKey(/* your funded wallet */);
 ```
@@ -65,16 +70,15 @@ Buy tokens on the bonding curve. The price increases as more tokens are purchase
 ```typescript
 const global = await sdk.fetchGlobal();
 const feeConfig = await sdk.fetchFeeConfig();
-const { bondingCurveAccountInfo, bondingCurve, associatedUserAccountInfo } =
-  await sdk.fetchBuyState(mint.publicKey, wallet.publicKey);
+const buyState = await sdk.fetchBuyState(mint.publicKey, wallet.publicKey);
 
-const solAmount = new BN(0.5 * 1e9); // 0.5 SOL
+const solAmount = new BN(500_000_000); // 0.5 SOL in lamports
 
 const tokenAmount = getBuyTokenAmountFromSolAmount({
   global,
   feeConfig,
-  mintSupply: bondingCurve.tokenTotalSupply,
-  bondingCurve,
+  mintSupply: buyState.bondingCurve.tokenTotalSupply,
+  bondingCurve: buyState.bondingCurve,
   amount: solAmount,
 });
 
@@ -82,15 +86,15 @@ console.log("Buying", tokenAmount.toString(), "tokens for 0.5 SOL");
 
 const buyIxs = await PUMP_SDK.buyInstructions({
   global,
-  bondingCurveAccountInfo,
-  bondingCurve,
-  associatedUserAccountInfo,
+  bondingCurveAccountInfo: buyState.bondingCurveAccountInfo,
+  bondingCurve: buyState.bondingCurve,
+  associatedUserAccountInfo: buyState.associatedUserAccountInfo,
   mint: mint.publicKey,
   user: wallet.publicKey,
   solAmount,
   amount: tokenAmount,
   slippage: 2, // 2% slippage tolerance
-  tokenProgram: TOKEN_PROGRAM_ID,
+  tokenProgram: buyState.tokenProgram, // auto-detected; Token-2022 for createV2 tokens
 });
 
 const buyTx = new Transaction().add(...buyIxs);
@@ -152,16 +156,15 @@ console.log("Graduated:", latestCurve.complete);
 Sell some or all tokens back to the bonding curve:
 
 ```typescript
-const { bondingCurveAccountInfo: sellAccountInfo, bondingCurve: sellCurve } =
-  await sdk.fetchSellState(mint.publicKey, wallet.publicKey);
+const sellState = await sdk.fetchSellState(mint.publicKey, wallet.publicKey);
 
-const sellAmount = new BN(1_000_000); // amount of tokens to sell
+const sellAmount = new BN(1_000_000); // amount of tokens to sell (raw units)
 
 const solOut = getSellSolAmountFromTokenAmount({
   global,
   feeConfig,
-  mintSupply: sellCurve.tokenTotalSupply,
-  bondingCurve: sellCurve,
+  mintSupply: sellState.bondingCurve.tokenTotalSupply,
+  bondingCurve: sellState.bondingCurve,
   amount: sellAmount,
 });
 
@@ -169,20 +172,21 @@ console.log("Selling", sellAmount.toString(), "tokens for", solOut.toString(), "
 
 const sellIxs = await PUMP_SDK.sellInstructions({
   global,
-  bondingCurveAccountInfo: sellAccountInfo,
-  bondingCurve: sellCurve,
+  bondingCurveAccountInfo: sellState.bondingCurveAccountInfo,
+  bondingCurve: sellState.bondingCurve,
   mint: mint.publicKey,
   user: wallet.publicKey,
   amount: sellAmount,
   solAmount: solOut,
   slippage: 1,
-  tokenProgram: TOKEN_PROGRAM_ID,
-  mayhemMode: false,
+  tokenProgram: sellState.tokenProgram,
 });
 
 const sellTx = new Transaction().add(...sellIxs);
 await sendAndConfirmTransaction(connection, sellTx, [wallet]);
 ```
+
+Convenience alternatives: `sdk.sellByPercentage({ mint, user, percent: 50, slippage: 1 })`, `sdk.sellToTargetSol({ mint, user, targetSol, slippage: 1 })`, or `sdk.sellAllInstructions({ mint, user })` (which also closes the ATA to reclaim rent). For very large positions, `sdk.sellChunked` splits the sell to stay under the on-chain u64 overflow limit (see [Errors](./errors.md#selloverflowerror)).
 
 ---
 
@@ -205,6 +209,7 @@ if (currentCurve.complete) {
     withdrawAuthority: global.withdrawAuthority,
     mint: mint.publicKey,
     user: wallet.publicKey,
+    tokenProgram: TOKEN_PROGRAM_ID,
   });
 
   const migrateTx = new Transaction().add(migrateIx);

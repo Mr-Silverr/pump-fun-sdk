@@ -16,7 +16,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { log } from './logger.js';
-import { fetchTokenInfo } from './pump-client.js';
+import { fetchTokenInfo, fetchDevWalletInfo } from './pump-client.js';
 
 export interface TrackedPost {
     mint: string;
@@ -33,6 +33,12 @@ export interface TrackedPost {
     peakMcapUsd: number;
     /** True once a collapse has been announced; no further updates follow */
     closed: boolean;
+    /** Creator wallet, when known, so the dev position can be re-checked */
+    devWallet?: string;
+    /** Percentage of supply the dev held when the card was posted */
+    baselineDevPct?: number;
+    /** True once a dev sell-off has been announced */
+    devDumpAnnounced?: boolean;
 }
 
 export interface PerformanceTrackerOptions {
@@ -52,6 +58,14 @@ export interface PerformanceTrackerOptions {
     postUpdate: (text: string, replyToMessageId: number) => Promise<void>;
     /** Market cap lookup; injectable so tests never touch the network */
     fetchMcap?: (mint: string) => Promise<number | null>;
+    /** Dev holding lookup as a percent of supply; injectable for tests */
+    fetchDevPct?: (devWallet: string, mint: string) => Promise<number | null>;
+    /** Relative drop in the dev position that counts as a dump, in percent */
+    devDumpPct?: number;
+    /** Smallest dev position worth watching, in percent of supply */
+    minDevPct?: number;
+    /** RPC endpoint used for the on-chain dev balance lookup */
+    rpcUrl?: string;
 }
 
 const DEFAULTS = {
@@ -61,6 +75,9 @@ const DEFAULTS = {
     collapsePct: 80,
     maxTracked: 250,
     minBaselineUsd: 1_000,
+    devDumpPct: 30,
+    minDevPct: 0.5,
+    rpcUrl: 'https://api.mainnet-beta.solana.com',
 };
 
 const DATA_DIR = process.env.DATA_DIR || join(process.cwd(), 'data');
@@ -103,6 +120,17 @@ export function formatCollapseUpdate(post: TrackedPost, currentMcap: number, now
     return lines.join('\n');
 }
 
+/** Build the follow-up text for a dev selling down their position. */
+export function formatDevDumpUpdate(post: TrackedPost, currentPct: number, now: number): string {
+    const from = post.baselineDevPct ?? 0;
+    const dropPct = from > 0 ? ((from - currentPct) / from) * 100 : 0;
+    return [
+        `🚨 <b>$${post.symbol} dev is selling</b>`,
+        `Dev position ${from.toFixed(1)}% → ${currentPct.toFixed(1)}% of supply (-${dropPct.toFixed(0)}%)`,
+        `${formatAge(now - post.postedAt)} after this call`,
+    ].join('\n');
+}
+
 /**
  * Highest milestone the token has reached that has not been announced yet.
  * Returns null when nothing new was crossed. Announcing only the highest
@@ -116,11 +144,11 @@ export function nextMilestone(post: TrackedPost, multiple: number, milestones: n
 
 export class PerformanceTracker {
     private posts = new Map<string, TrackedPost>();
-    private opts: Required<Omit<PerformanceTrackerOptions, 'postUpdate' | 'fetchMcap'>> & PerformanceTrackerOptions;
+    private opts: Required<Omit<PerformanceTrackerOptions, 'postUpdate' | 'fetchMcap' | 'fetchDevPct'>> & PerformanceTrackerOptions;
     private timer?: ReturnType<typeof setInterval>;
     private saveTimer?: ReturnType<typeof setTimeout>;
     private sweeping = false;
-    readonly stats = { tracked: 0, milestonesPosted: 0, collapsesPosted: 0, expired: 0 };
+    readonly stats = { tracked: 0, milestonesPosted: 0, collapsesPosted: 0, devDumpsPosted: 0, expired: 0 };
 
     constructor(options: PerformanceTrackerOptions) {
         this.opts = { ...DEFAULTS, ...options };
@@ -128,7 +156,7 @@ export class PerformanceTracker {
     }
 
     /** Begin tracking a posted card. No-op when the baseline is too small to be meaningful. */
-    track(input: { mint: string; messageId: number; symbol: string; mcapUsd: number }): void {
+    track(input: { mint: string; messageId: number; symbol: string; mcapUsd: number; devWallet?: string; devPct?: number }): void {
         if (!input.messageId || input.mcapUsd < this.opts.minBaselineUsd) return;
         if (this.posts.has(input.mint)) return;
 
@@ -141,6 +169,8 @@ export class PerformanceTracker {
             announced: [],
             peakMcapUsd: input.mcapUsd,
             closed: false,
+            devWallet: input.devWallet,
+            baselineDevPct: input.devPct,
         });
         this.stats.tracked++;
 
@@ -207,7 +237,10 @@ export class PerformanceTracker {
                         await this.opts.postUpdate(formatCollapseUpdate(post, mcap, now), post.messageId);
                         post.closed = true;
                         this.stats.collapsesPosted++;
+                        continue;
                     }
+
+                    await this.checkDevPosition(post, now);
                 } catch (err) {
                     log.debug('Performance check failed for %s: %s', post.mint.slice(0, 8), err);
                 }
@@ -215,6 +248,32 @@ export class PerformanceTracker {
             this.scheduleSave();
         } finally {
             this.sweeping = false;
+        }
+    }
+
+    /**
+     * A creator selling down their own position right after an alert is the
+     * single most actionable thing that can happen to a call, so it is
+     * announced in the same thread. Fires once per call.
+     */
+    private async checkDevPosition(post: TrackedPost, now: number): Promise<void> {
+        if (post.devDumpAnnounced) return;
+        if (!post.devWallet || post.baselineDevPct == null) return;
+        if (post.baselineDevPct < this.opts.minDevPct) return;
+
+        const lookup = this.opts.fetchDevPct ?? (async (wallet: string, mint: string) => {
+            const info = await fetchDevWalletInfo(wallet, mint, this.opts.rpcUrl);
+            return info?.tokenSupplyPct ?? null;
+        });
+
+        const current = await lookup(post.devWallet, post.mint);
+        if (current == null) return;
+
+        const soldPct = ((post.baselineDevPct - current) / post.baselineDevPct) * 100;
+        if (soldPct >= this.opts.devDumpPct) {
+            await this.opts.postUpdate(formatDevDumpUpdate(post, current, now), post.messageId);
+            post.devDumpAnnounced = true;
+            this.stats.devDumpsPosted++;
         }
     }
 

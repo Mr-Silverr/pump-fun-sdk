@@ -4,7 +4,7 @@
  * Tests claim tracking, formatters, and the GitHub claim feed pipeline.
  */
 
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, beforeAll, beforeEach, afterEach, vi } from 'vitest';
 
 // ── Claim Tracker Tests ────────────────────────────────────────────────────
 
@@ -193,11 +193,11 @@ describe('Formatters', () => {
 describe('RPC Fallback', () => {
   let rpcFallback: typeof import('../rpc-fallback.js');
 
-  beforeEach(async () => {
-    vi.resetModules();
-    vi.mock('../logger.js', () => ({
-      log: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() },
-    }));
+  // Imported once, not per test: rpc-fallback pulls in @solana/web3.js, and
+  // re-importing it after vi.resetModules() on every test intermittently blew
+  // the 10s hook timeout when the suite ran under load. Nothing here depends
+  // on fresh module state.
+  beforeAll(async () => {
     rpcFallback = await import('../rpc-fallback.js');
   });
 

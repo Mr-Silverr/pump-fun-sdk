@@ -320,6 +320,8 @@ export function formatGitHubClaimFeed(ctx: ClaimFeedContext): { imageUrl: string
         if (ctx.bundle && ctx.bundle.bundlePct > 0) {
             parts.push(`📦 Bundle: ${ctx.bundle.bundlePct.toFixed(1)}% (${ctx.bundle.bundleWallets}w)`);
         }
+        const pressure = summarizeBuyPressure(ctx.trades);
+        if (pressure) parts.push(pressure);
         if (parts.length > 0) {
             L.push(`📊 <b>Market</b>`);
             for (const p of parts) L.push(p);
@@ -752,6 +754,8 @@ export function formatGraduationFeed(
             parts.push(`📦 ${enrichment.bundle.bundlePct.toFixed(1)}% (${enrichment.bundle.bundleWallets}w)`);
         }
         if (parts.length > 0) L.push(`📊 ${parts.join('  ⋅  ')}`);
+        const pressure = summarizeBuyPressure(trades);
+        if (pressure) L.push(pressure);
     }
 
     L.push('');
@@ -960,6 +964,33 @@ export function formatFeeDistributionFeed(
 
 /** A dead coin: never graduated and effectively worthless now. */
 const DEAD_MCAP_USD = 5_000;
+
+/** Below this many recent trades, a buy/sell split is noise rather than pressure. */
+const MIN_TRADES_FOR_PRESSURE = 8;
+
+/**
+ * Describe which side is in control right now. A card full of static facts
+ * tells a reader what a token is; this tells them which way it is moving,
+ * which is the part a buy decision actually turns on.
+ *
+ * Returns null when there is too little recent flow to say anything honest.
+ */
+export function summarizeBuyPressure(trades: TokenTradeInfo | null | undefined): string | null {
+    if (!trades) return null;
+    const total = trades.buyCount + trades.sellCount;
+    if (total < MIN_TRADES_FOR_PRESSURE) return null;
+
+    const buyPct = (trades.buyCount / total) * 100;
+    const bar = '█'.repeat(Math.round(buyPct / 10)) + '░'.repeat(10 - Math.round(buyPct / 10));
+    let label: string;
+    if (buyPct >= 70) label = '🟢 buyers in control';
+    else if (buyPct >= 55) label = '🟢 buy-side leaning';
+    else if (buyPct > 45) label = '⚪ balanced';
+    else if (buyPct > 30) label = '🔴 sell-side leaning';
+    else label = '🔴 sellers in control';
+
+    return `⚖️ Flow: [${bar}] ${buyPct.toFixed(0)}% buys — ${label}`;
+}
 
 /**
  * Turn a creator's launch history into the base rate a reader actually needs.

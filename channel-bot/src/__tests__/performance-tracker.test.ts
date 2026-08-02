@@ -165,3 +165,72 @@ describe('PerformanceTracker', () => {
         expect(tracker.activeCount).toBe(2);
     });
 });
+
+describe('dev position monitoring', () => {
+    it('announces a dev selling down their position, once', async () => {
+        const postUpdate = vi.fn(async (_text: string, _replyTo: number) => {});
+        const tracker = new PerformanceTracker({
+            postUpdate,
+            fetchMcap: async () => 11_000,
+            fetchDevPct: async () => 1,
+            devDumpPct: 30,
+        });
+        tracker.track({
+            mint: MINT, messageId: 33, symbol: 'A', mcapUsd: 10_000,
+            devWallet: 'DevSynthetic1111', devPct: 8,
+        });
+
+        await tracker.sweep();
+        expect(postUpdate).toHaveBeenCalledTimes(1);
+        const text = String(postUpdate.mock.calls[0]![0]);
+        expect(text).toContain('dev is selling');
+        expect(text).toContain('8.0%');
+        expect(text).toContain('1.0%');
+        expect(tracker.stats.devDumpsPosted).toBe(1);
+
+        await tracker.sweep();
+        expect(postUpdate).toHaveBeenCalledTimes(1);
+    });
+
+    it('stays quiet when the dev trims a little', async () => {
+        const postUpdate = vi.fn(async (_text: string, _replyTo: number) => {});
+        const tracker = new PerformanceTracker({
+            postUpdate,
+            fetchMcap: async () => 11_000,
+            fetchDevPct: async () => 7.5,
+            devDumpPct: 30,
+        });
+        tracker.track({
+            mint: MINT, messageId: 33, symbol: 'A', mcapUsd: 10_000,
+            devWallet: 'DevSynthetic1111', devPct: 8,
+        });
+        await tracker.sweep();
+        expect(postUpdate).not.toHaveBeenCalled();
+    });
+
+    it('ignores devs whose starting position was already negligible', async () => {
+        const fetchDevPct = vi.fn(async () => 0);
+        const tracker = new PerformanceTracker({
+            postUpdate: async () => {},
+            fetchMcap: async () => 11_000,
+            fetchDevPct,
+            minDevPct: 0.5,
+        });
+        tracker.track({
+            mint: MINT, messageId: 33, symbol: 'A', mcapUsd: 10_000,
+            devWallet: 'DevSynthetic1111', devPct: 0.1,
+        });
+        await tracker.sweep();
+        expect(fetchDevPct).not.toHaveBeenCalled();
+    });
+
+    it('does not check the dev when no wallet was recorded', async () => {
+        const fetchDevPct = vi.fn(async () => 0);
+        const tracker = new PerformanceTracker({
+            postUpdate: async () => {}, fetchMcap: async () => 11_000, fetchDevPct,
+        });
+        tracker.track({ mint: MINT, messageId: 33, symbol: 'A', mcapUsd: 10_000 });
+        await tracker.sweep();
+        expect(fetchDevPct).not.toHaveBeenCalled();
+    });
+});

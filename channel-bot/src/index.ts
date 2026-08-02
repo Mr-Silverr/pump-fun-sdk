@@ -107,6 +107,7 @@ async function main(): Promise<void> {
         windowHours: config.performance.windowHours,
         milestones: config.performance.milestones,
         collapsePct: config.performance.collapsePct,
+        rpcUrl: config.solanaRpcUrl,
         postUpdate: async (text, replyToMessageId) => {
             await postToChannel(text, { replyTo: replyToMessageId });
             pipeline.posted++;
@@ -302,7 +303,14 @@ async function main(): Promise<void> {
                 pipeline.posted++;
                 store.markPosted(stored.seq);
                 if (mint && tokenInfo) {
-                    performance.track({ mint, messageId, symbol: tokenInfo.symbol, mcapUsd: tokenInfo.usdMarketCap });
+                    performance.track({
+                        mint,
+                        messageId,
+                        symbol: tokenInfo.symbol,
+                        mcapUsd: tokenInfo.usdMarketCap,
+                        devWallet: tokenInfo.creator || undefined,
+                        devPct: devWallet?.tokenSupplyPct,
+                    });
                 }
                 log.info('✅ Posted GitHub claim by %s (%s) to %s',
                     event.githubUserId, githubUser?.login ?? '?', config.channelId);
@@ -463,6 +471,8 @@ async function main(): Promise<void> {
                             messageId,
                             symbol: token.symbol,
                             mcapUsd: token.usdMarketCap,
+                            devWallet: token.creator || undefined,
+                            devPct: devWallet?.tokenSupplyPct,
                         });
                     }
                     log.info('✅ Posted graduation for %s to %s', event.mintAddress.slice(0, 8), config.channelId);

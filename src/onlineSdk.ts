@@ -2799,24 +2799,155 @@ export type PumpEvent =
 /**
  * Decode Pump protocol events out of raw program log lines, e.g. from a
  * `connection.onLogs(...)` WebSocket subscription or `tx.meta.logMessages`.
- * Lines that are not `Program data:` entries or that carry non-Pump events
- * are skipped.
+ *
+ * Events are routed by their 8-byte anchor discriminator (taken from the
+ * IDLs), and the `Program ... invoke`/`success` lines are tracked so a
+ * `Program data:` entry is decoded with the table of the program that
+ * actually emitted it. That distinction matters: the Pump, PumpAMM, and
+ * PumpFees programs share several event NAMES (and therefore
+ * discriminators) with different layouts, e.g. `ClaimCashbackEvent`.
+ * Lines that are not events, or that belong to other programs, are
+ * skipped.
  */
 export function parsePumpEventsFromLogs(
   logs: readonly string[],
 ): PumpEvent[] {
   const events: PumpEvent[] = [];
+  const stack: string[] = [];
   for (const log of logs) {
+    const invoke = log.match(/^Program ([1-9A-HJ-NP-Za-km-z]{32,44}) invoke \[\d+\]$/);
+    if (invoke && invoke[1]) {
+      stack.push(invoke[1]);
+      continue;
+    }
+    if (/^Program [1-9A-HJ-NP-Za-km-z]{32,44} (success|failed)/.test(log)) {
+      stack.pop();
+      continue;
+    }
     if (!log.startsWith("Program data: ")) continue;
     const data = Buffer.from(log.slice("Program data: ".length), "base64");
     if (data.length < 8) continue;
-    const decoded = tryDecodePumpEvent(data);
+    const decoded = decodePumpEventData(data, stack[stack.length - 1]);
     if (decoded) events.push(decoded);
   }
   return events;
 }
 
+type EventWrap = (bare: Buffer) => PumpEvent;
+
+interface IdlEventList {
+  events?: Array<{ name: string; discriminator: number[] }>;
+}
+
+function buildEventTable(
+  idl: IdlEventList,
+  wrappers: Record<string, EventWrap>,
+): Map<string, EventWrap> {
+  const table = new Map<string, EventWrap>();
+  for (const event of idl.events ?? []) {
+    const wrap = wrappers[event.name];
+    if (wrap) table.set(Buffer.from(event.discriminator).toString("hex"), wrap);
+  }
+  return table;
+}
+
+const PUMP_EVENT_WRAPPERS: Record<string, EventWrap> = {
+  TradeEvent: (d) => ({ type: "trade", data: PUMP_SDK.decodeTradeEvent(d) }),
+  CreateEvent: (d) => ({ type: "create", data: PUMP_SDK.decodeCreateEvent(d) }),
+  CompleteEvent: (d) => ({ type: "complete", data: PUMP_SDK.decodeCompleteEvent(d) }),
+  CompletePumpAmmMigrationEvent: (d) => ({ type: "completePumpAmmMigration", data: PUMP_SDK.decodeCompletePumpAmmMigrationEvent(d) }),
+  SetCreatorEvent: (d) => ({ type: "setCreator", data: PUMP_SDK.decodeSetCreatorEvent(d) }),
+  CollectCreatorFeeEvent: (d) => ({ type: "collectCreatorFee", data: PUMP_SDK.decodeCollectCreatorFeeEvent(d) }),
+  ClaimCashbackEvent: (d) => ({ type: "claimCashback", data: PUMP_SDK.decodeClaimCashbackEvent(d) }),
+  ClaimTokenIncentivesEvent: (d) => ({ type: "claimTokenIncentives", data: PUMP_SDK.decodeClaimTokenIncentivesEvent(d) }),
+  ExtendAccountEvent: (d) => ({ type: "extendAccount", data: PUMP_SDK.decodeExtendAccountEvent(d) }),
+  InitUserVolumeAccumulatorEvent: (d) => ({ type: "initUserVolumeAccumulator", data: PUMP_SDK.decodeInitUserVolumeAccumulatorEvent(d) }),
+  SyncUserVolumeAccumulatorEvent: (d) => ({ type: "syncUserVolumeAccumulator", data: PUMP_SDK.decodeSyncUserVolumeAccumulatorEvent(d) }),
+  CloseUserVolumeAccumulatorEvent: (d) => ({ type: "closeUserVolumeAccumulator", data: PUMP_SDK.decodeCloseUserVolumeAccumulatorEvent(d) }),
+  AdminSetCreatorEvent: (d) => ({ type: "adminSetCreator", data: PUMP_SDK.decodeAdminSetCreatorEvent(d) }),
+  MigrateBondingCurveCreatorEvent: (d) => ({ type: "migrateBondingCurveCreator", data: PUMP_SDK.decodeMigrateBondingCurveCreatorEvent(d) }),
+  DistributeCreatorFeesEvent: (d) => ({ type: "distributeCreatorFees", data: PUMP_SDK.decodeDistributeCreatorFeesEvent(d) }),
+};
+
+const AMM_EVENT_WRAPPERS: Record<string, EventWrap> = {
+  BuyEvent: (d) => ({ type: "ammBuy", data: PUMP_SDK.decodeAmmBuyEvent(d) }),
+  SellEvent: (d) => ({ type: "ammSell", data: PUMP_SDK.decodeAmmSellEvent(d) }),
+  DepositEvent: (d) => ({ type: "deposit", data: PUMP_SDK.decodeDepositEvent(d) }),
+  WithdrawEvent: (d) => ({ type: "withdraw", data: PUMP_SDK.decodeWithdrawEvent(d) }),
+  CreatePoolEvent: (d) => ({ type: "createPool", data: PUMP_SDK.decodeCreatePoolEvent(d) }),
+  AdminSetCoinCreatorEvent: (d) => ({ type: "ammAdminSetCoinCreator", data: PUMP_SDK.decodeAmmAdminSetCoinCreatorEvent(d) }),
+  AdminUpdateTokenIncentivesEvent: (d) => ({ type: "ammAdminUpdateTokenIncentives", data: PUMP_SDK.decodeAmmAdminUpdateTokenIncentivesEvent(d) }),
+  ClaimCashbackEvent: (d) => ({ type: "ammClaimCashback", data: PUMP_SDK.decodeAmmClaimCashbackEvent(d) }),
+  ClaimTokenIncentivesEvent: (d) => ({ type: "ammClaimTokenIncentives", data: PUMP_SDK.decodeAmmClaimTokenIncentivesEvent(d) }),
+  CloseUserVolumeAccumulatorEvent: (d) => ({ type: "ammCloseUserVolumeAccumulator", data: PUMP_SDK.decodeAmmCloseUserVolumeAccumulatorEvent(d) }),
+  CollectCoinCreatorFeeEvent: (d) => ({ type: "ammCollectCoinCreatorFee", data: PUMP_SDK.decodeAmmCollectCoinCreatorFeeEvent(d) }),
+  CreateConfigEvent: (d) => ({ type: "ammCreateConfig", data: PUMP_SDK.decodeAmmCreateConfigEvent(d) }),
+  DisableEvent: (d) => ({ type: "ammDisable", data: PUMP_SDK.decodeAmmDisableEvent(d) }),
+  ExtendAccountEvent: (d) => ({ type: "ammExtendAccount", data: PUMP_SDK.decodeAmmExtendAccountEvent(d) }),
+  InitUserVolumeAccumulatorEvent: (d) => ({ type: "ammInitUserVolumeAccumulator", data: PUMP_SDK.decodeAmmInitUserVolumeAccumulatorEvent(d) }),
+  MigratePoolCoinCreatorEvent: (d) => ({ type: "ammMigratePoolCoinCreator", data: PUMP_SDK.decodeAmmMigratePoolCoinCreatorEvent(d) }),
+  ReservedFeeRecipientsEvent: (d) => ({ type: "ammReservedFeeRecipients", data: PUMP_SDK.decodeAmmReservedFeeRecipientsEvent(d) }),
+  SetBondingCurveCoinCreatorEvent: (d) => ({ type: "ammSetBondingCurveCoinCreator", data: PUMP_SDK.decodeAmmSetBondingCurveCoinCreatorEvent(d) }),
+  SetMetaplexCoinCreatorEvent: (d) => ({ type: "ammSetMetaplexCoinCreator", data: PUMP_SDK.decodeAmmSetMetaplexCoinCreatorEvent(d) }),
+  SyncUserVolumeAccumulatorEvent: (d) => ({ type: "ammSyncUserVolumeAccumulator", data: PUMP_SDK.decodeAmmSyncUserVolumeAccumulatorEvent(d) }),
+  UpdateAdminEvent: (d) => ({ type: "ammUpdateAdmin", data: PUMP_SDK.decodeAmmUpdateAdminEvent(d) }),
+  UpdateFeeConfigEvent: (d) => ({ type: "ammUpdateFeeConfig", data: PUMP_SDK.decodeAmmUpdateFeeConfigEvent(d) }),
+};
+
+const FEES_EVENT_WRAPPERS: Record<string, EventWrap> = {
+  CreateFeeSharingConfigEvent: (d) => ({ type: "createFeeSharingConfig", data: PUMP_SDK.decodeCreateFeeSharingConfigEvent(d) }),
+  UpdateFeeSharesEvent: (d) => ({ type: "updateFeeShares", data: PUMP_SDK.decodeUpdateFeeSharesEvent(d) }),
+  ResetFeeSharingConfigEvent: (d) => ({ type: "resetFeeSharingConfig", data: PUMP_SDK.decodeResetFeeSharingConfigEvent(d) }),
+  RevokeFeeSharingAuthorityEvent: (d) => ({ type: "revokeFeeSharingAuthority", data: PUMP_SDK.decodeRevokeFeeSharingAuthorityEvent(d) }),
+  TransferFeeSharingAuthorityEvent: (d) => ({ type: "transferFeeSharingAuthority", data: PUMP_SDK.decodeTransferFeeSharingAuthorityEvent(d) }),
+  SocialFeePdaCreated: (d) => ({ type: "socialFeePdaCreated", data: PUMP_SDK.decodeSocialFeePdaCreatedEvent(d) }),
+  SocialFeePdaClaimed: (d) => ({ type: "socialFeePdaClaimed", data: PUMP_SDK.decodeSocialFeePdaClaimedEvent(d) }),
+  InitializeFeeConfigEvent: (d) => ({ type: "feesInitializeFeeConfig", data: PUMP_SDK.decodeFeesInitializeFeeConfigEvent(d) }),
+  InitializeFeeProgramGlobalEvent: (d) => ({ type: "feesInitializeFeeProgramGlobal", data: PUMP_SDK.decodeFeesInitializeFeeProgramGlobalEvent(d) }),
+  SetAuthorityEvent: (d) => ({ type: "feesSetAuthority", data: PUMP_SDK.decodeFeesSetAuthorityEvent(d) }),
+  SetClaimRateLimitEvent: (d) => ({ type: "feesSetClaimRateLimit", data: PUMP_SDK.decodeFeesSetClaimRateLimitEvent(d) }),
+  SetDisableFlagsEvent: (d) => ({ type: "feesSetDisableFlags", data: PUMP_SDK.decodeFeesSetDisableFlagsEvent(d) }),
+  SetSocialClaimAuthorityEvent: (d) => ({ type: "feesSetSocialClaimAuthority", data: PUMP_SDK.decodeFeesSetSocialClaimAuthorityEvent(d) }),
+  UpdateAdminEvent: (d) => ({ type: "feesUpdateAdmin", data: PUMP_SDK.decodeFeesUpdateAdminEvent(d) }),
+  UpdateFeeConfigEvent: (d) => ({ type: "feesUpdateFeeConfig", data: PUMP_SDK.decodeFeesUpdateFeeConfigEvent(d) }),
+  UpsertFeeTiersEvent: (d) => ({ type: "feesUpsertFeeTiers", data: PUMP_SDK.decodeFeesUpsertFeeTiersEvent(d) }),
+};
+
+const PUMP_EVENT_TABLE = buildEventTable(pumpIdlJson as IdlEventList, PUMP_EVENT_WRAPPERS);
+const AMM_EVENT_TABLE = buildEventTable(pumpAmmIdlJson as IdlEventList, AMM_EVENT_WRAPPERS);
+const FEES_EVENT_TABLE = buildEventTable(pumpFeesIdlJson as IdlEventList, FEES_EVENT_WRAPPERS);
+
+function tablesFor(programId: string | undefined): Map<string, EventWrap>[] {
+  if (programId === PUMP_PROGRAM_ID.toBase58()) return [PUMP_EVENT_TABLE];
+  if (programId === PUMP_AMM_PROGRAM_ID.toBase58()) return [AMM_EVENT_TABLE];
+  if (programId === PUMP_FEE_PROGRAM_ID.toBase58()) return [FEES_EVENT_TABLE];
+  // Unknown or missing context: try all tables, bonding curve first.
+  return [PUMP_EVENT_TABLE, AMM_EVENT_TABLE, FEES_EVENT_TABLE];
+}
+
+function decodePumpEventData(
+  data: Buffer,
+  programId?: string,
+): PumpEvent | null {
+  const discriminator = data.subarray(0, 8).toString("hex");
+  const bare = data.subarray(8);
+  for (const table of tablesFor(programId)) {
+    const wrap = table.get(discriminator);
+    if (!wrap) continue;
+    try {
+      return wrap(bare);
+    } catch {
+      // Layout mismatch despite a discriminator hit; try the next table.
+    }
+  }
+  return null;
+}
+
 function tryDecodePumpEvent(data: Buffer): PumpEvent | null {
+  return decodePumpEventData(data);
+}
+
+function unusedLegacyDecoders(data: Buffer): PumpEvent | null {
   const decoders: Array<() => PumpEvent | null> = [
     // Pump bonding curve
     () => { const d = PUMP_SDK.decodeTradeEvent(data); return d ? { type: "trade", data: d } : null; },

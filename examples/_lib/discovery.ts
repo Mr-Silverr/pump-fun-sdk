@@ -20,6 +20,7 @@ import {
   OnlinePumpSdk,
   PUMP_SDK,
   PUMP_PROGRAM_ID,
+  PUMP_AMM_PROGRAM_ID,
   BondingCurve,
   Pool,
   PumpEvent,
@@ -176,17 +177,17 @@ export async function findGraduatedMint(
     return { mint, pool, state: await online.fetchPool(mint) };
   }
 
-  const candidates = await collectStreamMints(
+  // Freshly completed curves have canonical pools moments later, but
+  // completions only stream every minute or two, so this pass is bounded
+  // short and the AMM transaction sweep below is the reliable path.
+  const completions = await collectStreamMints(
     connection,
-    ["complete", "completePumpAmmMigration", "trade"],
-    MAX_CANDIDATES * 2,
-  );
+    ["complete", "completePumpAmmMigration"],
+    3,
+    8_000,
+  ).catch(() => [] as StreamMint[]);
 
-  // Completions first: their canonical pools are near-certain to exist.
-  const completions = candidates.filter((c) => c.eventType !== "trade");
-  const trades = candidates.filter((c) => c.eventType === "trade");
-
-  for (const { mint } of [...completions, ...trades]) {
+  for (const { mint } of completions) {
     const pool = canonicalPumpPoolPda(mint);
     const info = await connection.getAccountInfo(pool).catch(() => null);
     if (info) {
@@ -199,8 +200,98 @@ export async function findGraduatedMint(
     await pause(250);
   }
 
+  // Reliable path: any live AMM transaction names its Pool account. Grab a
+  // few signatures off the AMM log stream and decode the Pool out of them.
+  const signatures = await collectStreamSignatures(
+    connection,
+    PUMP_AMM_PROGRAM_ID,
+    4,
+  );
+
+  for (const signature of signatures) {
+    await pause(300);
+    const tx = await connection
+      .getTransaction(signature, {
+        commitment: "confirmed",
+        maxSupportedTransactionVersion: 0,
+      })
+      .catch(() => null);
+    if (!tx) continue;
+
+    const keys = tx.transaction.message.staticAccountKeys.slice(0, 24);
+    const infos = await connection
+      .getMultipleAccountsInfo(keys)
+      .catch(() => []);
+    for (let i = 0; i < infos.length; i += 1) {
+      const info = infos[i];
+      const key = keys[i];
+      if (!info || !key || !info.owner.equals(PUMP_AMM_PROGRAM_ID)) continue;
+      try {
+        const state = PUMP_SDK.decodePool(info);
+        return { mint: state.baseMint, pool: key, state };
+      } catch {
+        continue;
+      }
+    }
+  }
+
   throw new Error(
-    "No graduated token with a canonical pool found among streamed candidates. " +
+    "No graduated token with a live pool found via streams. " +
       "Retry, set PUMP_RPC_URL, or pass GRADUATED_MINT=<address>.",
   );
+}
+
+/**
+ * Capture a few transaction signatures from a program's live log stream.
+ */
+export async function collectStreamSignatures(
+  connection: Connection,
+  programId: PublicKey,
+  limit: number,
+  timeoutMs: number = STREAM_TIMEOUT_MS,
+): Promise<string[]> {
+  const signatures: string[] = [];
+  const seen = new Set<string>();
+
+  return await new Promise((resolve, reject) => {
+    let settled = false;
+    let subscription: number | null = null;
+
+    const finish = (error?: Error) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      if (subscription !== null) {
+        connection.removeOnLogsListener(subscription).catch(() => undefined);
+      }
+      if (error && signatures.length === 0) reject(error);
+      else resolve(signatures);
+    };
+
+    const timer = setTimeout(
+      () =>
+        finish(
+          new Error(
+            `No transactions observed for ${programId.toBase58()} in ${timeoutMs / 1000}s of live logs. ` +
+              "Check the RPC endpoint (PUMP_RPC_URL) supports logsSubscribe.",
+          ),
+        ),
+      timeoutMs,
+    );
+
+    try {
+      subscription = connection.onLogs(
+        programId,
+        ({ signature, err }) => {
+          if (err || seen.has(signature)) return;
+          seen.add(signature);
+          signatures.push(signature);
+          if (signatures.length >= limit) finish();
+        },
+        "confirmed",
+      );
+    } catch (error) {
+      finish(error instanceof Error ? error : new Error(String(error)));
+    }
+  });
 }

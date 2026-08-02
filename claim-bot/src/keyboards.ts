@@ -11,6 +11,7 @@
 
 import { InlineKeyboard } from 'grammy';
 
+import { loadAffiliates, venueLinks } from './affiliates.js';
 import type { ClaimRecord, FeeClaimEvent, TrackedItem } from './types.js';
 
 export const CALLBACK_PREFIX = {
@@ -42,6 +43,14 @@ export function claimKeyboard(event: FeeClaimEvent, item: TrackedItem): InlineKe
     if (mint) {
         keyboard.row().url('🚀 pump.fun', `https://pump.fun/coin/${mint}`);
     }
+
+    // Trading venues, two per row: a claim is exactly when someone wants to look
+    // at the coin, and a four-button row renders too narrow to read on mobile.
+    const venues = venueLinks(loadAffiliates(), mint || undefined);
+    venues.forEach((venue, index) => {
+        if (index % 2 === 0) keyboard.row();
+        keyboard.url(venue.label, venue.url);
+    });
 
     keyboard.row()
         .text('📜 History', encodeCallback('history', item.id))

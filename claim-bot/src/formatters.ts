@@ -5,6 +5,7 @@
  */
 
 import type { ChatSettings, ClaimRecord, FeeClaimEvent, TrackedItem } from './types.js';
+import { loadAffiliates, venueLinksHtml } from './affiliates.js';
 import type { LeaderboardRow } from './claim-history.js';
 import type { TokenInfo } from './pump-client.js';
 import { formatUsd } from './price.js';
@@ -232,6 +233,8 @@ export function formatClaimNotification(
         ? `🔗 <a href="${solscanTx}">TX</a> · <a href="${solscanWallet}">Wallet</a> · <a href="${pumpfunToken}">pump.fun</a>`
         : `🔗 <a href="${solscanTx}">TX</a> · <a href="${solscanWallet}">Wallet</a>`;
 
+    const trade = venueLinksHtml(loadAffiliates(), mint || undefined);
+
     return (
         `${emoji} <b>${typeLabel} Detected!</b>\n\n` +
         `👤 <b>Claimer:</b> <code>${shortWallet}</code>\n` +
@@ -242,7 +245,8 @@ export function formatClaimNotification(
         `⚙️ <b>Program:</b> ${programLabel}\n` +
         `🕐 <b>Time:</b> ${formatTime(event.timestamp)}\n` +
         `${matchLine}\n\n` +
-        `${links}`
+        `${links}` +
+        (trade ? `\n${trade}` : '')
     );
 }
 
@@ -381,6 +385,8 @@ export function formatWhaleAlert(
         ? `🔗 <a href="${solscanTx}">TX</a> · <a href="${solscanWallet}">Wallet</a> · <a href="https://pump.fun/coin/${encodeURIComponent(mint)}">pump.fun</a>`
         : `🔗 <a href="${solscanTx}">TX</a> · <a href="${solscanWallet}">Wallet</a>`;
 
+    const trade = venueLinksHtml(loadAffiliates(), mint || undefined);
+
     return (
         `🐋 <b>Whale Claim</b> ${formatUsd(usdValue)}\n\n` +
         `💰 <b>Amount:</b> ${amount}\n` +
@@ -389,7 +395,8 @@ export function formatWhaleAlert(
         `⚙️ <b>Type:</b> ${escapeHtml(event.claimLabel)}\n` +
         `🕐 <b>Time:</b> ${formatTime(event.timestamp)}\n` +
         `📌 <b>Matched:</b> whale alerts over ${formatUsd(thresholdUsd)}\n\n` +
-        `${links}`
+        `${links}` +
+        (trade ? `\n${trade}` : '')
     );
 }
 

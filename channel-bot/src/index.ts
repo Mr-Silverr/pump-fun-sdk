@@ -456,7 +456,7 @@ async function main(): Promise<void> {
 
                     const { imageUrl, caption } = formatGraduationFeed(
                         event, token, creator, solUsdPrice,
-                        { holders, trades, devWallet, xProfile, liquidity, bundle },
+                        { holders, trades, devWallet, xProfile, liquidity, bundle, affiliates: config.affiliates },
                     );
 
                     const keyboard = buildTokenKeyboard(event.mintAddress, config.affiliates);

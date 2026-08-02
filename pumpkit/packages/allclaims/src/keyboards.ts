@@ -22,6 +22,7 @@ export interface KeyboardAffiliates {
     axiom?: string;
     gmgn?: string;
     padre?: string;
+    fomo?: string;
 }
 
 /** Append a referral code only when one is configured. */
@@ -31,8 +32,8 @@ function withRef(url: string, param: string, ref?: string): string {
 }
 
 /**
- * Two rows: where to trade it, then where to look at it. Three buttons per row
- * keeps every label readable on a narrow screen.
+ * Trade rows first (Axiom/GMGN, then Padre/FOMO, referral-coded), then a row
+ * for looking at it. Short rows keep every label readable on a narrow screen.
  */
 export function buildTokenKeyboard(mint: string, affiliates: KeyboardAffiliates = {}): InlineKeyboard {
     return {
@@ -40,11 +41,17 @@ export function buildTokenKeyboard(mint: string, affiliates: KeyboardAffiliates 
             [
                 { text: '⚡ Axiom', url: withRef(`https://axiom.trade/t/${mint}`, 'ref', affiliates.axiom) },
                 { text: '🐸 GMGN', url: withRef(`https://gmgn.ai/sol/token/${mint}`, 'ref', affiliates.gmgn) },
+            ],
+            [
                 {
                     text: '🅿️ Padre',
                     url: affiliates.padre
                         ? `https://trade.padre.gg/rk/${encodeURIComponent(affiliates.padre)}`
                         : `https://t.me/padre_bot?start=${mint}`,
+                },
+                {
+                    text: '🚀 FOMO',
+                    url: `https://fomo.family/${encodeURIComponent(affiliates.fomo ?? 'nichxbt')}`,
                 },
             ],
             [

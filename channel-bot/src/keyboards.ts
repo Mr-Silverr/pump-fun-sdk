@@ -10,6 +10,8 @@
  * caption is also what keeps enriched cards from being truncated.
  */
 
+import { buildTradeLinks, buildChartLinks, type Affiliates } from './trade-links.js';
+
 export interface InlineButton {
     text: string;
     url: string;
@@ -19,17 +21,7 @@ export interface InlineKeyboard {
     inline_keyboard: InlineButton[][];
 }
 
-export interface KeyboardAffiliates {
-    axiom?: string;
-    gmgn?: string;
-    padre?: string;
-}
-
-/** Append a referral code only when one is configured. */
-function withRef(url: string, param: string, ref?: string): string {
-    if (!ref) return url;
-    return url.includes('?') ? `${url}&${param}=${ref}` : `${url}?${param}=${ref}`;
-}
+export type KeyboardAffiliates = Affiliates;
 
 /**
  * Two rows: where to trade it, then where to look at it.
@@ -37,18 +29,18 @@ function withRef(url: string, param: string, ref?: string): string {
  * the labels readable on a narrow screen.
  */
 export function buildTokenKeyboard(mint: string, affiliates: KeyboardAffiliates = {}): InlineKeyboard {
+    const icons: Record<string, string> = {
+        Axiom: '⚡', GMGN: '🐸', Padre: '🅿️', FOMO: '🔥',
+        Chart: '📊', 'pump.fun': '💊', Solscan: '🔍',
+    };
+    const button = (l: { name: string; url: string }) => ({
+        text: `${icons[l.name] ?? ''} ${l.name}`.trim(),
+        url: l.url,
+    });
     return {
         inline_keyboard: [
-            [
-                { text: '⚡ Axiom', url: withRef(`https://axiom.trade/t/${mint}`, 'ref', affiliates.axiom) },
-                { text: '🐸 GMGN', url: withRef(`https://gmgn.ai/sol/token/${mint}`, 'ref', affiliates.gmgn) },
-                { text: '🅿️ Padre', url: `https://t.me/padre_bot?start=${mint}` },
-            ],
-            [
-                { text: '📊 Chart', url: `https://dexscreener.com/solana/${mint}` },
-                { text: '💊 pump.fun', url: `https://pump.fun/coin/${mint}` },
-                { text: '🔍 Solscan', url: `https://solscan.io/token/${mint}` },
-            ],
+            buildTradeLinks(mint, affiliates).map(button),
+            buildChartLinks(mint).map(button),
         ],
     };
 }

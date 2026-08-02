@@ -16,6 +16,7 @@ import type {
 } from './types.js';
 import type { XProfile } from './x-client.js';
 import { getInfluencerTier, formatFollowerCount, influencerLabel } from './x-client.js';
+import { buildTradeLinks, renderTradeLinkRow, type Affiliates } from './trade-links.js';
 
 // ============================================================================
 // GitHub Social Fee Claim Card
@@ -27,7 +28,7 @@ export interface ClaimFeedContext {
     githubUser: GitHubUserInfo | null;
     xProfile: XProfile | null;
     tokenInfo?: TokenInfo | null;
-    affiliates?: { axiom: string; gmgn: string; padre: string };
+    affiliates?: { axiom: string; gmgn: string; padre: string; fomo?: string };
     /** True when this GitHub user is claiming for the very first time. */
     isFirstClaim?: boolean;
     /** True when the claim instruction was called but no event was emitted (fake/scam claim). */
@@ -467,11 +468,8 @@ export function formatGitHubClaimFeed(ctx: ClaimFeedContext): { imageUrl: string
 
     // ━━ TRADE LINKS ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     if (mint) {
-        const axiomUrl = `https://axiom.trade/t/${mint}?ref=${encodeURIComponent(aff?.axiom ?? 'nich')}`;
-        const gmgnUrl  = `https://gmgn.ai/sol/token/${mint}?ref=${encodeURIComponent(aff?.gmgn ?? 'nichxbt')}`;
-        const padreUrl = `https://trade.padre.gg/rk/${encodeURIComponent(aff?.padre ?? 'nichxbt')}`;
         L.push(`💹 Trade`);
-        L.push(`<a href="${axiomUrl}">Axiom</a> | <a href="${gmgnUrl}">GMGN</a> | <a href="${padreUrl}">Padre</a>`);
+        L.push(buildTradeLinks(mint, aff).map((l) => `<a href="${l.url}">${l.name}</a>`).join(' | '));
         L.push('');
         L.push(`<code>${mint}</code>`);
     }
@@ -675,6 +673,8 @@ export function formatLaunchFeed(
 // ============================================================================
 
 export interface GraduationEnrichment {
+    /** Referral codes for the outbound trade links */
+    affiliates?: Affiliates;
     holders?: HolderDetails | null;
     trades?: TokenTradeInfo | null;
     devWallet?: DevWalletInfo | null;
@@ -842,13 +842,7 @@ export function formatGraduationFeed(
         `💹 Chart: <a href="https://dexscreener.com/solana/${mint}">DEX</a>` +
         `⋅<a href="https://www.defined.fi/sol/${mint}">DEF</a>`,
     );
-    L.push(
-        `🧰 <a href="https://axiom.trade/t/${mint}">AXI</a>` +
-        `⋅<a href="https://gmgn.ai/sol/token/${mint}">GMG</a>` +
-        `⋅<a href="https://t.me/padre_bot?start=${mint}">PDR</a>` +
-        `⋅<a href="https://photon-sol.tinyastro.io/en/lp/${mint}">PHO</a>` +
-        `⋅<a href="https://bullx.io/terminal?chainId=1399811149&address=${mint}">BLX</a>`,
-    );
+    L.push(`🧰 ${renderTradeLinkRow(mint, enrichment?.affiliates)}`);
 
     L.push('');
 

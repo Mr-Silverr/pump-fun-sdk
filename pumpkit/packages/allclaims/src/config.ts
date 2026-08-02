@@ -111,9 +111,10 @@ export function loadConfig(): AllClaimsConfig {
 
     return {
         affiliates: {
-            axiom: process.env.AXIOM_REF ?? '',
-            gmgn: process.env.GMGN_REF ?? '',
-            padre: process.env.PADRE_REF ?? '',
+            axiom: process.env.AXIOM_REF ?? 'nich',
+            gmgn: process.env.GMGN_REF ?? 'nichxbt',
+            padre: process.env.PADRE_REF ?? 'nichxbt',
+            fomo: process.env.FOMO_REF ?? 'nichxbt',
         },
         cardsPerWindow: parseNumber('CARDS_PER_WINDOW', 6, 0, 18),
         channelId,

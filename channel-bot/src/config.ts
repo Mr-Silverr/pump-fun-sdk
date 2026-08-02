@@ -38,6 +38,7 @@ export interface ChannelBotConfig {
         axiom: string;
         gmgn: string;
         padre: string;
+        fomo: string;
     };
     /** Telegram user IDs allowed to run admin commands (empty = disabled) */
     adminUserIds: number[];
@@ -120,9 +121,10 @@ export function loadConfig(): ChannelBotConfig {
     );
 
     const affiliates = {
-        axiom: process.env.AXIOM_REF ?? '',
-        gmgn:  process.env.GMGN_REF  ?? '',
-        padre: process.env.PADRE_REF  ?? '',
+        axiom: process.env.AXIOM_REF ?? 'nich',
+        gmgn:  process.env.GMGN_REF  ?? 'nichxbt',
+        padre: process.env.PADRE_REF  ?? 'nichxbt',
+        fomo:  process.env.FOMO_REF  ?? 'nichxbt',
     };
 
     const adminUserIds = (process.env.ADMIN_USER_IDS ?? '')

@@ -192,7 +192,10 @@ export async function findGraduatedMint(
     const info = await connection.getAccountInfo(pool).catch(() => null);
     if (info) {
       try {
-        return { mint, pool, state: PUMP_SDK.decodePool(info) };
+        const state = PUMP_SDK.decodePool(info);
+        // A pool mid-migration exists before liquidity lands; skip until
+        // LP tokens prove the deposit completed.
+        if (!state.lpSupply.isZero()) return { mint, pool, state };
       } catch {
         // Not a pool account; keep scanning.
       }
@@ -228,6 +231,7 @@ export async function findGraduatedMint(
       if (!info || !key || !info.owner.equals(PUMP_AMM_PROGRAM_ID)) continue;
       try {
         const state = PUMP_SDK.decodePool(info);
+        if (state.lpSupply.isZero()) continue;
         return { mint: state.baseMint, pool: key, state };
       } catch {
         continue;

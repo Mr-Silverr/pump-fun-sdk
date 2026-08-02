@@ -15,7 +15,7 @@ import BN from "bn.js";
 
 import { getConnection } from "./_lib/connection";
 import { formatSol, formatTokens, heading, row } from "./_lib/format";
-import { resolveGraduatedMint } from "./_lib/graduated";
+import { findGraduatedMint } from "./_lib/discovery";
 import { loadWallet } from "./_lib/wallet";
 
 /** 1 whole Pump token = 1e6 raw units (6 decimals). */
@@ -44,6 +44,11 @@ export function interpretAmmBuyQuote(quote: AmmBuyQuote): AmmBuyQuoteBreakdown {
   if (quote.tokensOut.isZero()) {
     throw new Error("Quote returned zero tokens out; input too small to fill");
   }
+  if (quote.poolBaseAmount.isZero() || quote.poolQuoteAmount.isZero()) {
+    throw new Error(
+      "Pool reserves are empty; this pool has no liquidity to price against",
+    );
+  }
   const effectivePriceLamports = quote.solSpent
     .mul(TOKEN_UNITS)
     .div(quote.tokensOut);
@@ -51,10 +56,15 @@ export function interpretAmmBuyQuote(quote: AmmBuyQuote): AmmBuyQuoteBreakdown {
     .mul(TOKEN_UNITS)
     .div(quote.poolBaseAmount);
   const feeBpsOfInput = quote.feesLamports.muln(10_000).div(quote.solSpent);
-  const premiumOverSpotBps = effectivePriceLamports
-    .sub(spotPriceLamports)
+  // effective/spot = (solSpent/tokensOut) / (poolQuote/poolBase); comparing
+  // via cross-multiplication avoids the per-token prices rounding to zero
+  // on micro-cap pools.
+  const crossEffective = quote.solSpent.mul(quote.poolBaseAmount);
+  const crossSpot = quote.poolQuoteAmount.mul(quote.tokensOut);
+  const premiumOverSpotBps = crossEffective
+    .sub(crossSpot)
     .muln(10_000)
-    .div(spotPriceLamports);
+    .div(crossSpot);
   return {
     effectivePriceLamports,
     spotPriceLamports,
@@ -69,7 +79,7 @@ export async function main(): Promise<void> {
   const sdk = new OnlinePumpSdk(connection);
 
   heading("Finding a graduated token");
-  const mint = await resolveGraduatedMint(connection);
+  const { mint } = await findGraduatedMint(connection);
   row("Mint", mint.toBase58());
   row("Buyer", wallet.publicKey.toBase58());
 

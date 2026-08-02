@@ -640,6 +640,8 @@
     "docs": 40,
     "tutorials": 44,
     "mcpTools": 67,
+    "mcpResources": 4,
+    "mcpPrompts": 5,
     "programs": 4
   }
 }

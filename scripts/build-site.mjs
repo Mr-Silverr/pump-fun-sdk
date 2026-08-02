@@ -23,8 +23,11 @@ const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const out = join(root, 'dist-site');
 
 // The manifest the site reads (tutorial index, extra docs, live stats) is
-// derived from the repository, so it is regenerated on every build.
+// derived from the repository, so it is regenerated on every build. The link
+// check then refuses to ship a card, dashboard, or source link that goes
+// nowhere, which is exactly what a rename used to leave behind.
 execFileSync(process.execPath, [join(root, 'scripts', 'build-manifest.mjs')], { stdio: 'inherit' });
+execFileSync(process.execPath, [join(root, 'scripts', 'check-site-links.mjs')], { stdio: 'inherit' });
 
 rmSync(out, { recursive: true, force: true });
 mkdirSync(out, { recursive: true });

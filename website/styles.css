@@ -2358,3 +2358,73 @@ a.token-card:focus-visible,
   padding: 10px 12px;
   background: var(--bg-card);
 }
+
+/* ---------- Tool card links ---------- */
+.tool-card {
+  display: flex;
+  flex-direction: column;
+}
+
+.tool-card p {
+  flex: 1;
+}
+
+.tool-stats {
+  flex-wrap: wrap;
+}
+
+.tool-links {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+}
+
+.tool-link {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-decoration: none;
+  transition: color var(--transition);
+}
+
+.tool-link:hover {
+  color: var(--green);
+}
+
+.tool-link-primary {
+  color: var(--green);
+}
+
+/* The primary link stretches over the whole tile (the card is the positioned
+   ancestor), so clicking anywhere on the card follows it. Secondary links sit
+   above that overlay and stay individually clickable. */
+.tool-link-primary::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: var(--radius-lg);
+}
+
+.tool-link:not(.tool-link-primary) {
+  position: relative;
+  z-index: 1;
+}
+
+.tool-card:hover {
+  border-color: var(--green);
+}
+
+.tool-card:focus-within {
+  border-color: var(--green);
+  box-shadow: 0 0 0 2px var(--green-glow);
+}
+
+.tool-link:focus-visible {
+  outline: 2px solid var(--green);
+  outline-offset: 3px;
+  border-radius: 4px;
+}

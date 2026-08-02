@@ -79,9 +79,11 @@ function describe(dir, file) {
   };
 }
 
-function countMcpTools() {
-  const src = readFileSync(join(root, 'mcp-server', 'src', 'tools', 'index.ts'), 'utf8');
-  const registry = src.slice(src.indexOf('export const ALL_TOOLS'));
+// Each registry is an array of object literals, one entry per line-anchored
+// brace, so the count follows the source without importing TypeScript.
+function countRegistry(relativePath, exportName) {
+  const src = readFileSync(join(root, ...relativePath), 'utf8');
+  const registry = src.slice(src.indexOf(`export const ${exportName}`));
   return (registry.match(/^\s{2}\{\s*$/gm) || []).length;
 }
 
@@ -102,7 +104,9 @@ const manifest = {
   stats: {
     docs: docs.length,
     tutorials: tutorials.length,
-    mcpTools: countMcpTools(),
+    mcpTools: countRegistry(['mcp-server', 'src', 'tools', 'index.ts'], 'ALL_TOOLS'),
+    mcpResources: countRegistry(['mcp-server', 'src', 'resources', 'index.ts'], 'RESOURCES'),
+    mcpPrompts: countRegistry(['mcp-server', 'src', 'prompts', 'index.ts'], 'PROMPT_DEFINITIONS'),
     programs: countPrograms(),
   },
 };
@@ -112,5 +116,6 @@ writeFileSync(outFile, JSON.stringify(manifest, null, 2) + '\n');
 
 console.log(
   `website/data/manifest.json: ${docs.length} docs, ${tutorials.length} tutorials, ` +
-  `${manifest.stats.mcpTools} MCP tools, ${manifest.stats.programs} programs`,
+  `${manifest.stats.mcpTools} MCP tools, ${manifest.stats.mcpResources} resources, ` +
+  `${manifest.stats.mcpPrompts} prompts, ${manifest.stats.programs} programs`,
 );

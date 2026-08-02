@@ -521,106 +521,153 @@
         <p>Live tools, generators, bots, and dashboards built with Pump SDK</p>
       </div>
       <div class="tools-grid">
-        <div class="tool-card tool-card-featured">
+        <article class="tool-card tool-card-featured" data-tool="mcp">
           <div class="tool-badge">MCP Server</div>
           <div class="tool-icon">🤖</div>
           <h3>AI Agent Integration</h3>
-          <p>55 tools, 4 resources, 5 prompts via Model Context Protocol. Connect any AI agent to Pump.fun.</p>
+          <p>Model Context Protocol server exposing the SDK to any AI agent: quotes, instruction builders, analytics, and wallet tools.</p>
           <div class="tool-stats">
-            <span>55 Tools</span>
-            <span>MCP v2024-11-05</span>
+            <span><span data-stat="mcpTools">67</span> Tools</span>
+            <span><span data-stat="mcpResources">4</span> Resources</span>
+            <span><span data-stat="mcpPrompts">5</span> Prompts</span>
           </div>
-        </div>
-        <div class="tool-card">
+          <div class="tool-links">
+            <a class="tool-link tool-link-primary" href="#tutorials/20-mcp-server-ai-agents.md">Read the tutorial</a>
+            <a class="tool-link" href="https://github.com/nirholas/pump-fun-sdk/tree/main/mcp-server" target="_blank" rel="noopener">Source ↗</a>
+            <a class="tool-link" href="#docs/defi-agents.md">Agent docs</a>
+          </div>
+        </article>
+        <article class="tool-card" data-tool="launches">
           <div class="tool-icon">📡</div>
           <h3>Live Token Launches</h3>
-          <p>Real-time token launch feed via WebSocket. GitHub detection, metadata fetching, auto-reconnect.</p>
+          <p>Real-time launch feed over WebSocket, with GitHub detection, metadata fetching, and auto-reconnect.</p>
           <div class="tool-stats">
             <span>WebSocket</span>
             <span>Real-time</span>
           </div>
-        </div>
-        <div class="tool-card">
+          <div class="tool-links">
+            <a class="tool-link tool-link-primary" href="live/index.html">Open dashboard ↗</a>
+            <a class="tool-link" href="#tutorials/26-live-dashboard-deployment.md">Deploy it</a>
+          </div>
+        </article>
+        <article class="tool-card" data-tool="trades">
           <div class="tool-icon">📊</div>
           <h3>Live Trades Dashboard</h3>
-          <p>Buy/sell/create/migrate feed with volume charts, whale alerts, top tokens, and analytics sidebar.</p>
+          <p>Buy, sell, create and migrate feed with volume charts, whale alerts, top tokens, and an analytics sidebar.</p>
           <div class="tool-stats">
             <span>Charts</span>
             <span>Analytics</span>
           </div>
-        </div>
-        <div class="tool-card">
+          <div class="tool-links">
+            <a class="tool-link tool-link-primary" href="live/trades.html">Open dashboard ↗</a>
+            <a class="tool-link" href="#tutorials/28-analytics-price-quotes.md">Analytics tutorial</a>
+          </div>
+        </article>
+        <article class="tool-card" data-tool="vanity">
           <div class="tool-icon">🔑</div>
           <h3>Vanity Address Generator</h3>
-          <p>Client-side Solana vanity address generation. Multi-threaded, difficulty estimation, export keypairs.</p>
+          <p>Client-side Solana vanity address generation. Multi-threaded, difficulty estimation, keypair export.</p>
           <div class="tool-stats">
             <span>Ed25519</span>
             <span>Client-side</span>
           </div>
-        </div>
-        <div class="tool-card">
+          <div class="tool-links">
+            <a class="tool-link tool-link-primary" href="live/vanity.html">Open generator ↗</a>
+            <a class="tool-link" href="#tutorials/13-vanity-addresses.md">How it works</a>
+          </div>
+        </article>
+        <article class="tool-card" data-tool="rust">
           <div class="tool-icon">🦀</div>
           <h3>Rust Vanity Generator</h3>
-          <p>High-performance vanity generator with rayon + solana-sdk. 100K+ keys/sec multi-threaded.</p>
+          <p>High-performance generator built on rayon and solana-sdk. 100K+ keys per second, multi-threaded.</p>
           <div class="tool-stats">
             <span>100K+ keys/sec</span>
             <span>Rayon</span>
           </div>
-        </div>
-        <div class="tool-card">
+          <div class="tool-links">
+            <a class="tool-link tool-link-primary" href="#tutorials/31-rust-vanity-deep-dive.md">Read the deep dive</a>
+            <a class="tool-link" href="https://github.com/nirholas/pump-fun-sdk/tree/main/rust" target="_blank" rel="noopener">Source ↗</a>
+          </div>
+        </article>
+        <article class="tool-card" data-tool="telegram">
           <div class="tool-icon">💬</div>
           <h3>Telegram Bot</h3>
-          <p>PumpFun activity monitor with 10 commands. Fee claims, CTO alerts, whale trades, graduation tracking.</p>
+          <p>Pump activity monitor with 10 commands: fee claims, CTO alerts, whale trades, and graduation tracking.</p>
           <div class="tool-stats">
             <span>10 Commands</span>
             <span>50 TX/sec</span>
           </div>
-        </div>
-        <div class="tool-card">
+          <div class="tool-links">
+            <a class="tool-link tool-link-primary" href="#tutorials/18-telegram-bot.md">Build it</a>
+            <a class="tool-link" href="https://github.com/nirholas/pump-fun-sdk/tree/main/telegram-bot" target="_blank" rel="noopener">Source ↗</a>
+          </div>
+        </article>
+        <article class="tool-card" data-tool="relay">
           <div class="tool-icon">🌊</div>
           <h3>WebSocket Relay</h3>
-          <p>Real-time token launch broadcasting server. 10K connections, 50K msg/sec per vCPU.</p>
+          <p>Token launch broadcasting server. 10K connections and 50K messages per second per vCPU.</p>
           <div class="tool-stats">
             <span>10K Conn</span>
             <span>50K msg/sec</span>
           </div>
-        </div>
-        <div class="tool-card">
+          <div class="tool-links">
+            <a class="tool-link tool-link-primary" href="#tutorials/21-websocket-realtime-feeds.md">Wire up a feed</a>
+            <a class="tool-link" href="https://github.com/nirholas/pump-fun-sdk/tree/main/websocket-server" target="_blank" rel="noopener">Source ↗</a>
+          </div>
+        </article>
+        <article class="tool-card" data-tool="channel">
           <div class="tool-icon">📱</div>
           <h3>Channel Bot</h3>
-          <p>Telegram channel bot for broadcasting token launches and graduation events to your community.</p>
+          <p>Telegram channel bot broadcasting launches, claims, and graduation events to your community.</p>
           <div class="tool-stats">
             <span>Broadcasting</span>
             <span>Docker</span>
           </div>
-        </div>
-        <div class="tool-card">
+          <div class="tool-links">
+            <a class="tool-link tool-link-primary" href="#tutorials/22-channel-bot-setup.md">Set it up</a>
+            <a class="tool-link" href="https://github.com/nirholas/pump-fun-sdk/tree/main/channel-bot" target="_blank" rel="noopener">Source ↗</a>
+          </div>
+        </article>
+        <article class="tool-card" data-tool="claim">
           <div class="tool-icon">💸</div>
           <h3>Claim Bot</h3>
-          <p>Automated fee claiming bot. Monitors and claims creator fees from bonding curves and AMM pools.</p>
+          <p>Automated fee claiming. Monitors creator fees on bonding curves and AMM pools, and claims them.</p>
           <div class="tool-stats">
             <span>Auto-claim</span>
-            <span>Railway</span>
+            <span>Fee sharing</span>
           </div>
-        </div>
-        <div class="tool-card">
+          <div class="tool-links">
+            <a class="tool-link tool-link-primary" href="#tutorials/16-monitoring-claims.md">Monitor claims</a>
+            <a class="tool-link" href="https://github.com/nirholas/pump-fun-sdk/tree/main/claim-bot" target="_blank" rel="noopener">Source ↗</a>
+            <a class="tool-link" href="#docs/fee-sharing.md">Fee docs</a>
+          </div>
+        </article>
+        <article class="tool-card" data-tool="x402">
           <div class="tool-icon">💳</div>
           <h3>x402 Payments</h3>
-          <p>HTTP 402 micropayment protocol with Solana USDC. Pay-per-request API monetization.</p>
+          <p>HTTP 402 micropayments settled in USDC on Solana. Pay-per-request monetization for SDK-backed APIs.</p>
           <div class="tool-stats">
             <span>USDC</span>
             <span>HTTP 402</span>
           </div>
-        </div>
-        <div class="tool-card">
+          <div class="tool-links">
+            <a class="tool-link tool-link-primary" href="#tutorials/14-x402-paywalled-apis.md">Paywall an API</a>
+            <a class="tool-link" href="https://github.com/nirholas/pump-fun-sdk/tree/main/x402" target="_blank" rel="noopener">Source ↗</a>
+          </div>
+        </article>
+        <article class="tool-card" data-tool="swarm">
           <div class="tool-icon">🐝</div>
           <h3>Swarm Agents</h3>
-          <p>Multi-agent DeFi intelligence swarm. Coordinated agents for token analysis and trading strategies.</p>
+          <p>Multi-agent DeFi intelligence: coordinated agents for token analysis and trading strategies.</p>
           <div class="tool-stats">
             <span>Multi-agent</span>
             <span>DeFi</span>
           </div>
-        </div>
+          <div class="tool-links">
+            <a class="tool-link tool-link-primary" href="#tutorials/25-defi-agents-integration.md">Integrate agents</a>
+            <a class="tool-link" href="https://github.com/nirholas/pump-fun-sdk/tree/main/swarm" target="_blank" rel="noopener">Source ↗</a>
+          </div>
+        </article>
       </div>
     </section>
 

@@ -129,10 +129,10 @@
     },
     {
       "file": "examples.md",
-      "title": "pump-fun-sdk examples",
-      "summary": "TypeScript SDK for the Pump protocol on Solana — token creation, bonding curves, AMM pools, fee sharing, and volume rewards",
-      "words": 63,
-      "minutes": 1
+      "title": "Runnable Examples",
+      "summary": "Fifty tested, runnable examples covering the full SDK surface, from your first createV2 instruction to AMM liquidity, fee sharing, and live WebSocket trade feeds.",
+      "words": 1018,
+      "minutes": 5
     },
     {
       "file": "faq.md",

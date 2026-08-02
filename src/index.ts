@@ -54,6 +54,7 @@ export {
 export type { CalculatedFeesBps, BreakingFeeValidation } from "./fees";
 export {
   OnlinePumpSdk,
+  parsePumpEventsFromLogs,
   MinimumDistributableFeeResult,
   DistributeCreatorFeeResult,
 } from "./onlineSdk";

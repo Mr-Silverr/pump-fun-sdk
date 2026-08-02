@@ -1427,16 +1427,7 @@ export class OnlinePumpSdk {
       maxSupportedTransactionVersion: 0,
     });
     if (!tx?.meta?.logMessages) return [];
-
-    const events: PumpEvent[] = [];
-    for (const log of tx.meta.logMessages) {
-      if (!log.startsWith("Program data: ")) continue;
-      const data = Buffer.from(log.slice("Program data: ".length), "base64");
-      if (data.length < 8) continue;
-      const decoded = tryDecodePumpEvent(data);
-      if (decoded) events.push(decoded);
-    }
-    return events;
+    return parsePumpEventsFromLogs(tx.meta.logMessages);
   }
 
   async quoteSell({
@@ -2804,6 +2795,26 @@ export type PumpEvent =
   | { type: "feesUpdateAdmin"; data: FeesUpdateAdminEvent }
   | { type: "feesUpdateFeeConfig"; data: FeesUpdateFeeConfigEvent }
   | { type: "feesUpsertFeeTiers"; data: FeesUpsertFeeTiersEvent };
+
+/**
+ * Decode Pump protocol events out of raw program log lines, e.g. from a
+ * `connection.onLogs(...)` WebSocket subscription or `tx.meta.logMessages`.
+ * Lines that are not `Program data:` entries or that carry non-Pump events
+ * are skipped.
+ */
+export function parsePumpEventsFromLogs(
+  logs: readonly string[],
+): PumpEvent[] {
+  const events: PumpEvent[] = [];
+  for (const log of logs) {
+    if (!log.startsWith("Program data: ")) continue;
+    const data = Buffer.from(log.slice("Program data: ".length), "base64");
+    if (data.length < 8) continue;
+    const decoded = tryDecodePumpEvent(data);
+    if (decoded) events.push(decoded);
+  }
+  return events;
+}
 
 function tryDecodePumpEvent(data: Buffer): PumpEvent | null {
   const decoders: Array<() => PumpEvent | null> = [

@@ -1,0 +1,830 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Launchpad · pump sdk</title>
+<meta name="description" content="Launch and trade Pump tokens from your browser. Built entirely on @nirholas/pump-sdk." />
+<style>
+  :root {
+    --bg: #050505;
+    --bg-elevated: #0e0e0e;
+    --bg-hover: #161616;
+    --border: #222;
+    --border-strong: #333;
+    --text: #f5f5f5;
+    --text-dim: #9a9a9a;
+    --text-faint: #555;
+    --buy: #00e68a;
+    --sell: #ff5c5c;
+    --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { color-scheme: dark; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-sans);
+    font-size: 14px;
+    line-height: 1.5;
+    min-height: 100vh;
+  }
+  a { color: var(--text); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  a:focus-visible, button:focus-visible, input:focus-visible {
+    outline: 1px solid #fff;
+    outline-offset: 2px;
+  }
+  header {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--border);
+    flex-wrap: wrap;
+  }
+  .wordmark { font-family: var(--font-mono); font-size: 13px; letter-spacing: 0.02em; }
+  .wordmark b { font-weight: 600; }
+  nav { display: flex; gap: 14px; flex-wrap: wrap; }
+  nav a { color: var(--text-dim); font-size: 13px; transition: color 140ms ease; }
+  nav a:hover { color: var(--text); text-decoration: none; }
+  nav a[aria-current="page"] { color: var(--text); }
+  .spacer { flex: 1; }
+
+  #wallet-area { display: flex; align-items: center; gap: 10px; }
+  .addr { font-family: var(--font-mono); font-size: 12px; color: var(--text-dim); }
+
+  main {
+    max-width: 1060px;
+    margin: 0 auto;
+    padding: 28px 20px 80px;
+  }
+  h1 { font-size: 20px; font-weight: 600; letter-spacing: -0.01em; }
+  .sub { color: var(--text-dim); margin: 6px 0 26px; max-width: 640px; }
+
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: start; }
+  @media (max-width: 860px) { .grid { grid-template-columns: 1fr; } }
+
+  section.panel {
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 20px;
+  }
+  .panel h2 {
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-dim);
+    margin-bottom: 16px;
+  }
+  label { display: block; font-size: 12px; color: var(--text-dim); margin: 12px 0 4px; }
+  label:first-of-type { margin-top: 0; }
+  input[type="text"], input[type="url"], input[type="number"] {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: 13px;
+    padding: 8px 10px;
+    transition: border-color 140ms ease, background 140ms ease;
+  }
+  input:hover { border-color: var(--border-strong); }
+  input:focus { border-color: var(--border-strong); background: var(--bg-hover); outline: none; }
+  input::placeholder { color: var(--text-faint); }
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .hint { font-size: 12px; color: var(--text-faint); margin-top: 4px; }
+  details { margin-top: 8px; }
+  summary { font-size: 12px; color: var(--text-dim); cursor: pointer; }
+  summary:hover { color: var(--text); }
+  details pre {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 10px;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--text-dim);
+    overflow-x: auto;
+    margin-top: 8px;
+  }
+  .toggles { display: flex; gap: 18px; margin-top: 12px; flex-wrap: wrap; }
+  .toggle { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-dim); cursor: pointer; }
+  .toggle input { accent-color: #fff; width: 14px; height: 14px; cursor: pointer; }
+
+  button {
+    font-family: var(--font-sans);
+    font-size: 13px;
+    font-weight: 500;
+    border-radius: 6px;
+    border: 1px solid var(--border-strong);
+    background: transparent;
+    color: var(--text);
+    padding: 8px 14px;
+    cursor: pointer;
+    transition: background 140ms ease, border-color 140ms ease, color 140ms ease, transform 120ms ease;
+  }
+  button:hover:not(:disabled) { background: var(--bg-hover); border-color: #444; }
+  button:active:not(:disabled) { transform: translateY(1px); }
+  button:disabled { opacity: 0.45; cursor: not-allowed; }
+  button.primary { background: #fff; border-color: #fff; color: #000; }
+  button.primary:hover:not(:disabled) { background: #ddd; border-color: #ddd; }
+  button.buy { border-color: var(--buy); color: var(--buy); }
+  button.buy:hover:not(:disabled) { background: rgba(0, 230, 138, 0.08); }
+  button.sell { border-color: var(--sell); color: var(--sell); }
+  button.sell:hover:not(:disabled) { background: rgba(255, 92, 92, 0.08); }
+  .actions { display: flex; gap: 10px; margin-top: 16px; flex-wrap: wrap; }
+
+  .kv { margin-top: 14px; border-top: 1px solid var(--border); }
+  .kv div {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 7px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 13px;
+  }
+  .kv dt { color: var(--text-dim); }
+  .kv dd { font-family: var(--font-mono); text-align: right; word-break: break-all; }
+  .kv dd.pos { color: var(--buy); }
+  .kv dd.neg { color: var(--sell); }
+
+  .status { margin-top: 14px; font-size: 13px; border-radius: 6px; padding: 10px 12px; border: 1px solid var(--border); color: var(--text-dim); }
+  .status.error { border-color: var(--sell); color: var(--sell); }
+  .status.ok { border-color: var(--buy); color: var(--buy); }
+  .status a { color: inherit; text-decoration: underline; }
+  .status[hidden] { display: none; }
+
+  .progress-track { height: 4px; background: var(--border); border-radius: 2px; margin-top: 6px; overflow: hidden; }
+  .progress-fill { height: 100%; background: #fff; width: 0%; transition: width 300ms ease; }
+
+  .skeleton { position: relative; overflow: hidden; background: var(--bg-hover); border-radius: 4px; color: transparent !important; }
+  .skeleton::after {
+    content: "";
+    position: absolute; inset: 0;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.05), transparent);
+    animation: shimmer 1.2s infinite;
+  }
+  @keyframes shimmer { to { transform: translateX(100%); } }
+
+  .tabs { display: flex; gap: 0; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; width: fit-content; margin-bottom: 14px; }
+  .tabs button { border: none; border-radius: 0; padding: 6px 16px; color: var(--text-dim); }
+  .tabs button[aria-selected="true"] { background: var(--bg-hover); color: var(--text); }
+  .tabs button.buy-tab[aria-selected="true"] { color: var(--buy); }
+  .tabs button.sell-tab[aria-selected="true"] { color: var(--sell); }
+
+  .rpc-row { display: flex; gap: 8px; align-items: center; margin-bottom: 22px; flex-wrap: wrap; }
+  .rpc-row input { flex: 1; min-width: 220px; }
+  .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--text-faint); display: inline-block; }
+  .dot.ok { background: var(--buy); }
+  .dot.err { background: var(--sell); }
+
+  footer { border-top: 1px solid var(--border); padding: 16px 20px; color: var(--text-faint); font-size: 12px; display: flex; gap: 14px; flex-wrap: wrap; }
+  footer a { color: var(--text-dim); }
+  .mono { font-family: var(--font-mono); }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<header>
+  <span class="wordmark"><b>pump sdk</b> / live</span>
+  <nav aria-label="Live apps">
+    <a href="./index.html">Launches</a>
+    <a href="./trades.html">Trades</a>
+    <a href="./dashboard.html">Dashboard</a>
+    <a href="./vanity.html">Vanity</a>
+    <a href="./sell-demo.html">Sell Demo</a>
+    <a href="./launchpad.html" aria-current="page">Launchpad</a>
+    <a href="/">Docs</a>
+  </nav>
+  <span class="spacer"></span>
+  <div id="wallet-area">
+    <span id="wallet-addr" class="addr" hidden></span>
+    <button id="connect-btn">Connect wallet</button>
+  </div>
+</header>
+
+<main>
+  <h1>Launchpad</h1>
+  <p class="sub">Launch a token on the Pump bonding curve and trade any live Pump token, entirely from your browser. Every instruction is built client-side by <span class="mono">@nirholas/pump-sdk</span>; nothing is sent until you review it and sign with your own wallet.</p>
+
+  <div class="rpc-row">
+    <span id="rpc-dot" class="dot" title="RPC status"></span>
+    <input id="rpc-input" type="url" placeholder="RPC endpoint" spellcheck="false" aria-label="RPC endpoint" />
+    <button id="rpc-apply">Apply</button>
+    <span class="hint">Public mainnet RPC by default; paste your own for faster quotes.</span>
+  </div>
+
+  <div class="grid">
+    <section class="panel" aria-labelledby="launch-h">
+      <h2 id="launch-h">Launch a token</h2>
+      <label for="l-name">Name</label>
+      <input id="l-name" type="text" maxlength="32" placeholder="My Token" />
+      <div class="row2">
+        <div>
+          <label for="l-symbol">Symbol</label>
+          <input id="l-symbol" type="text" maxlength="10" placeholder="TOKEN" style="text-transform: uppercase" />
+        </div>
+        <div>
+          <label for="l-devbuy">Dev buy (SOL, optional)</label>
+          <input id="l-devbuy" type="number" min="0" step="0.01" placeholder="0.0" />
+        </div>
+      </div>
+      <label for="l-uri">Metadata URI</label>
+      <input id="l-uri" type="url" placeholder="https://.../metadata.json" spellcheck="false" />
+      <p class="hint">A hosted JSON file describing the token. Most launches pin it to IPFS.</p>
+      <details>
+        <summary>What goes in the metadata JSON?</summary>
+        <pre>{
+  "name": "My Token",
+  "symbol": "TOKEN",
+  "description": "What this token is.",
+  "image": "https://.../image.png"
+}</pre>
+      </details>
+      <div class="toggles">
+        <label class="toggle"><input id="l-mayhem" type="checkbox" /> Mayhem mode</label>
+        <label class="toggle"><input id="l-cashback" type="checkbox" /> Cashback</label>
+      </div>
+      <div class="actions">
+        <button id="l-review" class="primary">Review launch</button>
+      </div>
+      <dl id="l-summary" class="kv" hidden></dl>
+      <div class="actions">
+        <button id="l-send" class="buy" hidden>Sign &amp; launch</button>
+        <button id="l-cancel" hidden>Cancel</button>
+      </div>
+      <div id="l-status" class="status" hidden role="status"></div>
+    </section>
+
+    <section class="panel" aria-labelledby="trade-h">
+      <h2 id="trade-h">Trade a token</h2>
+      <label for="t-mint">Token mint</label>
+      <input id="t-mint" type="text" placeholder="Mint address" spellcheck="false" />
+      <div class="actions" style="margin-top: 10px">
+        <button id="t-load">Load token</button>
+        <button id="t-find">Find a live token</button>
+      </div>
+      <div id="t-info" hidden>
+        <dl class="kv" id="t-stats"></dl>
+        <div id="t-grad-wrap" hidden>
+          <p class="hint" style="margin-top: 10px">Graduation progress <span id="t-grad-pct" class="mono"></span></p>
+          <div class="progress-track"><div id="t-grad-fill" class="progress-fill"></div></div>
+        </div>
+        <div style="margin-top: 18px">
+          <div class="tabs" role="tablist">
+            <button class="buy-tab" id="tab-buy" role="tab" aria-selected="true">Buy</button>
+            <button class="sell-tab" id="tab-sell" role="tab" aria-selected="false">Sell</button>
+          </div>
+          <div id="side-buy" role="tabpanel">
+            <label for="b-amount">Spend (SOL)</label>
+            <input id="b-amount" type="number" min="0" step="0.01" placeholder="0.1" />
+          </div>
+          <div id="side-sell" role="tabpanel" hidden>
+            <label for="s-amount">Sell (tokens)</label>
+            <input id="s-amount" type="number" min="0" step="1" placeholder="1000" />
+          </div>
+          <label for="t-slippage">Slippage %</label>
+          <input id="t-slippage" type="number" min="0.1" max="50" step="0.1" value="1" style="max-width: 110px" />
+          <dl id="t-quote" class="kv" hidden></dl>
+          <div class="actions">
+            <button id="t-review" class="primary" disabled>Review trade</button>
+          </div>
+          <dl id="t-txsummary" class="kv" hidden></dl>
+          <div class="actions">
+            <button id="t-send" hidden>Sign &amp; send</button>
+            <button id="t-cancel" hidden>Cancel</button>
+          </div>
+        </div>
+      </div>
+      <div id="t-status" class="status" hidden role="status"></div>
+    </section>
+  </div>
+</main>
+
+<footer>
+  <span>Built on <a href="https://github.com/nirholas/pump-fun-sdk" class="mono">@nirholas/pump-sdk</a></span>
+  <span>Runs entirely in your browser. Keys never leave your wallet.</span>
+</footer>
+
+<script type="module">
+import {
+  PUMP_SDK,
+  OnlinePumpSdk,
+  PublicKey,
+  Keypair,
+  Connection,
+  Transaction,
+  BN,
+  LAMPORTS_PER_SOL,
+  PUMP_PROGRAM_ID,
+  bondingCurvePda,
+  canonicalPumpPoolPda,
+  newBondingCurve,
+  getBuyTokenAmountFromSolAmount,
+  parsePumpEventsFromLogs,
+  createFallbackConnection,
+} from "./vendor/pump-sdk.browser.mjs";
+
+const $ = (id) => document.getElementById(id);
+// Multiple public endpoints behind the SDK's own failover: any one of them
+// being down, rate limited, or origin-blocked does not take the page down.
+const DEFAULT_RPCS = [
+  "https://api.mainnet-beta.solana.com",
+  "https://solana-rpc.publicnode.com",
+  "https://rpc.ankr.com/solana",
+];
+const DEFAULT_RPC = DEFAULT_RPCS.join(",");
+const TOKEN_UNITS = new BN(1_000_000);
+
+let connection;
+let online;
+let provider = null;
+let walletPubkey = null;
+let pendingLaunch = null;
+let pendingTrade = null;
+let token = null; // { mint, kind: "curve" | "amm", summary?, pool? }
+let side = "buy";
+let quoteTimer = null;
+
+// ---------- formatting (BN in, string out; floats only for display) ----------
+function fmtUnits(bn, divisor, decimals) {
+  const scale = new BN(10).pow(new BN(decimals));
+  const scaled = bn.mul(scale).div(divisor);
+  const text = scaled.toString().padStart(decimals + 1, "0");
+  const whole = text.slice(0, -decimals).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  return `${whole}.${text.slice(-decimals)}`;
+}
+const fmtSol = (l, d = 4) => `${fmtUnits(l, new BN(LAMPORTS_PER_SOL), d)} SOL`;
+const fmtTok = (u, d = 2) => fmtUnits(u, TOKEN_UNITS, d);
+const short = (s) => `${s.slice(0, 4)}..${s.slice(-4)}`;
+function solToLamports(text) {
+  const [w = "0", f = ""] = String(text).split(".");
+  const frac = (f + "000000000").slice(0, 9);
+  return new BN(w || "0").mul(new BN(LAMPORTS_PER_SOL)).add(new BN(frac || "0"));
+}
+function tokensToUnits(text) {
+  const [w = "0", f = ""] = String(text).split(".");
+  const frac = (f + "000000").slice(0, 6);
+  return new BN(w || "0").mul(TOKEN_UNITS).add(new BN(frac || "0"));
+}
+
+function setStatus(el, text, kind) {
+  el.hidden = !text;
+  el.textContent = "";
+  el.className = "status" + (kind ? " " + kind : "");
+  if (typeof text === "string") el.textContent = text;
+  else if (text) el.append(text);
+}
+function kv(el, entries) {
+  el.hidden = false;
+  el.textContent = "";
+  for (const [k, v, cls] of entries) {
+    const wrap = document.createElement("div");
+    const dt = document.createElement("dt");
+    dt.textContent = k;
+    const dd = document.createElement("dd");
+    if (cls) dd.className = cls;
+    if (v instanceof Node) dd.append(v);
+    else dd.textContent = v;
+    wrap.append(dt, dd);
+    el.append(wrap);
+  }
+}
+function link(href, text) {
+  const a = document.createElement("a");
+  a.href = href;
+  a.target = "_blank";
+  a.rel = "noopener";
+  a.textContent = text;
+  return a;
+}
+
+// ---------- rpc ----------
+function applyRpc(urls) {
+  const list = urls.split(",").map((u) => u.trim()).filter(Boolean);
+  connection = list.length > 1
+    ? createFallbackConnection(list, { commitment: "confirmed" })
+    : new Connection(list[0], "confirmed");
+  online = new OnlinePumpSdk(connection);
+  localStorage.setItem("pump-rpc", urls);
+  $("rpc-input").value = urls;
+  const dot = $("rpc-dot");
+  dot.className = "dot";
+  connection.getLatestBlockhash()
+    .then(() => { dot.className = "dot ok"; dot.title = "RPC reachable"; })
+    .catch(() => { dot.className = "dot err"; dot.title = "RPC unreachable"; });
+}
+applyRpc(localStorage.getItem("pump-rpc") || DEFAULT_RPC);
+$("rpc-apply").addEventListener("click", () => {
+  const urls = $("rpc-input").value.trim();
+  if (/^https?:\/\//.test(urls)) applyRpc(urls);
+});
+
+// ---------- wallet ----------
+function findProvider() {
+  if (window.phantom?.solana?.isPhantom) return window.phantom.solana;
+  if (window.solana?.isPhantom) return window.solana;
+  if (window.backpack?.isBackpack) return window.backpack;
+  return window.solana ?? null;
+}
+async function connectWallet() {
+  const p = findProvider();
+  if (!p) {
+    setStatus($("t-status"),
+      (() => { const s = document.createElement("span");
+        s.append("No Solana wallet found. Install ", link("https://phantom.app", "Phantom"), " and reload."); return s; })(),
+      "error");
+    return;
+  }
+  try {
+    const res = await p.connect();
+    provider = p;
+    walletPubkey = new PublicKey((res?.publicKey ?? p.publicKey).toString());
+    $("wallet-addr").hidden = false;
+    const bal = await connection.getBalance(walletPubkey).catch(() => null);
+    $("wallet-addr").textContent = short(walletPubkey.toBase58()) + (bal === null ? "" : ` · ${fmtSol(new BN(bal), 3)}`);
+    $("connect-btn").textContent = "Disconnect";
+  } catch (err) {
+    if (err?.code !== 4001) setStatus($("t-status"), `Wallet connection failed: ${err.message ?? err}`, "error");
+  }
+}
+function disconnectWallet() {
+  provider?.disconnect?.();
+  provider = null;
+  walletPubkey = null;
+  $("wallet-addr").hidden = true;
+  $("connect-btn").textContent = "Connect wallet";
+}
+$("connect-btn").addEventListener("click", () => (walletPubkey ? disconnectWallet() : connectWallet()));
+
+async function signAndSend(tx, extraSigners = []) {
+  const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
+  tx.recentBlockhash = blockhash;
+  tx.lastValidBlockHeight = lastValidBlockHeight;
+  tx.feePayer = walletPubkey;
+  for (const s of extraSigners) tx.partialSign(s);
+  const { signature } = await provider.signAndSendTransaction(tx);
+  await connection.confirmTransaction({ signature, blockhash, lastValidBlockHeight }, "confirmed");
+  return signature;
+}
+
+// ---------- launch ----------
+$("l-review").addEventListener("click", async () => {
+  const status = $("l-status");
+  setStatus(status, "");
+  const name = $("l-name").value.trim();
+  const symbol = $("l-symbol").value.trim().toUpperCase();
+  const uri = $("l-uri").value.trim();
+  const devBuyText = $("l-devbuy").value.trim();
+  if (!name || name.length > 32) return setStatus(status, "Name is required (max 32 chars).", "error");
+  if (!symbol || symbol.length > 10) return setStatus(status, "Symbol is required (max 10 chars).", "error");
+  if (!/^https?:\/\/\S+$/.test(uri)) return setStatus(status, "Metadata URI must be a hosted https URL.", "error");
+  const devBuyLamports = devBuyText ? solToLamports(devBuyText) : new BN(0);
+
+  setStatus(status, "Building launch transaction...");
+  try {
+    const mintKp = Keypair.generate();
+    const creator = walletPubkey ?? PublicKey.default;
+    const global = await online.fetchGlobal();
+    const mayhemMode = $("l-mayhem").checked;
+    const cashback = $("l-cashback").checked;
+
+    let ixs;
+    let expectedTokens = null;
+    if (devBuyLamports.gtn(0)) {
+      const feeConfig = await online.fetchFeeConfig().catch(() => null);
+      const curve = newBondingCurve(global);
+      expectedTokens = getBuyTokenAmountFromSolAmount({
+        global, feeConfig, mintSupply: curve.tokenTotalSupply,
+        bondingCurve: curve, amount: devBuyLamports,
+      });
+      ixs = await PUMP_SDK.createV2AndBuyInstructions({
+        global, mint: mintKp.publicKey, name, symbol, uri,
+        creator, user: creator, amount: expectedTokens,
+        solAmount: devBuyLamports, mayhemMode, cashback,
+      });
+    } else {
+      ixs = [await PUMP_SDK.createV2Instruction({
+        mint: mintKp.publicKey, name, symbol, uri,
+        creator, user: creator, mayhemMode, cashback,
+      })];
+    }
+
+    pendingLaunch = { mintKp, ixs };
+    const entries = [
+      ["Mint (new)", short(mintKp.publicKey.toBase58())],
+      ["Bonding curve", short(bondingCurvePda(mintKp.publicKey).toBase58())],
+      ["Name / symbol", `${name} · ${symbol}`],
+      ["Instructions", String(ixs.length)],
+      ["Mayhem / cashback", `${mayhemMode ? "yes" : "no"} / ${cashback ? "yes" : "no"}`],
+    ];
+    if (expectedTokens) {
+      entries.push(["Dev buy", fmtSol(devBuyLamports), "neg"]);
+      entries.push(["Expected tokens", fmtTok(expectedTokens), "pos"]);
+    }
+    kv($("l-summary"), entries);
+    $("l-cancel").hidden = false;
+    if (walletPubkey) {
+      $("l-send").hidden = false;
+      setStatus(status, "Review the details, then sign. Your wallet shows the final confirmation.");
+    } else {
+      $("l-send").hidden = true;
+      setStatus(status, "Connect a wallet to sign this launch. The transaction above is fully built.", "error");
+    }
+  } catch (err) {
+    setStatus(status, `Build failed: ${err.message ?? err}`, "error");
+  }
+});
+
+$("l-cancel").addEventListener("click", () => {
+  pendingLaunch = null;
+  $("l-summary").hidden = true;
+  $("l-send").hidden = true;
+  $("l-cancel").hidden = true;
+  setStatus($("l-status"), "");
+});
+
+$("l-send").addEventListener("click", async () => {
+  if (!pendingLaunch || !walletPubkey) return;
+  const status = $("l-status");
+  $("l-send").disabled = true;
+  setStatus(status, "Awaiting wallet signature...");
+  try {
+    const tx = new Transaction().add(...pendingLaunch.ixs);
+    const sig = await signAndSend(tx, [pendingLaunch.mintKp]);
+    const wrap = document.createElement("span");
+    wrap.append("Launched. ",
+      link(`https://solscan.io/tx/${sig}`, "Transaction"), " · ",
+      link(`https://solscan.io/token/${pendingLaunch.mintKp.publicKey.toBase58()}`, "Token"), " · ",
+      link(`https://pump.fun/coin/${pendingLaunch.mintKp.publicKey.toBase58()}`, "pump.fun page"));
+    setStatus(status, wrap, "ok");
+    $("t-mint").value = pendingLaunch.mintKp.publicKey.toBase58();
+    pendingLaunch = null;
+    $("l-send").hidden = true;
+    $("l-cancel").hidden = true;
+  } catch (err) {
+    setStatus(status, `Launch failed: ${err.message ?? err}`, "error");
+  } finally {
+    $("l-send").disabled = false;
+  }
+});
+
+// ---------- trade: load ----------
+async function loadToken() {
+  const status = $("t-status");
+  setStatus(status, "");
+  $("t-info").hidden = true;
+  let mint;
+  try {
+    mint = new PublicKey($("t-mint").value.trim());
+  } catch {
+    return setStatus(status, "That is not a valid base58 address.", "error");
+  }
+  setStatus(status, "Loading token state...");
+  try {
+    const curveInfo = await connection.getAccountInfo(bondingCurvePda(mint));
+    const decoded = curveInfo ? PUMP_SDK.decodeBondingCurveNullable(curveInfo) : null;
+    if (decoded && !decoded.complete && !decoded.virtualTokenReserves.isZero()) {
+      const summary = await online.fetchBondingCurveSummary(mint);
+      token = { mint, kind: "curve", summary };
+      renderCurve(summary);
+    } else {
+      const poolInfo = await connection.getAccountInfo(canonicalPumpPoolPda(mint));
+      if (!poolInfo) {
+        token = null;
+        return setStatus(status,
+          decoded
+            ? "This token graduated, but its pool is not at the canonical address, so this panel cannot route it."
+            : "No Pump market exists for this mint (no bonding curve, no canonical pool).",
+          "error");
+      }
+      const pool = PUMP_SDK.decodePool(poolInfo);
+      token = { mint, kind: "amm", pool };
+      renderAmm(pool);
+    }
+    setStatus(status, "");
+    $("t-info").hidden = false;
+    requote();
+  } catch (err) {
+    setStatus(status, `Load failed: ${err.message ?? err}`, "error");
+  }
+}
+$("t-load").addEventListener("click", loadToken);
+$("t-mint").addEventListener("keydown", (e) => { if (e.key === "Enter") loadToken(); });
+
+function renderCurve(s) {
+  kv($("t-stats"), [
+    ["Market", "bonding curve"],
+    ["Market cap", fmtSol(s.marketCap, 2)],
+    ["Price / token", `${s.buyPricePerToken.toString()} lamports`],
+    ["Real SOL locked", fmtSol(s.realSolReserves, 3)],
+    ["To graduation", fmtSol(s.solNeededToGraduate, 3)],
+  ]);
+  $("t-grad-wrap").hidden = false;
+  $("t-grad-pct").textContent = (s.progressBps / 100).toFixed(1) + "%";
+  $("t-grad-fill").style.width = Math.min(100, s.progressBps / 100) + "%";
+}
+function renderAmm(pool) {
+  kv($("t-stats"), [
+    ["Market", "PumpAMM pool (graduated)"],
+    ["Pool", short(canonicalPumpPoolPda(token.mint).toBase58())],
+    ["LP supply", pool.lpSupply.toString()],
+    ["Creator", short(pool.coinCreator.toBase58())],
+  ]);
+  $("t-grad-wrap").hidden = true;
+}
+
+// ---------- trade: find a live token ----------
+$("t-find").addEventListener("click", async () => {
+  const status = $("t-status");
+  const btn = $("t-find");
+  btn.disabled = true;
+  setStatus(status, "Listening to live Pump trades for a few seconds...");
+  let sub = null;
+  const done = (mint) => {
+    if (sub !== null) connection.removeOnLogsListener(sub).catch(() => {});
+    sub = null;
+    btn.disabled = false;
+    if (mint) {
+      $("t-mint").value = mint.toBase58();
+      loadToken();
+    } else {
+      setStatus(status, "No trade events observed. This RPC may not support logsSubscribe; try another endpoint.", "error");
+    }
+  };
+  const timeout = setTimeout(() => done(null), 15000);
+  try {
+    sub = connection.onLogs(PUMP_PROGRAM_ID, ({ logs, err }) => {
+      if (err) return;
+      for (const ev of parsePumpEventsFromLogs(logs)) {
+        if (ev.type === "trade") {
+          clearTimeout(timeout);
+          done(ev.data.mint);
+          return;
+        }
+      }
+    }, "confirmed");
+  } catch (err) {
+    clearTimeout(timeout);
+    done(null);
+  }
+});
+
+// ---------- trade: tabs + quotes ----------
+function setSide(next) {
+  side = next;
+  $("tab-buy").setAttribute("aria-selected", String(side === "buy"));
+  $("tab-sell").setAttribute("aria-selected", String(side === "sell"));
+  $("side-buy").hidden = side !== "buy";
+  $("side-sell").hidden = side !== "sell";
+  $("t-review").className = side === "buy" ? "primary" : "primary";
+  requote();
+}
+$("tab-buy").addEventListener("click", () => setSide("buy"));
+$("tab-sell").addEventListener("click", () => setSide("sell"));
+
+for (const id of ["b-amount", "s-amount", "t-slippage"]) {
+  $(id).addEventListener("input", () => {
+    clearTimeout(quoteTimer);
+    quoteTimer = setTimeout(requote, 300);
+  });
+}
+
+async function requote() {
+  const quoteEl = $("t-quote");
+  $("t-review").disabled = true;
+  if (!token) return;
+  const amountText = side === "buy" ? $("b-amount").value : $("s-amount").value;
+  if (!amountText || Number(amountText) <= 0) { quoteEl.hidden = true; return; }
+
+  quoteEl.hidden = false;
+  quoteEl.classList.add("skeleton");
+  const user = walletPubkey ?? PublicKey.default;
+  try {
+    if (side === "buy") {
+      const solAmount = solToLamports(amountText);
+      if (token.kind === "curve") {
+        const q = await online.quoteBuy({ mint: token.mint, user, solAmount });
+        kv(quoteEl, [
+          ["Tokens out", fmtTok(q.tokensOut), "pos"],
+          ["Fees", fmtSol(q.feesLamports, 6)],
+          ["Price impact", (q.priceImpactBps / 100).toFixed(2) + "%"],
+        ]);
+      } else {
+        const q = await online.ammQuoteBuy({ mint: token.mint, user, quoteAmountIn: solAmount });
+        kv(quoteEl, [
+          ["Tokens out", fmtTok(q.tokensOut), "pos"],
+          ["Fees", fmtSol(q.feesLamports, 6)],
+        ]);
+      }
+    } else {
+      const amount = tokensToUnits(amountText);
+      if (token.kind === "curve") {
+        const q = await online.quoteSell({ mint: token.mint, user, amount });
+        kv(quoteEl, [
+          ["SOL out", fmtSol(q.solOut, 6), "pos"],
+          ["Fees", fmtSol(q.feesLamports, 6)],
+          ["Overflow risk", q.willOverflow ? "yes: reduce amount" : "no", q.willOverflow ? "neg" : undefined],
+        ]);
+      } else {
+        const q = await online.ammQuoteSell({ mint: token.mint, user, baseAmountIn: amount });
+        kv(quoteEl, [
+          ["SOL out", fmtSol(q.solOut, 6), "pos"],
+          ["Fees", fmtSol(q.feesLamports, 6)],
+        ]);
+      }
+    }
+    $("t-review").disabled = false;
+  } catch (err) {
+    kv(quoteEl, [["Quote failed", String(err.message ?? err).slice(0, 80), "neg"]]);
+  } finally {
+    quoteEl.classList.remove("skeleton");
+  }
+}
+
+// ---------- trade: review + send ----------
+$("t-review").addEventListener("click", async () => {
+  if (!token) return;
+  const status = $("t-status");
+  setStatus(status, "Building transaction...");
+  try {
+    const user = walletPubkey ?? PublicKey.default;
+    const slippage = Number($("t-slippage").value) || 1;
+    let ixs;
+    let summaryEntries;
+    if (side === "buy") {
+      const solAmount = solToLamports($("b-amount").value);
+      ixs = await online.routedBuyInstructions({ mint: token.mint, user, quoteAmountIn: solAmount, slippage });
+      summaryEntries = [
+        ["Action", "BUY", "pos"],
+        ["Spend", fmtSol(solAmount), "neg"],
+        ["Route", token.kind === "curve" ? "bonding curve" : "AMM pool"],
+        ["Slippage", slippage + "%"],
+        ["Instructions", String(ixs.length)],
+      ];
+    } else {
+      const amount = tokensToUnits($("s-amount").value);
+      ixs = await online.routedSellInstructions({ mint: token.mint, user, baseAmountIn: amount, slippage });
+      summaryEntries = [
+        ["Action", "SELL", "neg"],
+        ["Sell", fmtTok(amount) + " tokens"],
+        ["Route", token.kind === "curve" ? "bonding curve" : "AMM pool"],
+        ["Slippage", slippage + "%"],
+        ["Instructions", String(ixs.length)],
+      ];
+    }
+    pendingTrade = { ixs };
+    kv($("t-txsummary"), summaryEntries);
+    $("t-cancel").hidden = false;
+    if (walletPubkey) {
+      const sendBtn = $("t-send");
+      sendBtn.hidden = false;
+      sendBtn.className = side === "buy" ? "buy" : "sell";
+      setStatus(status, "Review the trade, then sign. Your wallet shows the final confirmation.");
+    } else {
+      $("t-send").hidden = true;
+      setStatus(status, "Connect a wallet to sign this trade. The transaction above is fully built.", "error");
+    }
+  } catch (err) {
+    setStatus(status, `Build failed: ${err.message ?? err}`, "error");
+  }
+});
+
+$("t-cancel").addEventListener("click", () => {
+  pendingTrade = null;
+  $("t-txsummary").hidden = true;
+  $("t-send").hidden = true;
+  $("t-cancel").hidden = true;
+  setStatus($("t-status"), "");
+});
+
+$("t-send").addEventListener("click", async () => {
+  if (!pendingTrade || !walletPubkey) return;
+  const status = $("t-status");
+  $("t-send").disabled = true;
+  setStatus(status, "Awaiting wallet signature...");
+  try {
+    const tx = new Transaction().add(...pendingTrade.ixs);
+    const sig = await signAndSend(tx);
+    const wrap = document.createElement("span");
+    wrap.append("Trade confirmed. ", link(`https://solscan.io/tx/${sig}`, "View transaction"));
+    setStatus(status, wrap, "ok");
+    pendingTrade = null;
+    $("t-txsummary").hidden = true;
+    $("t-send").hidden = true;
+    $("t-cancel").hidden = true;
+    loadToken();
+  } catch (err) {
+    setStatus(status, `Trade failed: ${err.message ?? err}`, "error");
+  } finally {
+    $("t-send").disabled = false;
+  }
+});
+</script>
+</body>
+</html>

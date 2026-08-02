@@ -116,63 +116,82 @@ export function createFallbackConnection(
     h.consecutiveFailures = 0;
   }
 
-  // Build a Connection pointing to the first endpoint, then proxy its
-  // internal fetch to support failover.
-  const connection = new Connection(endpoints[0]!, connectionConfig);
+  // One real Connection per endpoint. web3.js captures the endpoint URL in
+  // its rpc-client closure at construction, so mutating _rpcEndpoint on a
+  // single Connection after the fact silently does nothing: requests keep
+  // hitting the first endpoint. Failover therefore has to delegate to a
+  // Connection that was BUILT for the target endpoint.
+  const connections = new Map<string, Connection>(
+    endpoints.map((ep) => [ep, new Connection(ep, connectionConfig)]),
+  );
+  const primary = connections.get(endpoints[0]!)!;
+  const originals = new Map<string, (method: string, args: any[]) => Promise<any>>();
+  for (const [ep, conn] of connections) {
+    originals.set(ep, (conn as any)._rpcRequest.bind(conn));
+  }
 
-  // Wrap the RPC request method to add failover logic
-  const originalRpcRequest = (connection as any)._rpcRequest;
-  if (typeof originalRpcRequest === "function") {
-    (connection as any)._rpcRequest = async function (
-      method: string,
-      args: any[],
-    ) {
-      let lastError: Error | undefined;
+  async function requestWithFailover(
+    method: string,
+    args: any[],
+  ): Promise<any> {
+    let lastError: Error | undefined;
 
-      for (let attempt = 0; attempt < endpoints.length; attempt++) {
-        const ep = getNextHealthyEndpoint();
+    for (let attempt = 0; attempt < endpoints.length; attempt++) {
+      const ep = getNextHealthyEndpoint();
+      const doRequest = originals.get(ep)!;
 
-        // Point the connection at the current endpoint
-        (connection as any)._rpcEndpoint = ep;
-        (connection as any)._rpcWsEndpoint = deriveWsEndpoint(ep);
+      for (let retry = 0; retry <= config.maxRetriesPerEndpoint; retry++) {
+        try {
+          const result = await doRequest(method, args);
+          markSuccess(ep);
+          return result;
+        } catch (err: any) {
+          lastError = err;
 
-        for (
-          let retry = 0;
-          retry <= config.maxRetriesPerEndpoint;
-          retry++
-        ) {
-          try {
-            const result = await originalRpcRequest.call(
-              connection,
-              method,
-              args,
-            );
-            markSuccess(ep);
-            return result;
-          } catch (err: any) {
-            lastError = err;
+          // Don't retry on non-retryable errors
+          if (isNonRetryableError(err)) {
+            throw err;
+          }
 
-            // Don't retry on non-retryable errors
-            if (isNonRetryableError(err)) {
-              throw err;
-            }
-
-            if (retry < config.maxRetriesPerEndpoint) {
-              await sleep(config.baseDelayMs * 2 ** retry);
-            }
+          if (retry < config.maxRetriesPerEndpoint) {
+            await sleep(config.baseDelayMs * 2 ** retry);
           }
         }
-
-        // All retries for this endpoint exhausted
-        markFailure(ep);
-        currentIndex = (currentIndex + 1) % endpoints.length;
       }
 
-      throw lastError ?? new Error("All RPC endpoints failed");
+      // All retries for this endpoint exhausted
+      markFailure(ep);
+      currentIndex = (currentIndex + 1) % endpoints.length;
+    }
+
+    throw lastError ?? new Error("All RPC endpoints failed");
+  }
+
+  // Route every RPC call on the primary Connection through the failover.
+  // Subscriptions (onLogs etc.) still use the primary's websocket; callers
+  // needing subscription failover should pick a websocket-capable endpoint
+  // first in the list.
+  (primary as any)._rpcRequest = requestWithFailover;
+  const originalBatch = (primary as any)._rpcBatchRequest;
+  if (typeof originalBatch === "function") {
+    (primary as any)._rpcBatchRequest = async function (requests: any[]) {
+      // Batch goes to the current healthy endpoint's connection wholesale.
+      const ep = getNextHealthyEndpoint();
+      const conn = connections.get(ep)!;
+      try {
+        const result = await (conn === primary
+          ? originalBatch.call(primary, requests)
+          : (conn as any)._rpcBatchRequest.call(conn, requests));
+        markSuccess(ep);
+        return result;
+      } catch (err) {
+        markFailure(ep);
+        throw err;
+      }
     };
   }
 
-  return connection;
+  return primary;
 }
 
 // ─── Fallback Fetch ─────────────────────────────────────────────────────

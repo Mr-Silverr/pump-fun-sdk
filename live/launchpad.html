@@ -333,10 +333,10 @@ import {
 const $ = (id) => document.getElementById(id);
 // Multiple public endpoints behind the SDK's own failover: any one of them
 // being down, rate limited, or origin-blocked does not take the page down.
+// publicnode first: the official public RPC rejects browser origins.
 const DEFAULT_RPCS = [
-  "https://api.mainnet-beta.solana.com",
   "https://solana-rpc.publicnode.com",
-  "https://rpc.ankr.com/solana",
+  "https://api.mainnet-beta.solana.com",
 ];
 const DEFAULT_RPC = DEFAULT_RPCS.join(",");
 const TOKEN_UNITS = new BN(1_000_000);

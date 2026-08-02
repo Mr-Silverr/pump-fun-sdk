@@ -284,17 +284,6 @@ export function parseEndpoints(
     .filter(Boolean);
 }
 
-function deriveWsEndpoint(httpEndpoint: string): string {
-  try {
-    const url = new URL(httpEndpoint);
-    url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
-    return url.toString();
-  } catch {
-    return httpEndpoint.replace(/^https?/, (m) =>
-      m === "https" ? "wss" : "ws",
-    );
-  }
-}
 
 function isNonRetryableError(err: any): boolean {
   // Transaction simulation failures, invalid params, etc. should not be retried

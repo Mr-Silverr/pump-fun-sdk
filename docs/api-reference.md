@@ -1,8 +1,8 @@
 # API Reference
 
-Complete reference for all public classes, functions, types, and constants exported by `@nirholas/pump-sdk`.
+> Complete reference for the public classes, functions, types, and constants exported by `@nirholas/pump-sdk`, grouped by module.
 
-The SDK exposes **42 instruction builders** across 4 on-chain programs (Pump, PumpAMM, PumpFees, Mayhem), plus decoders, analytics, PDA helpers, and fee math.
+The SDK surface is defined by `src/index.ts`. Two classes do the heavy lifting: `PumpSdk` (offline instruction building and account/event decoding) and `OnlinePumpSdk` (RPC fetching plus high-level trading conveniences). Around them sit pure-function modules: bonding curve math, fees, PDAs, analytics, token incentives, vanity mint generation, and RPC fallback.
 
 ---
 
@@ -21,19 +21,27 @@ The SDK exposes **42 instruction builders** across 4 on-chain programs (Pump, Pu
 
 | Constant | Type | Value | Description |
 |----------|------|-------|-------------|
-| `PUMP_SDK` | `PumpSdk` | — | Pre-built offline SDK singleton |
+| `PUMP_SDK` | `PumpSdk` | | Pre-built offline SDK singleton |
 | `BONDING_CURVE_NEW_SIZE` | `number` | `151` | Byte size of new bonding curve accounts |
-| `PUMP_TOKEN_MINT` | `PublicKey` | `pumpCmXqMfrsAkQ5r49WcJnRayYRqmXz6ae8H7H9Dfn` | Pump token mint address |
+| `PUMP_TOKEN_MINT` | `PublicKey` | `pumpCmXqMfrsAkQ5r49WcJnRayYRqmXz6ae8H7H9Dfn` | PUMP token mint (token incentive rewards) |
 | `MAX_SHAREHOLDERS` | `number` | `10` | Maximum number of fee sharing shareholders |
 | `CANONICAL_POOL_INDEX` | `number` | `0` | Default AMM pool index |
+| `ONE_BILLION_SUPPLY` | `BN` | `1_000_000_000_000_000` | 1B token supply at 6 decimals, used in fee math |
+| `INITIAL_REAL_TOKEN_RESERVES` | `BN` | `793_100_000_000_000` | Standard initial real token reserves of a curve |
+| `BREAKING_FEE_RECIPIENTS` | `PublicKey[]` | 8 addresses | Fee recipients required by the 2026-04-28 upgrade |
+| `BREAKING_FEE_RECIPIENT_WSOL_ATAS` | `ReadonlyMap<string, PublicKey>` | | Pre-computed WSOL ATA per breaking fee recipient |
+| `BASE58_ALPHABET` | `string` | 58 chars | Valid characters for vanity patterns |
+| `MAX_VANITY_PATTERN_LENGTH` | `number` | `6` | Hard cap for `generateVanityMint` patterns |
 
 ### Pre-computed PDAs
 
 | Constant | Description |
 |----------|-------------|
-| `GLOBAL_PDA` | Global config account |
-| `AMM_GLOBAL_PDA` | AMM global config account |
-| `PUMP_FEE_CONFIG_PDA` | Fee configuration account |
+| `GLOBAL_PDA` | Pump global config account |
+| `AMM_GLOBAL_PDA` | AMM global state account |
+| `AMM_GLOBAL_CONFIG_PDA` | AMM global config account |
+| `AMM_FEE_CONFIG_PDA` | AMM fee config account (PumpFees) |
+| `PUMP_FEE_CONFIG_PDA` | Pump fee configuration account |
 | `GLOBAL_VOLUME_ACCUMULATOR_PDA` | Pump volume tracker |
 | `AMM_GLOBAL_VOLUME_ACCUMULATOR_PDA` | AMM volume tracker |
 | `PUMP_EVENT_AUTHORITY_PDA` | Pump event authority |
@@ -46,16 +54,14 @@ The SDK exposes **42 instruction builders** across 4 on-chain programs (Pump, Pu
 
 ### `PumpSdk`
 
-Offline instruction builder. Does not require a Solana connection.
-
-A pre-built instance is available as the `PUMP_SDK` export.
+Offline instruction builder and decoder. Does not require a Solana connection. Use the pre-built `PUMP_SDK` singleton instead of constructing your own instance.
 
 #### Account Decoders
 
 These methods decode raw `AccountInfo<Buffer>` data into typed objects.
 
 | Method | Returns |
-|--------|---------|-------|
+|--------|---------|
 | `decodeGlobal(accountInfo)` | `Global` |
 | `decodeFeeConfig(accountInfo)` | `FeeConfig` |
 | `decodeBondingCurve(accountInfo)` | `BondingCurve` |
@@ -71,159 +77,120 @@ These methods decode raw `AccountInfo<Buffer>` data into typed objects.
 
 #### Event Decoders
 
-Decode Anchor CPI event data from transaction logs.
-
-**Pump Program Events:**
-
-| Method | Returns |
-|--------|---------|
-| `decodeTradeEvent(data)` | `TradeEvent` |
-| `decodeCreateEvent(data)` | `CreateEvent` |
-| `decodeCompleteEvent(data)` | `CompleteEvent` |
-| `decodeCompletePumpAmmMigrationEvent(data)` | `CompletePumpAmmMigrationEvent` |
-| `decodeSetCreatorEvent(data)` | `SetCreatorEvent` |
-| `decodeCollectCreatorFeeEvent(data)` | `CollectCreatorFeeEvent` |
-| `decodeClaimTokenIncentivesEvent(data)` | `ClaimTokenIncentivesEvent` |
-| `decodeClaimCashbackEvent(data)` | `ClaimCashbackEvent` |
-| `decodeExtendAccountEvent(data)` | `ExtendAccountEvent` |
-| `decodeInitUserVolumeAccumulatorEvent(data)` | `InitUserVolumeAccumulatorEvent` |
-| `decodeSyncUserVolumeAccumulatorEvent(data)` | `SyncUserVolumeAccumulatorEvent` |
-| `decodeCloseUserVolumeAccumulatorEvent(data)` | `CloseUserVolumeAccumulatorEvent` |
-| `decodeAdminSetCreatorEvent(data)` | `AdminSetCreatorEvent` |
-| `decodeMigrateBondingCurveCreatorEvent(data)` | `MigrateBondingCurveCreatorEvent` |
-| `decodeDistributeCreatorFeesEvent(data)` | `DistributeCreatorFeesEvent` |
-| `decodeMinimumDistributableFee(data)` | `MinimumDistributableFeeEvent` |
-
-**PumpAMM Events:**
-
-| Method | Returns |
-|--------|---------|
-| `decodeAmmBuyEvent(data)` | `AmmBuyEvent` |
-| `decodeAmmSellEvent(data)` | `AmmSellEvent` |
-| `decodeDepositEvent(data)` | `DepositEvent` |
-| `decodeWithdrawEvent(data)` | `WithdrawEvent` |
-| `decodeCreatePoolEvent(data)` | `CreatePoolEvent` |
-
-**PumpFees Events:**
-
-| Method | Returns |
-|--------|---------|
-| `decodeCreateFeeSharingConfigEvent(data)` | `CreateFeeSharingConfigEvent` |
-| `decodeUpdateFeeSharesEvent(data)` | `UpdateFeeSharesEvent` |
-| `decodeResetFeeSharingConfigEvent(data)` | `ResetFeeSharingConfigEvent` |
-| `decodeRevokeFeeSharingAuthorityEvent(data)` | `RevokeFeeSharingAuthorityEvent` |
-| `decodeTransferFeeSharingAuthorityEvent(data)` | `TransferFeeSharingAuthorityEvent` |
-| `decodeSocialFeePdaCreatedEvent(data)` | `SocialFeePdaCreatedEvent` |
-| `decodeSocialFeePdaClaimedEvent(data)` | `SocialFeePdaClaimedEvent` |
+Decode Anchor CPI event data from transaction logs. Every event type in the [Types](#types) section has a matching `decode<EventName>(data: Buffer)` method, e.g. `decodeTradeEvent`, `decodeCreateEvent`, `decodeCompleteEvent`, `decodeAmmBuyEvent`, `decodeAmmSellEvent`, `decodeCreateFeeSharingConfigEvent`, `decodeSocialFeePdaClaimedEvent`, and so on across all three programs. For decoding every event in a confirmed transaction in one call, use `OnlinePumpSdk.parseTransactionEvents(signature)` instead.
 
 #### Token Creation
 
 ##### `createV2Instruction(params)`
 
-Creates a new token on the bonding curve.
+Creates a new token on the bonding curve (Token-2022 mint).
 
 ```typescript
-const ix = await sdk.createV2Instruction({
-  mint: PublicKey,        // Mint keypair public key
-  name: string,           // Token name
-  symbol: string,         // Token symbol
-  uri: string,            // Metadata URI
-  creator: PublicKey,     // Creator wallet
-  user: PublicKey,        // Fee payer
-  mayhemMode: boolean,    // Enable mayhem mode
-  cashback?: boolean,    // Enable cashback (default: false)
+const ix = await PUMP_SDK.createV2Instruction({
+  mint,                   // PublicKey - mint keypair public key (mint must sign the tx)
+  name: "My Token",
+  symbol: "MTK",
+  uri: "https://example.com/metadata.json",
+  creator,                // PublicKey - creator wallet
+  user,                   // PublicKey - fee payer
+  mayhemMode: false,      // boolean - enable mayhem mode
+  cashback: false,        // boolean, optional - enable cashback (default: false)
 });
 ```
 
 ##### `createV2AndBuyInstructions(params)`
 
-Creates a token and immediately buys in a single transaction.
+Creates a token and immediately buys in a single transaction. Includes the account-extension and ATA-creation instructions.
 
 ```typescript
-const ixs = await sdk.createV2AndBuyInstructions({
-  global: Global,         // Global state
-  mint: PublicKey,
-  name: string,
-  symbol: string,
-  uri: string,
-  creator: PublicKey,
-  user: PublicKey,
-  amount: BN,             // Token amount to buy
-  solAmount: BN,          // SOL to spend (lamports)
-  mayhemMode: boolean,
-  cashback?: boolean,         // Enable cashback (default: false)
+const ixs = await PUMP_SDK.createV2AndBuyInstructions({
+  global,                 // Global - from fetchGlobal()
+  mint, name, symbol, uri, creator, user,
+  amount,                 // BN - token amount to buy
+  solAmount,              // BN - SOL to spend (lamports)
+  mayhemMode: false,
+  cashback: false,        // optional
 });
 ```
 
 ##### `createInstruction(params)` *(deprecated)*
 
-Use `createV2Instruction` instead.
+Legacy v1 creation (classic SPL token mint). Use `createV2Instruction` instead.
 
 ##### `createAndBuyInstructions(params)` *(deprecated)*
 
-Use `createV2AndBuyInstructions` instead.
+Legacy v1 create-and-buy. Use `createV2AndBuyInstructions` instead.
 
 #### Buy / Sell
 
 ##### `buyInstructions(params)`
 
-Builds instructions to buy tokens from a bonding curve.
+Builds instructions to buy tokens from a bonding curve. Automatically prepends an account-extension instruction when the curve account predates `BONDING_CURVE_NEW_SIZE`, and an ATA-creation instruction when `associatedUserAccountInfo` is `null`.
 
 ```typescript
-const ixs = await sdk.buyInstructions({
-  global: Global,
-  bondingCurveAccountInfo: AccountInfo<Buffer>,
-  bondingCurve: BondingCurve,
-  associatedUserAccountInfo: AccountInfo<Buffer> | null,
-  mint: PublicKey,
-  user: PublicKey,
-  amount: BN,             // Token amount to receive
-  solAmount: BN,          // Max SOL to spend (lamports)
-  slippage: number,       // Slippage tolerance (e.g. 1 = 1%)
-  tokenProgram: PublicKey, // Default: TOKEN_PROGRAM_ID
+const ixs = await PUMP_SDK.buyInstructions({
+  global,                     // Global
+  bondingCurveAccountInfo,    // AccountInfo<Buffer>
+  bondingCurve,               // BondingCurve
+  associatedUserAccountInfo,  // AccountInfo<Buffer> | null
+  mint,                       // PublicKey
+  user,                       // PublicKey
+  amount,                     // BN - token amount to receive
+  solAmount,                  // BN - SOL to spend (lamports)
+  slippage: 1,                // number - percent (1 = 1%)
+  tokenProgram: TOKEN_PROGRAM_ID, // PublicKey - use the tokenProgram from fetchBuyState()
 });
 ```
 
-Automatically includes:
-- Account extension instruction if needed
-- ATA creation if the user doesn't have one
-
 ##### `sellInstructions(params)`
 
-Builds instructions to sell tokens back to the bonding curve.
+Builds instructions to sell tokens back to the bonding curve. Runs `validateSellAmount` first and throws `SellOverflowError` if the amount would overflow the on-chain u64 math.
 
 ```typescript
-const ixs = await sdk.sellInstructions({
-  global: Global,
-  bondingCurveAccountInfo: AccountInfo<Buffer>,
-  bondingCurve: BondingCurve,
-  mint: PublicKey,
-  user: PublicKey,
-  amount: BN,             // Token amount to sell
-  solAmount: BN,          // Min SOL to receive (lamports)
-  slippage: number,
-  tokenProgram: PublicKey,  // Default: TOKEN_PROGRAM_ID
-  mayhemMode: boolean,     // Default: false
-  cashback?: boolean,      // Enable cashback (default: false)
+const ixs = await PUMP_SDK.sellInstructions({
+  global,
+  bondingCurveAccountInfo,
+  bondingCurve,
+  mint,
+  user,
+  amount,                     // BN - token amount to sell
+  solAmount,                  // BN - expected SOL out (lamports); slippage is applied below this
+  slippage: 1,                // number - percent
+  tokenProgram: TOKEN_PROGRAM_ID,
+  cashback: false,            // optional
+});
+```
+
+##### `buyExactSolInInstruction(params)`
+
+Buy by specifying the exact SOL input rather than a token target.
+
+```typescript
+const ix = await PUMP_SDK.buyExactSolInInstruction({
+  user, mint, creator,
+  feeRecipient,           // PublicKey - use getFeeRecipient(global, mayhemMode)
+  solAmount,              // BN - exact SOL to spend (lamports)
+  minTokenAmount,         // BN - minimum tokens to receive (slippage floor)
+  tokenProgram,           // optional, default TOKEN_PROGRAM_ID
 });
 ```
 
 ##### `getBuyInstructionRaw(params)` / `getSellInstructionRaw(params)`
 
-Low-level variants that build a single instruction without ATA management or account extension.
+Low-level variants that build a single instruction without ATA management or account extension. Both append the mandatory breaking fee recipient trailing account.
 
 #### Migration
 
 ##### `migrateInstruction(params)`
 
-Migrates a graduated token from the bonding curve to an AMM pool.
+Migrates a graduated token from the bonding curve to its canonical AMM pool.
 
 ```typescript
-const ix = await sdk.migrateInstruction({
-  withdrawAuthority: PublicKey,
-  mint: PublicKey,
-  user: PublicKey,
-  tokenProgram?: PublicKey,
+const ix = await PUMP_SDK.migrateInstruction({
+  withdrawAuthority,      // PublicKey - global.withdrawAuthority
+  mint,
+  user,
+  tokenProgram: TOKEN_PROGRAM_ID,
 });
 ```
 
@@ -231,45 +198,40 @@ const ix = await sdk.migrateInstruction({
 
 ##### `extendAccountInstruction(params)`
 
-Extends a bonding curve account to the new size (`BONDING_CURVE_NEW_SIZE`).
+Extends a bonding curve account to the current size (`BONDING_CURVE_NEW_SIZE`).
 
 ```typescript
-const ix = await sdk.extendAccountInstruction({
-  account: PublicKey,
-  user: PublicKey,
-});
+const ix = await PUMP_SDK.extendAccountInstruction({ account, user });
 ```
 
 ##### `setCreator(params)`
 
-Sets the creator for a token mint.
+Sets the creator for a token mint (requires the set-creator authority).
 
 ```typescript
-const ix = await sdk.setCreator({
-  mint: PublicKey,
-  setCreatorAuthority: PublicKey,
-  creator: PublicKey,
-});
+const ix = await PUMP_SDK.setCreator({ mint, setCreatorAuthority, creator });
 ```
 
 #### Volume Accumulators
 
-##### `initUserVolumeAccumulator(params)`
-
 ```typescript
-const ix = await sdk.initUserVolumeAccumulator({ payer: PublicKey, user: PublicKey });
+const initIx = await PUMP_SDK.initUserVolumeAccumulator({ payer, user });
+const syncIx = await PUMP_SDK.syncUserVolumeAccumulator(user);
+const closeIx = await PUMP_SDK.closeUserVolumeAccumulator(user);
 ```
 
-##### `syncUserVolumeAccumulator(user)`
+#### Creator Fees & Incentives
 
 ```typescript
-const ix = await sdk.syncUserVolumeAccumulator(user: PublicKey);
-```
+// Collect bonding-curve creator fees for a creator wallet
+const collectIx = await PUMP_SDK.collectCreatorFeeInstruction({ creator });
 
-##### `closeUserVolumeAccumulator(user)`
-
-```typescript
-const ix = await sdk.closeUserVolumeAccumulator(user: PublicKey);
+// Claim volume-based PUMP incentives
+const claimIx = await PUMP_SDK.claimTokenIncentivesInstruction({
+  user, payer,
+  mint,          // optional, default PUMP_TOKEN_MINT
+  tokenProgram,  // optional, default TOKEN_2022_PROGRAM_ID
+});
 ```
 
 #### Fee Sharing
@@ -279,27 +241,24 @@ const ix = await sdk.closeUserVolumeAccumulator(user: PublicKey);
 Creates a fee sharing configuration for a token.
 
 ```typescript
-const ix = await sdk.createFeeSharingConfig({
-  creator: PublicKey,
-  mint: PublicKey,
-  pool: PublicKey | null,  // null for bonding curve tokens, required for graduated tokens
+const ix = await PUMP_SDK.createFeeSharingConfig({
+  creator,                // PublicKey - pays for and owns the config
+  mint,
+  pool: null,             // PublicKey | null - null on the bonding curve,
+                          // canonicalPumpPoolPda(mint) after graduation
 });
 ```
 
 ##### `updateFeeShares(params)`
 
-Updates the shareholder distribution. Validates:
-- Maximum 10 shareholders
-- Share total equals 10,000 bps (100%)
-- No duplicate addresses
-- No zero shares
+Updates the shareholder distribution. Validates before building: at most `MAX_SHAREHOLDERS` (10) shareholders, shares summing to exactly 10,000 bps, no duplicates, no zero shares. Throws the typed errors listed in [Error Classes](#error-classes).
 
 ```typescript
-const ix = await sdk.updateFeeShares({
-  authority: PublicKey,
-  mint: PublicKey,
-  currentShareholders: PublicKey[],  // Public keys of current shareholders
-  newShareholders: Shareholder[],     // New shareholders with share allocations
+const ix = await PUMP_SDK.updateFeeShares({
+  authority,               // PublicKey - the config admin
+  mint,
+  currentShareholders,     // PublicKey[] - addresses currently on the config ([] on first setup)
+  newShareholders,         // Shareholder[] - { address, shareBps }
 });
 ```
 
@@ -308,379 +267,155 @@ const ix = await sdk.updateFeeShares({
 Distributes accumulated fees to shareholders.
 
 ```typescript
-const ix = await sdk.distributeCreatorFees({
-  mint: PublicKey,
-  sharingConfig: SharingConfig,
-  sharingConfigAddress: PublicKey,
+const ix = await PUMP_SDK.distributeCreatorFees({
+  mint,
+  sharingConfig,           // SharingConfig - decoded config account
+  sharingConfigAddress,    // PublicKey - feeSharingConfigPda(mint)
 });
 ```
 
 ##### `getMinimumDistributableFee(params)`
 
-Returns the minimum distributable fee (as a simulation instruction).
+Builds the simulation instruction that reports the minimum distributable fee. Prefer the `OnlinePumpSdk` method of the same name, which runs the simulation and returns the decoded result.
+
+#### Fee Sharing Authority
 
 ```typescript
-const ix = await sdk.getMinimumDistributableFee({
-  mint: PublicKey,
-  sharingConfig: SharingConfig,
-  sharingConfigAddress: PublicKey,
+// Transfer admin control to a new address
+const ix1 = await PUMP_SDK.transferFeeSharingAuthorityInstruction({ authority, mint, newAdmin });
+
+// Reset the config and assign a new admin
+const ix2 = await PUMP_SDK.resetFeeSharingConfigInstruction({ authority, mint, newAdmin });
+
+// Permanently revoke authority (irreversible; adminRevoked becomes true)
+const ix3 = await PUMP_SDK.revokeFeeSharingAuthorityInstruction({ authority, mint });
+```
+
+#### Social Fee PDAs
+
+Platform-based fee routing keyed by `userId` + `Platform`. Only `Platform.GitHub` is currently in `SUPPORTED_SOCIAL_PLATFORMS`; other values throw.
+
+```typescript
+import { Platform } from "@nirholas/pump-sdk";
+
+const createIx = await PUMP_SDK.createSocialFeePdaInstruction({
+  payer,
+  userId: "583231",          // numeric GitHub user id as a string
+  platform: Platform.GitHub,
+});
+
+const claimIx = await PUMP_SDK.claimSocialFeePdaInstruction({
+  recipient,
+  socialClaimAuthority,
+  userId: "583231",
+  platform: Platform.GitHub,
+});
+```
+
+Higher-level wrappers that resolve social handles inside a shareholder list and create any missing PDAs:
+
+```typescript
+const ixs = await PUMP_SDK.createSharingConfigWithSocialRecipients({ ... });
+const ixs2 = await PUMP_SDK.updateSharingConfigWithSocialRecipients({
+  authority, mint, currentShareholders,
+  newShareholders: [
+    { address: wallet, shareBps: 7000 },
+    { userId: "583231", platform: Platform.GitHub, shareBps: 3000 },
+  ],
 });
 ```
 
 #### Cashback
 
-##### `claimCashbackInstruction(params)`
-
 ```typescript
-const ix = await sdk.claimCashbackInstruction({ user: PublicKey });
-```
-
-##### `ammClaimCashbackInstruction(params)`
-
-Claim cashback from AMM trading.
-
-```typescript
-const ix = await sdk.ammClaimCashbackInstruction({ user: PublicKey });
-```
-
-#### Buy Exact SOL In
-
-##### `buyExactSolInInstruction(params)`
-
-Buy tokens by specifying the exact SOL amount to spend. More intuitive for users who think in SOL terms.
-
-```typescript
-const ix = await sdk.buyExactSolInInstruction({
-  user: PublicKey,
-  mint: PublicKey,
-  creator: PublicKey,
-  feeRecipient: PublicKey,
-  solAmount: BN,          // Exact SOL to spend (lamports)
-  minTokenAmount: BN,     // Minimum tokens to receive (slippage)
-  tokenProgram?: PublicKey,
-});
+const ix = await PUMP_SDK.claimCashbackInstruction({ user });      // Pump program
+const ammIx = await PUMP_SDK.ammClaimCashbackInstruction({ user }); // PumpAMM program
 ```
 
 #### AMM Instructions
 
-Instructions for trading on graduated AMM pools (PumpAMM program).
+Single-instruction builders for graduated PumpAMM pools. The `OnlinePumpSdk` AMM wrappers below are usually more convenient because they fetch the pool state and compute slippage for you.
 
 ##### `ammBuyInstruction(params)`
 
-Buy tokens on a graduated AMM pool.
-
 ```typescript
-const ix = await sdk.ammBuyInstruction({
-  user: PublicKey,
-  pool: PublicKey,
-  mint: PublicKey,
-  baseAmountOut: BN,      // Tokens to receive
-  maxQuoteAmountIn: BN,   // Max SOL to spend
+const ix = await PUMP_SDK.ammBuyInstruction({
+  user, pool, mint,
+  baseAmountOut,           // BN - tokens to receive
+  maxQuoteAmountIn,        // BN - max SOL to spend
+  cashback: false,         // optional
+  protocolFeeRecipient,    // optional PublicKey - from AmmGlobalConfig; required for a real trade
 });
 ```
 
 ##### `ammBuyExactQuoteInInstruction(params)`
 
-Buy by specifying exact SOL (quote) input on AMM.
-
 ```typescript
-const ix = await sdk.ammBuyExactQuoteInInstruction({
-  user: PublicKey,
-  pool: PublicKey,
-  mint: PublicKey,
-  quoteAmountIn: BN,       // Exact SOL to spend
-  minBaseAmountOut: BN,    // Min tokens to receive
+const ix = await PUMP_SDK.ammBuyExactQuoteInInstruction({
+  user, pool, mint,
+  quoteAmountIn,           // BN - exact SOL to spend
+  minBaseAmountOut,        // BN - min tokens to receive
+  cashback: false,         // optional
 });
 ```
 
 ##### `ammSellInstruction(params)`
 
-Sell tokens on a graduated AMM pool.
-
 ```typescript
-const ix = await sdk.ammSellInstruction({
-  user: PublicKey,
-  pool: PublicKey,
-  mint: PublicKey,
-  baseAmountIn: BN,        // Tokens to sell
-  minQuoteAmountOut: BN,   // Min SOL to receive
+const ix = await PUMP_SDK.ammSellInstruction({
+  user, pool, mint,
+  baseAmountIn,            // BN - tokens to sell
+  minQuoteAmountOut,       // BN - min SOL to receive
+  cashback: false,         // optional
+  protocolFeeRecipient,    // optional PublicKey
 });
 ```
 
-##### `ammDepositInstruction(params)`
-
-Deposit liquidity into an AMM pool (LP provision).
+##### `ammDepositInstruction(params)` / `ammWithdrawInstruction(params)`
 
 ```typescript
-const ix = await sdk.ammDepositInstruction({
-  user: PublicKey,
-  pool: PublicKey,
-  mint: PublicKey,
-  maxBaseAmountIn: BN,     // Max tokens to deposit
-  maxQuoteAmountIn: BN,    // Max SOL to deposit
-  minLpTokenAmountOut: BN, // Min LP tokens to receive
+const dep = await PUMP_SDK.ammDepositInstruction({
+  user, pool, mint,
+  maxBaseAmountIn, maxQuoteAmountIn, minLpTokenAmountOut,  // all BN
+});
+
+const wd = await PUMP_SDK.ammWithdrawInstruction({
+  user, pool, mint,
+  lpTokenAmountIn, minBaseAmountOut, minQuoteAmountOut,    // all BN
 });
 ```
 
-##### `ammWithdrawInstruction(params)`
-
-Withdraw liquidity from an AMM pool.
+##### AMM creator & volume management
 
 ```typescript
-const ix = await sdk.ammWithdrawInstruction({
-  user: PublicKey,
-  pool: PublicKey,
-  mint: PublicKey,
-  lpTokenAmountIn: BN,    // LP tokens to burn
-  minBaseAmountOut: BN,    // Min tokens to receive
-  minQuoteAmountOut: BN,   // Min SOL to receive
-});
+await PUMP_SDK.ammCollectCoinCreatorFeeInstruction({ creator });
+await PUMP_SDK.ammTransferCreatorFeesToPumpInstruction({ coinCreator });
+await PUMP_SDK.ammSetCoinCreatorInstruction({ pool, mint });
+await PUMP_SDK.ammMigratePoolCoinCreatorInstruction({ pool, mint });
+await PUMP_SDK.ammSyncUserVolumeAccumulatorInstruction(user);
+await PUMP_SDK.ammInitUserVolumeAccumulatorInstruction({ payer, user });
+await PUMP_SDK.ammCloseUserVolumeAccumulatorInstruction(user);
+await PUMP_SDK.ammClaimTokenIncentivesInstruction({ user, payer });
 ```
 
-##### `ammMigratePoolCoinCreatorInstruction(params)`
+#### Admin Instructions
 
-Migrate AMM pool creator based on fee sharing config.
-
-```typescript
-const ix = await sdk.ammMigratePoolCoinCreatorInstruction({
-  pool: PublicKey,
-  mint: PublicKey,
-});
-```
-
-##### `ammTransferCreatorFeesToPumpInstruction(params)`
-
-Transfer creator fees from AMM pool to the Pump program vault.
-
-```typescript
-const ix = await sdk.ammTransferCreatorFeesToPumpInstruction({
-  coinCreator: PublicKey,
-});
-```
-
-##### `ammCollectCoinCreatorFeeInstruction(params)`
-
-Collect creator fees from an AMM pool.
-
-```typescript
-const ix = await sdk.ammCollectCoinCreatorFeeInstruction({
-  creator: PublicKey,
-});
-```
-
-##### `ammSetCoinCreatorInstruction(params)`
-
-Set the coin creator for an AMM pool from bonding curve metadata.
-
-```typescript
-const ix = await sdk.ammSetCoinCreatorInstruction({
-  pool: PublicKey,
-  mint: PublicKey,
-});
-```
-
-##### `ammSyncUserVolumeAccumulatorInstruction(user)`
-
-Sync user volume accumulator on the AMM program.
-
-```typescript
-const ix = await sdk.ammSyncUserVolumeAccumulatorInstruction(user: PublicKey);
-```
-
-#### Mayhem & Admin
-
-##### `setMayhemVirtualParamsInstruction(params)`
-
-Set virtual parameters for mayhem mode on a bonding curve.
-
-```typescript
-const ix = await sdk.setMayhemVirtualParamsInstruction({ mint: PublicKey });
-```
-
-##### `toggleMayhemModeInstruction(params)`
-
-Toggle mayhem mode on/off for the protocol.
-
-```typescript
-const ix = await sdk.toggleMayhemModeInstruction({
-  authority: PublicKey,
-  enabled: boolean,
-});
-```
-
-##### `toggleCashbackEnabledInstruction(params)`
-
-Toggle the cashback feature on/off.
-
-```typescript
-const ix = await sdk.toggleCashbackEnabledInstruction({
-  authority: PublicKey,
-  enabled: boolean,
-});
-```
-
-##### `toggleCreateV2Instruction(params)`
-
-Toggle the createV2 instruction on/off.
-
-```typescript
-const ix = await sdk.toggleCreateV2Instruction({
-  authority: PublicKey,
-  enabled: boolean,
-});
-```
-
-##### `updateGlobalAuthorityInstruction(params)`
-
-Update the global authority address.
-
-```typescript
-const ix = await sdk.updateGlobalAuthorityInstruction({
-  authority: PublicKey,
-  newAuthority: PublicKey,
-});
-```
-
-##### `setReservedFeeRecipientsInstruction(params)`
-
-Set reserved fee recipients for the protocol.
-
-```typescript
-const ix = await sdk.setReservedFeeRecipientsInstruction({
-  authority: PublicKey,
-  whitelistPda: PublicKey,
-});
-```
-
-#### Creator Management
-
-##### `migrateBondingCurveCreatorInstruction(params)`
-
-Migrate bonding curve creator based on fee sharing config.
-
-```typescript
-const ix = await sdk.migrateBondingCurveCreatorInstruction({ mint: PublicKey });
-```
-
-##### `setMetaplexCreatorInstruction(params)`
-
-Set the Metaplex creator metadata from the bonding curve.
-
-```typescript
-const ix = await sdk.setMetaplexCreatorInstruction({ mint: PublicKey });
-```
-
-#### Social Fee PDAs
-
-##### `createSocialFeePdaInstruction(params)`
-
-Create a social fee PDA for referral/social fee sharing.
-
-```typescript
-const ix = await sdk.createSocialFeePdaInstruction({
-  payer: PublicKey,
-  userId: string,
-  platform: number,
-});
-```
-
-##### `claimSocialFeePdaInstruction(params)`
-
-Claim accumulated social/referral fees.
-
-```typescript
-const ix = await sdk.claimSocialFeePdaInstruction({
-  recipient: PublicKey,
-  socialClaimAuthority: PublicKey,
-  userId: string,
-  platform: number,
-});
-```
-
-#### Fee Sharing Authority
-
-##### `resetFeeSharingConfigInstruction(params)`
-
-Reset a fee sharing configuration to a new admin.
-
-```typescript
-const ix = await sdk.resetFeeSharingConfigInstruction({
-  authority: PublicKey,
-  mint: PublicKey,
-  newAdmin: PublicKey,
-});
-```
-
-##### `transferFeeSharingAuthorityInstruction(params)`
-
-Transfer fee sharing authority to a new address.
-
-```typescript
-const ix = await sdk.transferFeeSharingAuthorityInstruction({
-  authority: PublicKey,
-  mint: PublicKey,
-  newAdmin: PublicKey,
-});
-```
-
-##### `revokeFeeSharingAuthorityInstruction(params)`
-
-Permanently revoke fee sharing authority. After this, no one can modify the configuration.
-
-```typescript
-const ix = await sdk.revokeFeeSharingAuthorityInstruction({
-  authority: PublicKey,
-  mint: PublicKey,
-});
-```
-
-#### Fee Admin
-
-##### `setClaimRateLimitInstruction(params)`
-
-Set the claim rate limit for anti-abuse throttling.
-
-```typescript
-const ix = await sdk.setClaimRateLimitInstruction({
-  authority: PublicKey,
-  claimRateLimit: BN,
-});
-```
-
-##### `setSocialClaimAuthorityInstruction(params)`
-
-Set the social claim authority.
-
-```typescript
-const ix = await sdk.setSocialClaimAuthorityInstruction({
-  authority: PublicKey,
-  socialClaimAuthority: PublicKey,
-});
-```
-
-##### `upsertFeeTiersInstruction(params)`
-
-Upsert (create or update) fee tiers for the protocol.
-
-```typescript
-const ix = await sdk.upsertFeeTiersInstruction({
-  admin: PublicKey,
-  feeTiers: Array<{
-    marketCapLamportsThreshold: BN;
-    fees: { lpFeeBps: BN; protocolFeeBps: BN; creatorFeeBps: BN };
-  }>,
-  offset?: number,  // default: 0
-});
-```
+Restricted to program authorities; exposed for completeness. Pump program: `adminSetCreatorInstruction`, `adminUpdateTokenIncentivesInstruction`, `adminSetIdlAuthorityInstruction`, `setMayhemVirtualParamsInstruction`, `toggleMayhemModeInstruction`, `toggleCashbackEnabledInstruction`, `toggleCreateV2Instruction`, `updateGlobalAuthorityInstruction`, `setReservedFeeRecipientsInstruction`, `setParamsInstruction`, `migrateBondingCurveCreatorInstruction`, `setMetaplexCreatorInstruction`. PumpAMM: `ammCreateConfigInstruction`, `ammUpdateAdminInstruction`, `ammUpdateFeeConfigInstruction`, `ammDisableInstruction`, `ammAdminSetCoinCreatorInstruction`, `ammAdminUpdateTokenIncentivesInstruction`, `ammToggleCashbackEnabledInstruction`, `ammToggleMayhemModeInstruction`, `ammExtendAccountInstruction`, `ammSetReservedFeeRecipientsInstruction`. PumpFees: `setClaimRateLimitInstruction`, `setSocialClaimAuthorityInstruction`, `upsertFeeTiersInstruction`, `initializeFeeConfigInstruction`, `initializeFeeProgramGlobalInstruction`, `setFeeAuthorityInstruction`, `setFeeDisableFlagsInstruction`, `feesUpdateAdminInstruction`, `feesUpdateFeeConfigInstruction`. See `docs/admin-operations.md`.
 
 ---
 
 ### `OnlinePumpSdk`
 
-Online SDK that extends `PumpSdk` capabilities with on-chain data fetching.
+RPC-backed SDK. Fetches and decodes on-chain state, and wraps `PUMP_SDK` with high-level trading conveniences.
 
 ```typescript
-const sdk = new OnlinePumpSdk(connection: Connection);
+const sdk = new OnlinePumpSdk(connection);
+
+// Or with automatic RPC failover across multiple endpoints:
+const sdk2 = OnlinePumpSdk.withFallback([
+  "https://my-primary-rpc.com",
+  "https://api.mainnet-beta.solana.com",
+]);
 ```
 
 #### State Fetchers
@@ -690,207 +425,153 @@ const sdk = new OnlinePumpSdk(connection: Connection);
 | `fetchGlobal()` | `Global` | Global configuration |
 | `fetchFeeConfig()` | `FeeConfig` | Fee tier configuration |
 | `fetchBondingCurve(mint)` | `BondingCurve` | Bonding curve state for a token |
-| `fetchBuyState(mint, user)` | `{ bondingCurveAccountInfo, bondingCurve, associatedUserAccountInfo }` | All state needed for a buy |
-| `fetchSellState(mint, user)` | `{ bondingCurveAccountInfo, bondingCurve }` | All state needed for a sell |
+| `fetchBuyState(mint, user, tokenProgram?)` | `{ bondingCurveAccountInfo, bondingCurve, associatedUserAccountInfo, tokenProgram }` | Everything a buy needs; auto-detects the token program from the mint owner. `associatedUserAccountInfo` is `null` when the user has no ATA yet |
+| `fetchSellState(mint, user, tokenProgram?)` | `{ bondingCurveAccountInfo, bondingCurve, tokenProgram }` | Everything a sell needs; throws if the user has no token account |
+| `fetchMultipleBondingCurves(mints)` | `Map<string, BondingCurve \| null>` | Batch fetch in one RPC call, keyed by mint base58 |
 | `fetchGlobalVolumeAccumulator()` | `GlobalVolumeAccumulator` | Global volume tracking data |
 | `fetchUserVolumeAccumulator(user)` | `UserVolumeAccumulator \| null` | User's volume data (null if not initialized) |
-| `fetchUserVolumeAccumulatorTotalStats(user)` | `UserVolumeAccumulatorTotalStats` | Combined pump + AMM volume stats |
+| `fetchUserVolumeAccumulatorTotalStats(user)` | `UserVolumeAccumulatorTotalStats` | Combined Pump + AMM volume stats |
+| `getTokenBalance(mint, user, tokenProgram?)` | `BN` | Raw token balance, `BN(0)` if no account |
+| `isGraduated(mint)` | `boolean` | Whether the canonical AMM pool account exists |
+
+#### Trading Conveniences
+
+These combine fetch + math + instruction building in one call.
+
+| Method | Description |
+|--------|-------------|
+| `buyInstructions({...})` | Like `PUMP_SDK.buyInstructions` but fetches `Global` for you |
+| `sellInstructions({...})` | Like `PUMP_SDK.sellInstructions` but fetches `Global` for you |
+| `buyBySolAmount({ mint, user, solAmount, slippage })` | Computes the token output from the SOL budget, then builds buy instructions |
+| `quoteBuy({ mint, user, solAmount })` | Full pre-trade buy quote: `BuyQuote` with tokens out, fees, price impact |
+| `quoteSell({ mint, user, amount, tokenProgram? })` | Full pre-trade sell quote: `SellQuote` incl. `maxSafeAmount` and `willOverflow` |
+| `sellByPercentage({ mint, user, percent, slippage, ... })` | Sell N% (0-100) of the current balance |
+| `sellToTargetSol({ mint, user, targetSol, slippage, ... })` | Binary-search the token amount that nets ~`targetSol` lamports |
+| `sellAllInstructions({ mint, user, slippage?, tokenProgram? })` | Sell the entire balance and close the ATA to reclaim rent |
+| `sellChunked({ mint, user, totalAmount, slippage, sendTx, ... })` | Split an oversized sell into safe chunks; sends each via your `sendTx` callback and returns all signatures |
+| `routedBuyInstructions({ mint, user, quoteAmountIn, slippage })` | Routes automatically: bonding curve if live, AMM pool if graduated |
+| `routedSellInstructions({ mint, user, baseAmountIn, slippage, ... })` | Same auto-routing for sells |
+
+Example:
+
+```typescript
+const quote = await sdk.quoteBuy({ mint, user, solAmount: new BN(1_000_000_000) });
+console.log(quote.tokensOut.toString(), quote.priceImpactBps, quote.feesLamports.toString());
+
+const ixs = await sdk.buyBySolAmount({ mint, user, solAmount: new BN(1_000_000_000), slippage: 1 });
+```
 
 #### Creator Fees
 
 | Method | Returns | Description |
 |--------|---------|-------------|
 | `collectCoinCreatorFeeInstructions(creator, feePayer?)` | `TransactionInstruction[]` | Collect from both programs |
-| `adminSetCoinCreatorInstructions(newCreator, mint)` | `TransactionInstruction[]` | Admin: reassign creator |
-| `getCreatorVaultBalance(creator)` | `BN` | Balance in pump vault only |
-| `getCreatorVaultBalanceBothPrograms(creator)` | `BN` | Combined pump + AMM balance |
+| `adminSetCoinCreatorInstructions(newCreator, mint)` | `TransactionInstruction[]` | Admin: reassign creator on both programs |
+| `getCreatorVaultBalance(creator)` | `BN` | Balance in the Pump vault only |
+| `getCreatorVaultBalanceBothPrograms(creator)` | `BN` | Combined Pump + AMM balance |
 
-#### Token Incentives
+#### Token Incentives & Cashback
 
 | Method | Returns | Description |
 |--------|---------|-------------|
-| `claimTokenIncentives(user, payer)` | `TransactionInstruction[]` | Claim from pump program |
+| `claimTokenIncentives(user, payer)` | `TransactionInstruction[]` | Claim from the Pump program |
 | `claimTokenIncentivesBothPrograms(user, payer)` | `TransactionInstruction[]` | Claim from both programs |
-| `getTotalUnclaimedTokens(user)` | `BN` | Unclaimed pump rewards |
+| `getTotalUnclaimedTokens(user)` | `BN` | Unclaimed Pump rewards |
 | `getTotalUnclaimedTokensBothPrograms(user)` | `BN` | Combined unclaimed rewards |
-| `getCurrentDayTokens(user)` | `BN` | Current day's pump rewards |
+| `getCurrentDayTokens(user)` | `BN` | Current day's Pump rewards |
 | `getCurrentDayTokensBothPrograms(user)` | `BN` | Combined current day rewards |
-| `adminUpdateTokenIncentives(...)` | `TransactionInstruction` | Admin: configure incentives |
-| `adminUpdateTokenIncentivesBothPrograms(...)` | `TransactionInstruction[]` | Admin: configure both programs |
+| `syncUserVolumeAccumulatorBothPrograms(user)` | `TransactionInstruction[]` | Sync volume accumulators on both programs |
+| `claimCashbackInstructions(user)` | `TransactionInstruction[]` | Claim cashback (Pump) |
+| `claimCashbackBothPrograms(user)` | `TransactionInstruction[]` | Claim cashback (Pump + AMM) |
+| `adminUpdateTokenIncentives(startTime, endTime, dayNumber, tokenSupplyPerDay, secondsInADay?, mint?, tokenProgram?)` | `TransactionInstruction` | Admin: configure incentives (positional args, all times/amounts `BN`) |
+| `adminUpdateTokenIncentivesBothPrograms(...)` | `TransactionInstruction[]` | Same, for both programs |
 
 #### Fee Sharing
 
 ##### `getMinimumDistributableFee(mint, simulationSigner?)`
 
-Checks how much fee can be distributed for a token. Handles graduated tokens automatically.
+Simulates the check instruction and returns the decoded result. Handles graduated tokens automatically.
 
 ```typescript
 const result = await sdk.getMinimumDistributableFee(mint);
-// result: {
-//   minimumRequired: BN,
-//   distributableFees: BN,
-//   canDistribute: boolean,
-//   isGraduated: boolean,
-// }
+// { minimumRequired: BN, distributableFees: BN, canDistribute: boolean, isGraduated: boolean }
 ```
 
 ##### `buildDistributeCreatorFeesInstructions(mint)`
 
-Builds instructions to distribute fees. For graduated tokens, automatically includes the AMM fee consolidation step.
+Builds distribution instructions. For graduated tokens, automatically prepends the AMM `transferCreatorFeesToPump` consolidation step.
 
 ```typescript
-const { instructions, isGraduated } =
-  await sdk.buildDistributeCreatorFeesInstructions(mint);
+const { instructions, isGraduated } = await sdk.buildDistributeCreatorFeesInstructions(mint);
 ```
 
-#### Sync
+##### Config fetchers and wrappers
 
-##### `syncUserVolumeAccumulatorBothPrograms(user)`
-
-Syncs volume accumulators across both programs.
-
-```typescript
-const ixs = await sdk.syncUserVolumeAccumulatorBothPrograms(user);
-```
+| Method | Description |
+|--------|-------------|
+| `fetchSharingConfig(mint)` | Decoded `SharingConfig` (throws if missing) |
+| `fetchSharingConfigNullable(mint)` | `SharingConfig \| null` |
+| `fetchMultipleSharingConfigs(mints)` | Batch fetch |
+| `createFeeSharingConfigInstructions({...})` | Online wrapper around `createFeeSharingConfig` |
+| `updateFeeSharesInstructions({...})` | Online wrapper around `updateFeeShares` |
+| `createSocialFeePdaInstructions({...})` / `claimSocialFeePdaInstructions({...})` | Online social-fee wrappers |
+| `fetchSocialFeePda(userId, platform)` | Decoded `SocialFeePda` account |
+| `migrateBondingCurveCreatorInstructions(mint)` / `setMetaplexCreatorInstructions(mint)` | Creator migration wrappers |
 
 #### Analytics Fetchers
 
-These methods combine RPC fetching with the offline analytics functions from `analytics.ts`.
-
-##### `fetchBondingCurveSummary(mint)`
-
-Fetch bonding curve state, global, and fee config, then return a full summary including market cap, graduation progress, and token price.
+RPC wrappers around the pure functions in the analytics module.
 
 ```typescript
-const summary = await sdk.fetchBondingCurveSummary(mint);
-// Returns: BondingCurveSummary
-// { marketCap, progressBps, isGraduated, buyPricePerToken, sellPricePerToken,
-//   realSolReserves, realTokenReserves, virtualSolReserves, virtualTokenReserves }
+const summary = await sdk.fetchBondingCurveSummary(mint);   // BondingCurveSummary
+const progress = await sdk.fetchGraduationProgress(mint);   // GraduationProgress
+const price = await sdk.fetchTokenPrice(mint);              // TokenPriceInfo
+const buyImpact = await sdk.fetchBuyPriceImpact(mint, new BN(1_000_000_000));   // PriceImpactResult
+const sellImpact = await sdk.fetchSellPriceImpact(mint, new BN(1_000_000));     // PriceImpactResult
 ```
 
-##### `fetchGraduationProgress(mint)`
+#### Event Parsing
 
-Fetch how close a token is to graduating from the bonding curve to an AMM pool.
+##### `parseTransactionEvents(signature, commitment?)`
+
+Fetches a confirmed transaction and decodes every Pump, PumpAMM, and PumpFees event from its logs into the `PumpEvent` discriminated union.
 
 ```typescript
-const progress = await sdk.fetchGraduationProgress(mint);
-// Returns: GraduationProgress
-// { progressBps, isGraduated, tokensRemaining, tokensTotal, solAccumulated }
+const events = await sdk.parseTransactionEvents(signature);
+for (const ev of events) {
+  if (ev.type === "trade") {
+    console.log(ev.data.isBuy ? "buy" : "sell", ev.data.solAmount.toString());
+  }
+}
 ```
 
-##### `fetchTokenPrice(mint)`
+#### AMM Methods
 
-Fetch current buy and sell price per whole token (10^6 raw units).
+| Method | Description |
+|--------|-------------|
+| `fetchPool(mint)` | Canonical pool account for a graduated mint |
+| `fetchPoolByAddress(poolAddress)` | Pool account by address |
+| `fetchMultiplePools(mints)` | `Map<string, Pool \| null>` batch fetch |
+| `fetchAmmGlobalConfig()` | `AmmGlobalConfig` |
+| `fetchFeeProgramGlobal()` | `FeeProgramGlobal` |
+| `ammBuyInstructions({ mint, user, solAmount, slippageBps? })` | Buy on the AMM; fetches pool state and computes slippage. Also accepts low-level `{ quoteAmountIn, minBaseAmountOut }` |
+| `ammSellInstructions({ mint, user, tokenAmount, slippageBps? })` | Sell on the AMM. Also accepts `{ baseAmountIn, minQuoteAmountOut }` |
+| `ammBuyBySolAmount({ mint, user, solAmount, slippage })` | Percent-slippage variant |
+| `ammSellByTokenAmount({ mint, user, tokenAmount, slippage })` | Percent-slippage variant |
+| `ammQuoteBuy({ mint, user, quoteAmountIn })` | `AmmBuyQuote` with pool reserves and fees |
+| `ammQuoteSell({ mint, user, baseAmountIn })` | `AmmSellQuote` |
+| `ammDepositInstructions({...})` / `ammWithdrawInstructions({...})` | Liquidity ops with pool state fetched for you |
+| `quoteAmmDepositBaseIn({...})` / `quoteAmmDepositQuoteIn({...})` / `quoteAmmWithdraw({...})` | Deposit/withdraw quotes |
+| `ammDepositAutocompleteFromBase({...})` / `ammDepositAutocompleteFromQuote({...})` / `ammWithdrawAutocomplete({...})` | Compute the matching side of a deposit/withdraw |
+| `depositByBaseAmount({...})` / `depositByQuoteAmount({...})` / `withdrawByLpAmount({...})` | One-call liquidity operations |
+| `getLpTokenBalance(mint, user)` / `fetchLpBalance(mint, user)` | LP token balance |
 
-```typescript
-const price = await sdk.fetchTokenPrice(mint);
-// Returns: TokenPriceInfo
-// { buyPricePerToken, sellPricePerToken, marketCap, isGraduated }
-```
-
-##### `fetchBuyPriceImpact(mint, solAmount)`
-
-Calculate the price impact of a buy trade on a specific token.
-
-```typescript
-const impact = await sdk.fetchBuyPriceImpact(mint, new BN(1e9));
-// Returns: PriceImpactResult
-// { priceBefore, priceAfter, impactBps, outputAmount }
-```
-
-##### `fetchSellPriceImpact(mint, tokenAmount)`
-
-Calculate the price impact of a sell trade on a specific token.
-
-```typescript
-const impact = await sdk.fetchSellPriceImpact(mint, new BN(1_000_000));
-// Returns: PriceImpactResult
-// { priceBefore, priceAfter, impactBps, outputAmount }
-```
-
-#### Sell All
-
-##### `sellAllInstructions(params)`
-
-Build instructions to sell a user's entire token balance and close the ATA to reclaim rent. Returns an empty array if the user has no balance.
+#### Online Creation & Migration
 
 ```typescript
-const ixs = await sdk.sellAllInstructions({
-  mint: PublicKey,
-  user: PublicKey,
-  slippage?: number,        // Default: 1%
-  tokenProgram?: PublicKey,  // Default: TOKEN_PROGRAM_ID
-});
-// Returns: TransactionInstruction[]
-```
-
-If the balance is zero, returns only a close-account instruction to reclaim rent.
-
-#### Graduation & Balance
-
-##### `isGraduated(mint)`
-
-Check if a token has graduated to the AMM by checking if its canonical pool account exists on-chain.
-
-```typescript
-const graduated = await sdk.isGraduated(mint);
-// Returns: boolean
-```
-
-##### `getTokenBalance(mint, user, tokenProgram?)`
-
-Get a user's token balance for a specific mint.
-
-```typescript
-const balance = await sdk.getTokenBalance(mint, user);
-// Returns: BN (raw units, or BN(0) if no account exists)
-```
-
-#### AMM / Fee Program Fetchers
-
-##### `fetchPool(mint)`
-
-Fetch a graduated AMM pool account by mint address.
-
-```typescript
-const pool = await sdk.fetchPool(mint);
-// Returns: Pool
-```
-
-##### `fetchPoolByAddress(poolAddress)`
-
-Fetch a graduated AMM pool account by pool address.
-
-```typescript
-const pool = await sdk.fetchPoolByAddress(poolAddress);
-// Returns: Pool
-```
-
-##### `fetchAmmGlobalConfig()`
-
-Fetch the AMM global config account.
-
-```typescript
-const config = await sdk.fetchAmmGlobalConfig();
-// Returns: AmmGlobalConfig
-```
-
-##### `fetchFeeProgramGlobal()`
-
-Fetch the PumpFees program global account.
-
-```typescript
-const global = await sdk.fetchFeeProgramGlobal();
-// Returns: FeeProgramGlobal
-```
-
-##### `fetchSocialFeePda(userId, platform)`
-
-Fetch a social fee PDA account by user ID and platform.
-
-```typescript
-const socialFee = await sdk.fetchSocialFeePda("user123", 1);
-// Returns: SocialFeePda
+const createIx = await sdk.createV2Instruction({ ... });        // fetches state as needed
+const createAndBuy = await sdk.createV2AndBuyInstructions({ ... });
+const migrateIxs = await sdk.migrateInstructions({ ... });       // migration with fetched state
 ```
 
 ---
@@ -899,183 +580,201 @@ const socialFee = await sdk.fetchSocialFeePda("user123", 1);
 
 ### Bonding Curve Math
 
+All pure and offline. Amounts are `BN`; SOL amounts are lamports; token amounts are raw units (6 decimals).
+
 #### `getBuyTokenAmountFromSolAmount(params)`
 
-Calculate how many tokens you receive for a given SOL amount.
+Tokens received for a given SOL spend, fees included.
 
 ```typescript
-import { getBuyTokenAmountFromSolAmount } from "@nirholas/pump-sdk";
-
 const tokens = getBuyTokenAmountFromSolAmount({
-  global: Global,
-  feeConfig: FeeConfig | null,
-  mintSupply: BN | null,
-  bondingCurve: BondingCurve | null,  // null for new tokens
-  amount: BN,                          // SOL in lamports
+  global,               // Global
+  feeConfig,            // FeeConfig | null (null = flat global fees)
+  mintSupply,           // BN | null (null for a token that doesn't exist yet)
+  bondingCurve,         // BondingCurve | null (null for a new token)
+  amount: solAmount,    // BN, lamports
 });
 ```
 
 #### `getBuySolAmountFromTokenAmount(params)`
 
-Calculate how much SOL is needed to buy a given token amount.
-
-```typescript
-const sol = getBuySolAmountFromTokenAmount({
-  global: Global,
-  feeConfig: FeeConfig | null,
-  mintSupply: BN | null,
-  bondingCurve: BondingCurve | null,
-  amount: BN,                          // Token amount
-});
-```
+SOL cost (fees included) to buy a given token amount. Same parameter shape, `amount` is the token amount.
 
 #### `getSellSolAmountFromTokenAmount(params)`
 
-Calculate how much SOL you receive for selling a given token amount.
+Net SOL received (after fees) for selling a token amount. `mintSupply` and `bondingCurve` are required (non-null).
+
+#### `getTokenAmountForTargetSol(params)`
+
+Binary-searches the token amount to sell that yields approximately `targetSol` lamports after fees. Bounded by both `realTokenReserves` and `maxSafeSellAmount`, so the result is always safe for a single instruction.
 
 ```typescript
-const sol = getSellSolAmountFromTokenAmount({
-  global: Global,
-  feeConfig: FeeConfig | null,
-  mintSupply: BN,
-  bondingCurve: BondingCurve,
-  amount: BN,                          // Token amount to sell
+const amount = getTokenAmountForTargetSol({
+  global, feeConfig, mintSupply, bondingCurve,
+  targetSol,           // BN, lamports
 });
 ```
 
-#### `bondingCurveMarketCap(params)`
+#### `maxSafeSellAmount(virtualSolReserves)`
 
-Calculate the current market cap of a token.
+Largest token amount sellable in one instruction without overflowing the program's u64 multiply: `floor(0.9 * u64::MAX / virtualSolReserves)`.
+
+#### `validateSellAmount(amount, bondingCurve)`
+
+Throws `SellOverflowError` when `amount` exceeds `maxSafeSellAmount`. Called automatically by `sellInstructions`.
+
+#### `bondingCurveMarketCap(params)`
 
 ```typescript
 const marketCap = bondingCurveMarketCap({
-  mintSupply: BN,
-  virtualSolReserves: BN,
-  virtualTokenReserves: BN,
-});
+  mintSupply,             // BN
+  virtualSolReserves,     // BN
+  virtualTokenReserves,   // BN
+}); // BN, lamports; throws if virtualTokenReserves is zero
 ```
 
 #### `newBondingCurve(global)`
 
-Creates a fresh bonding curve state from global configuration.
+Creates the initial bonding curve state a brand-new token would have, from `Global` config. Used to quote a buy for a token that hasn't been created yet.
 
 ```typescript
-const curve = newBondingCurve(global: Global);
-// Returns:
+const curve = newBondingCurve(global);
 // {
-//   virtualTokenReserves, virtualSolReserves,
-//   realTokenReserves, realSolReserves: BN(0),
-//   tokenTotalSupply, complete: false,
+//   virtualTokenReserves, virtualSolReserves, realTokenReserves,
+//   realSolReserves: BN(0), tokenTotalSupply, complete: false,
 //   creator: PublicKey.default,
 //   isMayhemMode: global.mayhemModeEnabled,
+//   isCashbackCoin: false,
 // }
 ```
 
+#### `getStaticRandomFeeRecipient()`
+
+Picks a random protocol fee recipient from the hardcoded list used by buy/sell instructions.
+
+### Fee Functions
+
+#### `getFee(params)`
+
+Total fee (protocol + creator) for a trade amount. Creator fee applies only when the curve has a creator set (or the curve is new).
+
+```typescript
+const fee = getFee({
+  global, feeConfig, mintSupply, bondingCurve,
+  amount,                // BN, lamports (gross trade SOL)
+  isNewBondingCurve,     // boolean
+});
+```
+
+#### `computeFeesBps(params)`
+
+Protocol and creator fee rates in basis points. Uses tiered fees from `feeConfig` when present, otherwise the flat global defaults.
+
+```typescript
+const { protocolFeeBps, creatorFeeBps } = computeFeesBps({
+  global, feeConfig, mintSupply,
+  virtualSolReserves, virtualTokenReserves,
+});
+```
+
+#### `calculateFeeTier(params)`
+
+Select the fee tier for a market cap. Returns the full `Fees` object. Throws if `feeTiers` is empty.
+
+```typescript
+const fees = calculateFeeTier({ feeTiers, marketCap });
+```
+
+#### `getFeeRecipient(global, mayhemMode)`
+
+Picks a random fee recipient from `Global` (`feeRecipient`/`feeRecipients`, or the reserved set in mayhem mode).
+
+### Breaking Fee Recipient Helpers (2026-04-28 upgrade)
+
+Every bonding curve buy/sell must carry one of 8 mutable trailing fee recipient accounts, and every AMM buy/sell must carry that recipient plus its WSOL ATA. `PUMP_SDK` builders do this automatically; these helpers exist for hand-rolled or legacy instructions.
+
+| Function | Description |
+|----------|-------------|
+| `pickBreakingFeeRecipient()` | Random pick from the 8 recipients |
+| `isBreakingFeeRecipient(pubkey)` | Membership check |
+| `buildAmmBreakingFeeRecipientAccounts(feeRecipient?)` | The two trailing AMM accounts (recipient + WSOL ATA) |
+| `validateBcInstruction(ix, kind)` | Validate a bonding curve buy/sell instruction's account layout (`"buy" \| "sell" \| "sell-cashback"`) |
+| `validateAmmInstruction(ix, kind)` | Validate an AMM buy/sell layout (`"buy" \| "buy-cashback" \| "sell" \| "sell-cashback"`) |
+| `patchBcInstruction(ix)` | Append the trailing recipient to a pre-upgrade instruction (idempotent, returns a new instruction) |
+| `patchAmmInstruction(ix)` | Same for AMM instructions (appends recipient + ATA) |
+
+### Analytics
+
+Pure offline market analysis.
+
+| Function | Returns | Description |
+|----------|---------|-------------|
+| `calculateBuyPriceImpact({ global, feeConfig, mintSupply, bondingCurve, solAmount })` | `PriceImpactResult` | Price impact of a buy in bps |
+| `calculateSellPriceImpact({ global, feeConfig, mintSupply, bondingCurve, tokenAmount })` | `PriceImpactResult` | Price impact of a sell in bps |
+| `getGraduationProgress(global, bondingCurve, feeConfig?)` | `GraduationProgress` | Progress to graduation incl. SOL needed |
+| `bondingCurveGraduationProgress({ realSolReserves, realTokenReserves, initialRealTokenReserves? })` | `number` | Lightweight 0-1 progress using the standard initial reserves constant |
+| `getTokenPrice({ global, feeConfig, mintSupply, bondingCurve })` | `TokenPriceInfo` | Buy/sell price per whole token + market cap |
+| `getBondingCurveSummary({ global, feeConfig, mintSupply, bondingCurve })` | `BondingCurveSummary` | All-in-one summary |
+
 ### Token Incentives
 
-#### `totalUnclaimedTokens(globalVolume, userVolume, timestamp?)`
-
-Compute total unclaimed token incentive rewards.
-
 ```typescript
-import { totalUnclaimedTokens } from "@nirholas/pump-sdk";
-
-const unclaimed = totalUnclaimedTokens(
-  globalVolumeAccumulator,
-  userVolumeAccumulator,
-  Math.floor(Date.now() / 1000), // optional
-);
+const unclaimed = totalUnclaimedTokens(globalVolumeAccumulator, userVolumeAccumulator, timestampSecs?);
+const today = currentDayTokens(globalVolumeAccumulator, userVolumeAccumulator, timestampSecs?);
 ```
 
-#### `currentDayTokens(globalVolume, userVolume, timestamp?)`
+### Vanity Mint Generation
 
-Compute token rewards accrued for the current day.
+Grind a mint keypair whose address matches a prefix/suffix (pump.fun's UI uses mints ending in `pump`). CPU-bound; patterns are capped at `MAX_VANITY_PATTERN_LENGTH` (6). For longer patterns use the Rust generator in `rust/`.
 
 ```typescript
-const todayRewards = currentDayTokens(
-  globalVolumeAccumulator,
-  userVolumeAccumulator,
-);
+import { generateVanityMint, estimateVanityMintAttempts } from "@nirholas/pump-sdk";
+
+const estimate = estimateVanityMintAttempts({ suffix: "pump" });
+
+const { keypair, attempts, durationMs } = await generateVanityMint({
+  suffix: "pump",
+  caseInsensitive: false,
+  onProgress: ({ attempts, attemptsPerSecond }) => {
+    console.log(attempts, "attempts,", Math.round(attemptsPerSecond), "/s");
+  },
+});
+// keypair.publicKey.toBase58() ends with "pump"; pass keypair as a signer to createV2
 ```
+
+Throws `VanityMintPatternError` (invalid Base58 or too long) or `VanityMintMaxAttemptsError` (when `maxAttempts` is set and exhausted).
+
+### RPC Fallback
+
+| Function | Description |
+|----------|-------------|
+| `createFallbackConnection(endpoints, connectionConfig?, fallbackConfig?)` | A `Connection` that fails over across endpoints with backoff, health tracking, and cooldowns |
+| `fetchWithFallback(...)` | Same failover strategy for plain HTTP fetches |
+| `parseEndpoints(envValue, fallback)` | Parse a comma-separated endpoint list from an env var |
+
+`FallbackConfig`: `maxRetriesPerEndpoint` (default 2), `baseDelayMs` (500), `timeoutMs` (10000), `cooldownMs` (60000). See [RPC Best Practices](./rpc-best-practices.md).
 
 ### PDA Helpers
 
 | Function | Returns | Description |
 |----------|---------|-------------|
 | `bondingCurvePda(mint)` | `PublicKey` | Bonding curve account address |
-| `creatorVaultPda(creator)` | `PublicKey` | Creator fee vault (pump) |
+| `bondingCurveV2Pda(mint)` | `PublicKey` | Bonding curve v2 account address |
+| `creatorVaultPda(creator)` | `PublicKey` | Creator fee vault (Pump) |
 | `ammCreatorVaultPda(creator)` | `PublicKey` | Creator fee vault (AMM) |
-| `canonicalPumpPoolPda(mint)` | `PublicKey` | AMM pool for graduated token |
-| `pumpPoolAuthorityPda(mint)` | `PublicKey` | Pool authority |
+| `canonicalPumpPoolPda(mint)` | `PublicKey` | Canonical AMM pool for a graduated token |
+| `poolV2Pda(baseMint)` | `PublicKey` | Pool v2 account address |
+| `pumpPoolAuthorityPda(mint)` | `PublicKey` | Pool authority used during graduation |
 | `feeSharingConfigPda(mint)` | `PublicKey` | Fee sharing config address |
-| `userVolumeAccumulatorPda(user)` | `PublicKey` | User volume tracker |
-| `ammUserVolumeAccumulatorPda(user)` | `PublicKey` | AMM user volume tracker |
+| `userVolumeAccumulatorPda(user)` | `PublicKey` | User volume tracker (Pump) |
+| `ammUserVolumeAccumulatorPda(user)` | `PublicKey` | User volume tracker (AMM) |
 | `feeProgramGlobalPda()` | `PublicKey` | PumpFees global state |
 | `socialFeePda(userId, platform)` | `PublicKey` | Social fee PDA |
-| `getGlobalParamsPda()` | `PublicKey` | Global params address |
+| `getGlobalParamsPda()` | `PublicKey` | Mayhem global params |
 | `getMayhemStatePda(mint)` | `PublicKey` | Mayhem state for a token |
-| `getSolVaultPda()` | `PublicKey` | SOL vault address |
-| `getTokenVaultPda(mint)` | `PublicKey` | Token vault address |
-| `getEventAuthorityPda(programId)` | `PublicKey` | Event authority for a program |
-
-**Constants:**
-
-| Constant | Type | Description |
-|----------|------|-------------|
-| `GLOBAL_PDA` | `PublicKey` | Pump global state PDA |
-| `AMM_GLOBAL_PDA` | `PublicKey` | AMM global state PDA |
-| `AMM_GLOBAL_CONFIG_PDA` | `PublicKey` | AMM global config PDA |
-| `AMM_FEE_CONFIG_PDA` | `PublicKey` | AMM fee config PDA |
-| `PUMP_FEE_CONFIG_PDA` | `PublicKey` | Pump fee config PDA |
-| `GLOBAL_VOLUME_ACCUMULATOR_PDA` | `PublicKey` | Global volume accumulator PDA |
-
-### Fee Functions
-
-#### `getFee(params)`
-
-Calculates the total fee (protocol + creator) for a given trade amount.
-
-```typescript
-import { getFee } from "@nirholas/pump-sdk";
-
-const fee = getFee({
-  global: Global,
-  feeConfig: FeeConfig | null,
-  mintSupply: BN,
-  bondingCurve: BondingCurve,
-  amount: BN,
-  isNewBondingCurve: boolean,
-});
-```
-
-#### `computeFeesBps(params)`
-
-Compute the protocol and creator fee rates in basis points. Uses tiered fees when available, otherwise falls back to global defaults.
-
-```typescript
-import { computeFeesBps } from "@nirholas/pump-sdk";
-
-const { protocolFeeBps, creatorFeeBps } = computeFeesBps({
-  global: Global,
-  feeConfig: FeeConfig | null,
-  mintSupply: BN,
-  virtualSolReserves: BN,
-  virtualTokenReserves: BN,
-});
-```
-
-#### `calculateFeeTier(params)`
-
-Select the appropriate fee tier based on market cap. Returns the full `Fees` object.
-
-```typescript
-import { calculateFeeTier } from "@nirholas/pump-sdk";
-
-const fees: Fees = calculateFeeTier({
-  feeTiers: FeeTier[],
-  marketCap: BN,
-});
-```
+| `getSolVaultPda()` | `PublicKey` | Mayhem SOL vault |
+| `getTokenVaultPda(mint)` | `PublicKey` | Mayhem token vault ATA |
+| `getEventAuthorityPda(programId)` | `PublicKey` | `__event_authority` PDA for any program |
 
 ### Program Constructors
 
@@ -1085,18 +784,25 @@ const fees: Fees = calculateFeeTier({
 | `getPumpAmmProgram(connection)` | `Program<PumpAmm>` | AMM program instance |
 | `getPumpFeeProgram(connection)` | `Program<PumpFees>` | Fee program instance |
 
+The raw IDLs are exported too: `PumpIdl` (`pumpIdl`), `PumpAmmIdl`, `PumpFeesIdl`, plus the `Pump`, `PumpAmm`, and `PumpFees` IDL types.
+
 ### Utilities
 
-#### `isCreatorUsingSharingConfig(params)`
+#### `isCreatorUsingSharingConfig({ mint, creator })`
 
-Check if a creator has set up fee sharing for a token.
+Returns `true` when the on-chain creator address has been replaced with the fee-sharing config PDA. Pass `bondingCurve.creator` (ungraduated) or `pool.coinCreator` (graduated), not the human creator's wallet.
 
-```typescript
-const isSharing = isCreatorUsingSharingConfig({
-  mint: PublicKey,
-  creator: PublicKey,
-});
-```
+#### `isSharingConfigEditable({ sharingConfig })`
+
+Returns `false` for legacy v1 configs and for v2 configs whose admin has been revoked.
+
+#### `normalizeSocialShareholders({ newShareholders })`
+
+Resolves `SocialShareholderInput` entries (wallet address, or `userId` + `platform`) into concrete `Shareholder`s, and returns the set of social PDAs that still need to be created.
+
+#### Platform helpers
+
+`Platform` enum (`Pump`, `X`, `GitHub`), `SUPPORTED_SOCIAL_PLATFORMS` (currently `[Platform.GitHub]`), `platformToString(platform)`, `stringToPlatform(value)`.
 
 ---
 
@@ -1143,6 +849,7 @@ interface BondingCurve {
   complete: boolean;         // true = graduated to AMM
   creator: PublicKey;
   isMayhemMode: boolean;
+  isCashbackCoin: boolean;
 }
 ```
 
@@ -1172,7 +879,7 @@ interface Fees {
 ```typescript
 interface Shareholder {
   address: PublicKey;
-  shareBps: number;          // Basis points (sum must = 10000)
+  shareBps: number;          // Basis points (sum must equal 10000)
 }
 
 interface SharingConfig {
@@ -1182,6 +889,13 @@ interface SharingConfig {
   adminRevoked: boolean;
   shareholders: Shareholder[];
 }
+
+type SocialShareholderInput = {
+  shareBps: number;
+  address?: PublicKey;       // either a wallet address...
+  userId?: string;           // ...or a social identity
+  platform?: Platform;
+};
 ```
 
 ### Volume & Incentives
@@ -1212,22 +926,109 @@ interface UserVolumeAccumulatorTotalStats {
 }
 ```
 
-### Events
+### Quotes
 
 ```typescript
-interface DistributeCreatorFeesEvent {
-  timestamp: BN;
-  mint: PublicKey;
-  sharingConfig: PublicKey;
-  admin: PublicKey;
-  shareholders: Shareholder[];
-  distributed: BN;
+interface BuyQuote {
+  tokensOut: BN;             // expected tokens after all fees
+  feesLamports: BN;          // total protocol + creator fees
+  priceImpactBps: number;
+  priceBefore: BN;           // spot price per token, lamports
+  priceAfter: BN;
 }
 
-interface MinimumDistributableFeeEvent {
-  minimumRequired: BN;
-  distributableFees: BN;
-  canDistribute: boolean;
+interface SellQuote {
+  solOut: BN;                // net SOL after fees
+  feesLamports: BN;
+  priceImpactBps: number;
+  priceBefore: BN;
+  priceAfter: BN;
+  maxSafeAmount: BN;         // largest single-tx sell without overflow
+  willOverflow: boolean;     // amount > maxSafeAmount, use sellChunked
+}
+
+interface AmmBuyQuote {
+  tokensOut: BN;
+  solSpent: BN;
+  feesLamports: BN;          // protocol + LP + creator
+  poolBaseAmount: BN;
+  poolQuoteAmount: BN;
+}
+
+interface AmmSellQuote {
+  solOut: BN;
+  tokensSold: BN;
+  feesLamports: BN;
+  poolBaseAmount: BN;
+  poolQuoteAmount: BN;
+}
+```
+
+### Analytics Types
+
+```typescript
+interface PriceImpactResult {
+  priceBefore: BN;          // price per token before the trade (lamports)
+  priceAfter: BN;           // price per token after the trade (lamports)
+  impactBps: number;        // price impact in basis points (150 = 1.5%)
+  outputAmount: BN;         // tokens received (buy) or SOL received (sell)
+}
+
+interface GraduationProgress {
+  progressBps: number;      // 0-10000 bps complete
+  isGraduated: boolean;
+  tokensRemaining: BN;      // tokens left before graduation
+  tokensTotal: BN;          // real tokens the curve started with
+  solAccumulated: BN;       // SOL in real reserves
+  solNeededToGraduate: BN;  // SOL cost to buy all remaining tokens
+}
+
+interface TokenPriceInfo {
+  buyPricePerToken: BN;     // cost to buy 1 whole token (lamports)
+  sellPricePerToken: BN;    // SOL received for selling 1 whole token
+  marketCap: BN;            // lamports
+  isGraduated: boolean;
+}
+
+interface BondingCurveSummary {
+  marketCap: BN;
+  progressBps: number;
+  isGraduated: boolean;
+  solNeededToGraduate: BN;
+  buyPricePerToken: BN;
+  sellPricePerToken: BN;
+  realSolReserves: BN;
+  realTokenReserves: BN;
+  virtualSolReserves: BN;
+  virtualTokenReserves: BN;
+  protocolFeeBps: BN;       // current fee tier
+  creatorFeeBps: BN;
+  isMayhemMode: boolean;
+}
+```
+
+### Vanity Types
+
+```typescript
+interface VanityMintOptions {
+  prefix?: string;
+  suffix?: string;              // "pump" matches pump.fun's convention
+  caseInsensitive?: boolean;
+  signal?: AbortSignal;
+  maxAttempts?: number;
+  onProgress?: (progress: VanityMintProgress) => void;
+}
+
+interface VanityMintResult {
+  keypair: Keypair;
+  attempts: number;
+  durationMs: number;
+}
+
+interface VanityMintProgress {
+  attempts: number;
+  elapsedMs: number;
+  attemptsPerSecond: number;
 }
 ```
 
@@ -1247,122 +1048,20 @@ interface CalculatedFeesBps {
   protocolFeeBps: BN;
   creatorFeeBps: BN;
 }
-```
 
----
-
-## Analytics Functions
-
-Pure offline functions for price analysis. Imported from `analytics.ts`.
-
-### `calculateBuyPriceImpact(params)`
-
-Calculate the price impact of a buy trade.
-
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `params.global` | `Global` | Pump global state |
-| `params.feeConfig` | `FeeConfig \| null` | Fee config (null for legacy flat fees) |
-| `params.mintSupply` | `BN` | Current mint supply |
-| `params.bondingCurve` | `BondingCurve` | Current bonding curve state |
-| `params.solAmount` | `BN` | SOL amount to spend (lamports) |
-
-**Returns:** `PriceImpactResult`
-
-### `calculateSellPriceImpact(params)`
-
-Calculate the price impact of a sell trade.
-
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `params.global` | `Global` | Pump global state |
-| `params.feeConfig` | `FeeConfig \| null` | Fee config (null for legacy flat fees) |
-| `params.mintSupply` | `BN` | Current mint supply |
-| `params.bondingCurve` | `BondingCurve` | Current bonding curve state |
-| `params.tokenAmount` | `BN` | Token amount to sell |
-
-**Returns:** `PriceImpactResult`
-
-### `getGraduationProgress(global, bondingCurve)`
-
-Calculate how close a token is to graduating from the bonding curve to an AMM pool.
-
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `global` | `Global` | Pump global state |
-| `bondingCurve` | `BondingCurve` | Current bonding curve state |
-
-**Returns:** `GraduationProgress`
-
-### `getTokenPrice(params)`
-
-Get the current buy and sell price per whole token (10^6 raw units).
-
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `params.global` | `Global` | Pump global state |
-| `params.feeConfig` | `FeeConfig \| null` | Fee config |
-| `params.mintSupply` | `BN` | Current mint supply |
-| `params.bondingCurve` | `BondingCurve` | Current bonding curve state |
-
-**Returns:** `TokenPriceInfo`
-
-### `getBondingCurveSummary(params)`
-
-Get a comprehensive summary of a bonding curve's state in a single call.
-
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `params.global` | `Global` | Pump global state |
-| `params.feeConfig` | `FeeConfig \| null` | Fee config |
-| `params.mintSupply` | `BN` | Current mint supply |
-| `params.bondingCurve` | `BondingCurve` | Current bonding curve state |
-
-**Returns:** `BondingCurveSummary`
-
-### Analytics Types
-
-```typescript
-interface PriceImpactResult {
-  priceBefore: BN;          // Price per token BEFORE the trade (lamports)
-  priceAfter: BN;           // Price per token AFTER the trade (lamports)
-  impactBps: number;        // Price impact in basis points (150 = 1.5%)
-  outputAmount: BN;         // Tokens received (buy) or SOL received (sell)
-}
-
-interface GraduationProgress {
-  progressBps: number;      // Percentage complete (0–10000 bps)
-  isGraduated: boolean;     // Whether already graduated
-  tokensRemaining: BN;      // Tokens left before graduation
-  tokensTotal: BN;          // Total real tokens the curve started with
-  solAccumulated: BN;       // SOL in real reserves
-}
-
-interface TokenPriceInfo {
-  buyPricePerToken: BN;     // Cost to buy 1 whole token (lamports)
-  sellPricePerToken: BN;    // SOL received for selling 1 whole token (lamports)
-  marketCap: BN;            // Current market cap (lamports)
-  isGraduated: boolean;     // Whether the curve is complete
-}
-
-interface BondingCurveSummary {
-  marketCap: BN;            // Market cap (lamports)
-  progressBps: number;      // Graduation progress (0–10000 bps)
-  isGraduated: boolean;
-  buyPricePerToken: BN;
-  sellPricePerToken: BN;
-  realSolReserves: BN;
-  realTokenReserves: BN;
-  virtualSolReserves: BN;
-  virtualTokenReserves: BN;
+interface BreakingFeeValidation {
+  valid: boolean;
+  errors: string[];
 }
 ```
 
----
+### Events
+
+Every on-chain Anchor event has a typed interface export: Pump (`TradeEvent`, `CreateEvent`, `CompleteEvent`, `CompletePumpAmmMigrationEvent`, `SetCreatorEvent`, `CollectCreatorFeeEvent`, `ClaimTokenIncentivesEvent`, `ClaimCashbackEvent`, `ExtendAccountEvent`, volume accumulator events, admin events), PumpAMM (`AmmBuyEvent`, `AmmSellEvent`, `DepositEvent`, `WithdrawEvent`, `CreatePoolEvent`, plus admin/config events), and PumpFees (`CreateFeeSharingConfigEvent`, `UpdateFeeSharesEvent`, `ResetFeeSharingConfigEvent`, `RevokeFeeSharingAuthorityEvent`, `TransferFeeSharingAuthorityEvent`, `SocialFeePdaCreatedEvent`, `SocialFeePdaClaimedEvent`, `DistributeCreatorFeesEvent`, `MinimumDistributableFeeEvent`, plus fee-admin events). See [Events Reference](./events-reference.md) for field-level detail.
+
+`PumpEvent` is the discriminated union returned by `parseTransactionEvents`: `{ type: "trade", data: TradeEvent } | { type: "ammBuy", data: AmmBuyEvent } | ...` covering all decodable events across the three programs.
 
 ### AMM & Fee Program Types
-
-#### `Pool`
 
 ```typescript
 interface Pool {
@@ -1379,11 +1078,7 @@ interface Pool {
   isMayhemMode: boolean;
   isCashbackCoin: boolean;
 }
-```
 
-#### `AmmGlobalConfig`
-
-```typescript
 interface AmmGlobalConfig {
   admin: PublicKey;
   lpFeeBasisPoints: BN;
@@ -1398,11 +1093,7 @@ interface AmmGlobalConfig {
   reservedFeeRecipients: PublicKey[];
   isCashbackEnabled: boolean;
 }
-```
 
-#### `FeeProgramGlobal`
-
-```typescript
 interface FeeProgramGlobal {
   bump: number;
   authority: PublicKey;
@@ -1410,11 +1101,7 @@ interface FeeProgramGlobal {
   socialClaimAuthority: PublicKey;
   claimRateLimit: BN;
 }
-```
 
-#### `SocialFeePda`
-
-```typescript
 interface SocialFeePda {
   bump: number;
   version: number;
@@ -1425,46 +1112,33 @@ interface SocialFeePda {
 }
 ```
 
-### Social Fee Events
-
-```typescript
-interface SocialFeePdaCreatedEvent {
-  timestamp: BN;
-  userId: string;
-  platform: number;
-  socialFeePda: PublicKey;
-  createdBy: PublicKey;
-}
-
-interface SocialFeePdaClaimedEvent {
-  timestamp: BN;
-  userId: string;
-  platform: number;
-  socialFeePda: PublicKey;
-  recipient: PublicKey;
-  socialClaimAuthority: PublicKey;
-  amountClaimed: BN;
-  claimableBefore: BN;
-  lifetimeClaimed: BN;
-  recipientBalanceBefore: BN;
-  recipientBalanceAfter: BN;
-}
-```
-
 ---
 
 ## Error Classes
 
-All errors extend `Error`.
+All errors extend `Error` and are exported from the package root.
 
 | Error | When Thrown |
 |-------|------------|
 | `NoShareholdersError` | Empty shareholders array in `updateFeeShares` |
-| `TooManyShareholdersError` | More than 10 shareholders |
-| `ZeroShareError` | A shareholder has 0 bps |
+| `TooManyShareholdersError` | More than `MAX_SHAREHOLDERS` (10) shareholders |
+| `ZeroShareError` | A shareholder has 0 bps or negative |
 | `InvalidShareTotalError` | Shares don't sum to 10,000 bps |
 | `DuplicateShareholderError` | Duplicate addresses in shareholders |
 | `ShareCalculationOverflowError` | Share amount calculation would overflow |
-| `PoolRequiredForGraduatedError` | Pool param missing for graduated coin |
+| `PoolRequiredForGraduatedError` | Pool param missing for a graduated coin |
+| `SellOverflowError` | Sell amount would overflow the on-chain u64 multiply (AnchorError 6024); split with `sellChunked` |
+| `VanityError` / `VanityMintPatternError` / `VanityMintMaxAttemptsError` | Invalid or exhausted vanity mint grind |
 
+See the [Error Reference](./errors.md) for causes and fixes.
 
+---
+
+## Related
+
+- [Getting Started](./getting-started.md): first calls, offline and live
+- [Architecture](./architecture.md): how the modules fit together
+- [Bonding Curve Math](./bonding-curve-math.md) and [Fee Tiers](./fee-tiers.md): the math behind the quotes
+- [AMM Trading](./amm-trading.md): graduated pool operations
+
+Runnable examples: all 50 numbered examples under `examples/` exercise this API surface; run any with `npm run example NN`.

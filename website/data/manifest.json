@@ -116,9 +116,9 @@
     {
       "file": "errors.md",
       "title": "Error Reference",
-      "summary": "Custom error classes thrown by the SDK, with causes and fixes.",
-      "words": 397,
-      "minutes": 2
+      "summary": "Every custom error class the SDK throws, what causes it, and how to recover, plus the common on-chain Anchor errors.",
+      "words": 735,
+      "minutes": 3
     },
     {
       "file": "events-reference.md",
@@ -158,9 +158,9 @@
     {
       "file": "getting-started.md",
       "title": "Getting started with pump-fun-sdk",
-      "summary": "TypeScript SDK for the Pump protocol on Solana — token creation, bonding curves, AMM pools, fee sharing, and volume rewards",
-      "words": 129,
-      "minutes": 1
+      "summary": "Install the SDK, build your first Pump instruction offline, then read live protocol state from mainnet, all in under five minutes.",
+      "words": 798,
+      "minutes": 4
     },
     {
       "file": "glossary.md",

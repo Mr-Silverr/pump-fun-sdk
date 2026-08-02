@@ -40,9 +40,15 @@ function withParam(url: string, key: string, value?: string): string {
  */
 export function buildTradeLinks(mint: string, aff: Affiliates = {}): TradeLink[] {
     return [
-        { name: 'Axiom', short: 'AXI', url: withParam(`https://axiom.trade/t/${mint}`, 'ref', aff.axiom) },
-        { name: 'GMGN', short: 'GMG', url: withParam(`https://gmgn.ai/sol/token/${mint}`, 'ref', aff.gmgn) },
-        { name: 'Padre', short: 'PDR', url: withParam(`https://trade.padre.gg/trade/solana/${mint}`, 'ref', aff.padre) },
+        // GMGN's documented referral form is `{code}_{contract}` inside the
+        // path (docs.gmgn.ai referral-link), so the deep link and the code
+        // travel together. Axiom and Padre document NO referral form on token
+        // deep links (only @handle / rk signup pages) and an invented `?ref=`
+        // earns nothing, so their token links stay clean; this matches
+        // three.ws src/shared/trading-terminals.js.
+        { name: 'Axiom', short: 'AXI', url: `https://axiom.trade/t/${mint}` },
+        { name: 'GMGN', short: 'GMG', url: `https://gmgn.ai/sol/token/${aff.gmgn ? `${encodeURIComponent(aff.gmgn)}_` : ''}${mint}` },
+        { name: 'Padre', short: 'PDR', url: `https://trade.padre.gg/trade/solana/${mint}` },
         // fomo.family/<code> is the verified referral entry point. It has no
         // per-token route, so unlike the others this one lands on the referral
         // page rather than the mint.

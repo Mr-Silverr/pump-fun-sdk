@@ -1,6 +1,6 @@
 # Tutorial 20: MCP Server for AI Agents
 
-> Expose the Pump SDK as 53 AI tools via the Model Context Protocol — let Claude, GPT, and Cursor trade tokens with natural language.
+> Expose the Pump SDK as 67 AI tools via the Model Context Protocol — let Claude, GPT, and Cursor trade tokens with natural language.
 
 ## Prerequisites
 

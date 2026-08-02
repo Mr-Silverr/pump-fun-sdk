@@ -166,7 +166,7 @@ npm install @nirholas/pump-sdk@1.28.0
 
 ### New Ecosystem Components Added
 
-- **19 tutorials** (`tutorials/`) — beginner to advanced
+- **44 tutorials** (`tutorials/`) — beginner to advanced
 - **Analytics module** (`src/analytics.ts`) — price impact, graduation, pricing
 - **WebSocket relay server** (`websocket-server/`) — real-time token launch broadcasting
 - **Live dashboards** (`live/`) — browser-based monitoring UIs
@@ -175,7 +175,7 @@ npm install @nirholas/pump-sdk@1.28.0
 - **Expanded Telegram bot** — graduation, whale, fee distribution alerts, CTO detection
 - **Channel bot** (`channel-bot/`) — read-only Telegram channel feed
 - **DeFi agents** (`packages/defi-agents/`) — 43 AI agent definitions
-- **28 agent skill documents** (`skills/`)
+- **20 agent skill documents** (`skills/`)
 
 ---
 

@@ -28,6 +28,7 @@ const out = join(root, 'dist-site');
 // nowhere, which is exactly what a rename used to leave behind.
 execFileSync(process.execPath, [join(root, 'scripts', 'build-manifest.mjs')], { stdio: 'inherit' });
 execFileSync(process.execPath, [join(root, 'scripts', 'check-site-links.mjs')], { stdio: 'inherit' });
+execFileSync(process.execPath, [join(root, 'scripts', 'check-doc-stats.mjs')], { stdio: 'inherit' });
 
 rmSync(out, { recursive: true, force: true });
 mkdirSync(out, { recursive: true });

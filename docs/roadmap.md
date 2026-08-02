@@ -36,12 +36,12 @@
 | Feature | Status | Details |
 |---------|--------|---------|
 | Telegram claim bot | ✅ Done | Fee claims, cashback, CTO alerts, token launches, graduation, whale trades, REST API |
-| Enhanced MCP tools | ✅ Done | 53 tools — quoting, building, fees, analytics, AMM, social fees, wallet |
+| Enhanced MCP tools | ✅ Done | 67 tools — quoting, building, fees, analytics, AMM, social fees, wallet |
 | WebSocket relay server | ✅ Done | Real-time token launches + trades broadcast to browsers |
 | Live trades dashboard | ✅ Done | PumpPortal + relay fallback with auto-demo |
 | On-chain analytics | ✅ Done | Price impact, graduation progress, token price, bonding curve summary |
 | x402 payment protocol | ✅ Done | HTTP 402 micropayments with Solana USDC |
-| 19 tutorials | ✅ Done | Step-by-step guides from token creation to CoinGecko integration |
+| 44 tutorials | ✅ Done | Step-by-step guides from a first token to a complete swap build |
 | PumpOS website | ✅ Done | Web desktop with 169 Pump-Store apps |
 | DeFi agents | ✅ Done | 43 production-ready AI agent definitions with 18-language i18n |
 | Lair-TG platform | ✅ Done | Unified Telegram bot for DeFi intelligence, wallet management, token launching |

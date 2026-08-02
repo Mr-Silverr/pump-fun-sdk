@@ -509,7 +509,7 @@ AI plugin index and API gateway for SperaxOS function-calling plugins. Includes 
             ▼               ▼               ▼
      ┌─────────────┐ ┌──────────┐ ┌────────────────┐
      │ Telegram Bot │ │ Channel  │ │ MCP Server     │
-     │              │ │ Bot      │ │ (53 tools)     │
+     │              │ │ Bot      │ │ (67 tools)     │
      └──────────────┘ └──────────┘ └────────────────┘
             │               │
             ▼               ▼

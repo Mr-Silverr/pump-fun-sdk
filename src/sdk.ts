@@ -181,12 +181,11 @@ export const MAX_SHAREHOLDERS = 10;
  * Use the pre-built singleton {@link PUMP_SDK} instead of constructing directly.
  */
 export class PumpSdk {
-  private readonly offlinePumpProgram: Program<Pump>;
+  private lazyOfflinePumpProgram?: Program<Pump>;
   private readonly offlinePumpFeeProgram: Program<PumpFees>;
   private readonly offlinePumpAmmProgram: Program<PumpAmm>;
 
   constructor() {
-    this.offlinePumpProgram = OFFLINE_PUMP_PROGRAM;
     // Create offline programs for fee and AMM
     this.offlinePumpFeeProgram = new Program(
       PumpFeesIdl as PumpFees,
@@ -196,6 +195,24 @@ export class PumpSdk {
       PumpAmmIdl as PumpAmm,
       new AnchorProvider(null as any, null as any, {}),
     );
+  }
+
+  /**
+   * The shared offline Pump program, read lazily. sdk.ts and onlineSdk.ts
+   * form an import cycle, so OFFLINE_PUMP_PROGRAM (defined in onlineSdk.ts)
+   * is still undefined while this module initializes under some import
+   * orders. Capturing it in the constructor therefore broke every
+   * pump-program decode and instruction builder for consumers that
+   * imported sdk before onlineSdk; reading it on first use is always safe
+   * because module initialization has finished by then.
+   */
+  private get offlinePumpProgram(): Program<Pump> {
+    if (!this.lazyOfflinePumpProgram) {
+      this.lazyOfflinePumpProgram =
+        OFFLINE_PUMP_PROGRAM ??
+        new Program(pumpIdl as Pump, new AnchorProvider(null as any, null as any, {}));
+    }
+    return this.lazyOfflinePumpProgram;
   }
 
   decodeGlobal(accountInfo: AccountInfo<Buffer>): Global {

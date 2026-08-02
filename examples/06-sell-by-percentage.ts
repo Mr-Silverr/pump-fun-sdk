@@ -11,11 +11,11 @@
  *
  * Run: npm run example 06
  */
-import { OnlinePumpSdk, PUMP_TOKEN_MINT } from "@nirholas/pump-sdk";
-import { PublicKey } from "@solana/web3.js";
+import { OnlinePumpSdk } from "@nirholas/pump-sdk";
 import BN from "bn.js";
 
 import { getConnection } from "./_lib/connection";
+import { findActiveCurveMint } from "./_lib/discovery";
 import { formatTokens, heading, row } from "./_lib/format";
 import { loadWallet } from "./_lib/wallet";
 
@@ -43,9 +43,11 @@ export function percentageToTokenAmount(balance: BN, percent: number): BN {
 }
 
 export async function main(): Promise<void> {
-  const online = new OnlinePumpSdk(getConnection());
+  const connection = getConnection();
+  const online = new OnlinePumpSdk(connection);
   const wallet = loadWallet();
-  const mint = new PublicKey(process.env.MINT ?? PUMP_TOKEN_MINT.toBase58());
+  // Discover a token actively trading on its curve (MINT env overrides).
+  const { mint } = await findActiveCurveMint(connection);
 
   heading("Setup");
   row("Mint", mint.toBase58());

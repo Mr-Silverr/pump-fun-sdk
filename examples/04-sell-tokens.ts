@@ -13,7 +13,6 @@
 import {
   PUMP_SDK,
   PUMP_PROGRAM_ID,
-  PUMP_TOKEN_MINT,
   BONDING_CURVE_NEW_SIZE,
   OnlinePumpSdk,
   bondingCurvePda,
@@ -33,6 +32,7 @@ import {
 import BN from "bn.js";
 
 import { getConnection } from "./_lib/connection";
+import { findActiveCurveMint } from "./_lib/discovery";
 import { formatSol, formatTokens, heading, row } from "./_lib/format";
 import { loadWallet } from "./_lib/wallet";
 
@@ -107,7 +107,8 @@ export async function main(): Promise<void> {
   const connection = getConnection();
   const online = new OnlinePumpSdk(connection);
   const wallet = loadWallet();
-  const mint = new PublicKey(process.env.MINT ?? PUMP_TOKEN_MINT.toBase58());
+  // Discover a token actively trading on its curve (MINT env overrides).
+  const { mint } = await findActiveCurveMint(connection);
 
   heading("Setup");
   row("Mint", mint.toBase58());

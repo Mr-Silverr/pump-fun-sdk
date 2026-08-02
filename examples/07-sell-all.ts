@@ -12,7 +12,6 @@
  */
 import {
   OnlinePumpSdk,
-  PUMP_TOKEN_MINT,
   getSellSolAmountFromTokenAmount,
   maxSafeSellAmount,
   newBondingCurve,
@@ -20,10 +19,10 @@ import {
   type FeeConfig,
   type Global,
 } from "@nirholas/pump-sdk";
-import { PublicKey } from "@solana/web3.js";
 import BN from "bn.js";
 
 import { getConnection } from "./_lib/connection";
+import { findActiveCurveMint } from "./_lib/discovery";
 import { formatSol, formatTokens, heading, row } from "./_lib/format";
 import { loadWallet } from "./_lib/wallet";
 
@@ -74,9 +73,11 @@ export function computeSellAllPlan({
 }
 
 export async function main(): Promise<void> {
-  const online = new OnlinePumpSdk(getConnection());
+  const connection = getConnection();
+  const online = new OnlinePumpSdk(connection);
   const wallet = loadWallet();
-  const mint = new PublicKey(process.env.MINT ?? PUMP_TOKEN_MINT.toBase58());
+  // Discover a token actively trading on its curve (MINT env overrides).
+  const { mint } = await findActiveCurveMint(connection);
 
   heading("Setup");
   row("Mint", mint.toBase58());

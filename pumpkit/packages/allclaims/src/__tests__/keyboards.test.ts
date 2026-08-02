@@ -11,11 +11,12 @@ function urls(keyboard: { inline_keyboard: Array<Array<{ url: string }>> }): str
 }
 
 describe('buildTokenKeyboard', () => {
-    it('lays out trade and chart destinations three to a row', () => {
+    it('lays out two trade rows then a chart row', () => {
         const rows = buildTokenKeyboard(MINT).inline_keyboard;
-        expect(rows).toHaveLength(2);
-        expect(rows[0]).toHaveLength(3);
-        expect(rows[1]).toHaveLength(3);
+        expect(rows).toHaveLength(3);
+        expect(rows[0]).toHaveLength(2);
+        expect(rows[1]).toHaveLength(2);
+        expect(rows[2]).toHaveLength(3);
     });
 
     it('leaves links clean when no referral is configured', () => {
@@ -36,9 +37,9 @@ describe('buildTokenKeyboard', () => {
 describe('buildClaimKeyboard', () => {
     it('puts the transaction and the claimer under the trade rows', () => {
         const rows = buildClaimKeyboard(MINT, TX, WALLET).inline_keyboard;
-        expect(rows).toHaveLength(3);
-        expect(rows[2]!.map((b) => b.text)).toEqual(['🧾 Transaction', '👛 Claimer']);
-        expect(rows[2]![0]!.url).toBe(`https://solscan.io/tx/${TX}`);
+        expect(rows).toHaveLength(4);
+        expect(rows[3]!.map((b) => b.text)).toEqual(['🧾 Transaction', '👛 Claimer']);
+        expect(rows[3]![0]!.url).toBe(`https://solscan.io/tx/${TX}`);
     });
 
     /** A vault claim resolves no coin, and a row of dead trade links is worse than no row. */

@@ -48,7 +48,7 @@ export interface AllClaimsConfig {
     /** Include distribute_creator_fees payouts */
     includeDistributions: boolean;
     /** Referral handles for the trade links on an instant card. Empty values render plain links. */
-    affiliates: { axiom: string; gmgn: string; padre: string };
+    affiliates: { axiom: string; gmgn: string; padre: string; fomo: string };
 }
 
 function parseNumber(name: string, fallback: number, min: number, max: number): number {

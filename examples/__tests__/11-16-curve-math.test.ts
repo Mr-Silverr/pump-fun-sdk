@@ -42,20 +42,19 @@ describe("example 11: offline buy quotes", () => {
 });
 
 describe("example 12: offline sell quotes", () => {
+  const activeCurve = makeBondingCurve({
+    realSolReserves: SOL(10),
+    virtualSolReserves: SOL(40),
+  });
+
   it("breaks proceeds into net and fees that sum to gross", () => {
-    const q = quoteSellBreakdown(makeGlobal(), null, makeBondingCurve({
-      realSolReserves: SOL(10),
-      virtualSolReserves: SOL(40),
-    }), new BN("50000000000000"));
+    const q = quoteSellBreakdown(makeGlobal(), activeCurve, new BN("50000000000000"));
     expect(q.netSol.gtn(0)).toBe(true);
     expect(q.netSol.add(q.feesLamports).eq(q.grossSol)).toBe(true);
   });
 
-  it("higher creator fee reduces net proceeds", () => {
-    const cmp = compareCreatorFeeImpact(makeBondingCurve({
-      realSolReserves: SOL(10),
-      virtualSolReserves: SOL(40),
-    }), new BN("50000000000000"));
+  it("a creator-owned curve nets less than a creatorless one", () => {
+    const cmp = compareCreatorFeeImpact(makeGlobal(), new BN("50000000000000"));
     expect(cmp.withCreatorFee.netSol.lte(cmp.withoutCreatorFee.netSol)).toBe(true);
   });
 });
@@ -69,9 +68,8 @@ describe("example 13: market cap", () => {
     }
   });
 
-  it("matches the SDK's own market cap for fixture state", () => {
-    const cap = marketCapOf(makeGlobal(), makeBondingCurve());
-    expect(cap.gtn(0)).toBe(true);
+  it("is positive for fixture state", () => {
+    expect(marketCapOf(makeGlobal(), makeBondingCurve()).gtn(0)).toBe(true);
   });
 });
 
@@ -84,40 +82,43 @@ describe("example 14: target SOL extraction", () => {
     realTokenReserves: new BN("300000000000000"),
   });
 
-  it("plans a sell that raises at least the target", () => {
-    const plan = planTargetSol(global, null, curve, SOL(1));
-    expect(plan.achievable).toBe(true);
-    expect(plan.tokensToSell.gtn(0)).toBe(true);
-    expect(plan.expectedSol.gte(SOL(1).muln(99).divn(100))).toBe(true);
+  it("plans a sell that nets at least the target", () => {
+    const plan = planTargetSol(global, curve, SOL(1));
+    expect(plan.capped).toBe(false);
+    expect(plan.tokenAmount.gtn(0)).toBe(true);
+    expect(plan.actualSolOut.gte(SOL(1))).toBe(true);
   });
 
-  it("marks an impossible target as unachievable", () => {
-    const plan = planTargetSol(global, null, curve, SOL(1_000_000));
-    expect(plan.achievable).toBe(false);
+  it("caps an impossible target at the safe maximum", () => {
+    const plan = planTargetSol(global, curve, SOL(1_000_000));
+    expect(plan.capped).toBe(true);
+    const max = maxSingleSellExtraction(global, curve);
+    expect(plan.actualSolOut.lte(max.solOut)).toBe(true);
   });
 
-  it("max single-sell extraction never exceeds real reserves", () => {
-    const max = maxSingleSellExtraction(global, null, curve);
-    expect(max.lte(curve.realSolReserves)).toBe(true);
+  it("max single-sell extraction stays within the curve's reserves", () => {
+    const max = maxSingleSellExtraction(global, curve);
+    expect(max.tokenAmount.lte(curve.realTokenReserves)).toBe(true);
+    expect(max.solOut.gtn(0)).toBe(true);
   });
 
   it("builds a table across targets", () => {
-    expect(buildTargetSolTable(global, null, curve, [SOL(1), SOL(5)]).length).toBe(2);
+    expect(buildTargetSolTable(global, curve, [SOL(1), SOL(5)]).length).toBe(2);
   });
 });
 
 describe("example 15: max safe sell", () => {
   it("flags amounts beyond the u64 safety margin", () => {
-    const curve = makeBondingCurve();
-    const check = checkSellSafety(curve, U64_MAX);
+    const check = checkSellSafety(makeBondingCurve(), U64_MAX);
     expect(check.safe).toBe(false);
     expect(check.maxSafeAmount.lt(U64_MAX)).toBe(true);
+    expect(check.error).toBeDefined();
   });
 
   it("passes ordinary position sizes", () => {
-    const curve = makeBondingCurve();
-    const check = checkSellSafety(curve, new BN("1000000000000"));
+    const check = checkSellSafety(makeBondingCurve(), new BN("1000000000000"));
     expect(check.safe).toBe(true);
+    expect(check.error).toBeUndefined();
   });
 });
 
@@ -132,10 +133,13 @@ describe("example 16: launch price ladder", () => {
     }
   });
 
-  it("applyBuy preserves the constant-product relationship directionally", () => {
+  it("applyBuy moves reserves the way the program does", () => {
     const before = makeBondingCurve();
     const spotBefore = spotPriceLamportsPerMillionTokens(before);
-    const { after } = applyBuy(global, null, before, SOL(5));
+    const { curve: after, tokensOut, solIntoReserves } = applyBuy(global, before, SOL(5));
+    expect(tokensOut.gtn(0)).toBe(true);
+    expect(solIntoReserves.gtn(0)).toBe(true);
+    expect(solIntoReserves.lte(SOL(5))).toBe(true);
     expect(after.virtualSolReserves.gt(before.virtualSolReserves)).toBe(true);
     expect(after.virtualTokenReserves.lt(before.virtualTokenReserves)).toBe(true);
     expect(spotPriceLamportsPerMillionTokens(after).gte(spotBefore)).toBe(true);

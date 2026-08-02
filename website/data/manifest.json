@@ -74,8 +74,8 @@
     {
       "file": "cli-guide.md",
       "title": "Solana Vanity Address CLI Guide",
-      "summary": "A comprehensive guide to generating custom Solana wallet addresses using the official Solana CLI tools.",
-      "words": 1705,
+      "summary": "Generate custom Solana addresses with solana-keygen grind: command reference, performance estimates, and the security rules for handling the resulting keypairs.",
+      "words": 1797,
       "minutes": 8
     },
     {
@@ -110,7 +110,7 @@
       "file": "end-to-end-workflow.md",
       "title": "End-to-End Workflow",
       "summary": "A complete walkthrough of the full token lifecycle in code: create, buy, monitor, sell, graduate, migrate, trade on the AMM, share fees, and claim rewards.",
-      "words": 1318,
+      "words": 1397,
       "minutes": 6
     },
     {
@@ -138,14 +138,14 @@
       "file": "faq.md",
       "title": "Frequently Asked Questions",
       "summary": "Quick answers to common questions about pump-fun-sdk.",
-      "words": 1116,
-      "minutes": 5
+      "words": 1306,
+      "minutes": 6
     },
     {
       "file": "fee-sharing.md",
       "title": "Fee Sharing Guide",
       "summary": "Set up and manage creator fee distribution among up to 10 shareholders, from config creation through distribution and authority management.",
-      "words": 981,
+      "words": 980,
       "minutes": 4
     },
     {
@@ -159,15 +159,15 @@
       "file": "getting-started.md",
       "title": "Getting started with pump-fun-sdk",
       "summary": "Install the SDK, build your first Pump instruction offline, then read live protocol state from mainnet, all in under five minutes.",
-      "words": 798,
+      "words": 816,
       "minutes": 4
     },
     {
       "file": "glossary.md",
       "title": "Glossary",
-      "summary": "Key terms and concepts used throughout the Pump SDK documentation.",
-      "words": 1176,
-      "minutes": 5
+      "summary": "Key terms and concepts used throughout the Pump SDK documentation, from protocol mechanics to SDK and infrastructure vocabulary.",
+      "words": 1210,
+      "minutes": 6
     },
     {
       "file": "governance.md",
@@ -193,8 +193,8 @@
     {
       "file": "performance.md",
       "title": "Performance & Benchmarks",
-      "summary": "Performance characteristics, benchmarks, and optimization tips for every component.",
-      "words": 1076,
+      "summary": "Performance characteristics, benchmarks, and optimization tips for the SDK and every companion component.",
+      "words": 1118,
       "minutes": 5
     },
     {
@@ -214,9 +214,9 @@
     {
       "file": "rpc-best-practices.md",
       "title": "RPC Best Practices",
-      "summary": "How to configure, optimize, and troubleshoot Solana RPC connections in the Pump SDK ecosystem.",
-      "words": 1141,
-      "minutes": 5
+      "summary": "How to configure, optimize, and troubleshoot Solana RPC connections in the Pump SDK ecosystem, including the SDK's built-in multi-endpoint failover.",
+      "words": 1381,
+      "minutes": 6
     },
     {
       "file": "security.md",
@@ -271,8 +271,8 @@
       "file": "TROUBLESHOOTING.md",
       "title": "Troubleshooting",
       "summary": "Common issues and their solutions. Can't find your answer? Open a discussion.",
-      "words": 1398,
-      "minutes": 6
+      "words": 1553,
+      "minutes": 7
     },
     {
       "file": "vision.md",

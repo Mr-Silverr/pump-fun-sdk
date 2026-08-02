@@ -10,7 +10,7 @@ The SDK is TypeScript-first and split into two classes: `PumpSdk` (offline, buil
 npm install @nirholas/pump-sdk @solana/web3.js @coral-xyz/anchor @solana/spl-token bn.js
 ```
 
-`@solana/web3.js`, `@coral-xyz/anchor`, `@solana/spl-token`, and `bn.js` are peer dependencies; install them alongside the SDK. Any package manager works (`yarn add`, `pnpm add`, `bun add`).
+`@solana/web3.js`, `@coral-xyz/anchor`, `@solana/spl-token`, and `bn.js` are dependencies of the SDK, so they come along automatically; installing them explicitly (as above) also lets your own code import `Connection`, `Keypair`, and `BN` directly. Any package manager works (`yarn add`, `pnpm add`, `bun add`).
 
 Requirements: Node.js 18 or later.
 

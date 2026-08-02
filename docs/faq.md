@@ -34,7 +34,7 @@ Yes. pump-fun-sdk is open-source under the [MIT License](../LICENSE). Use it for
 npm install @nirholas/pump-sdk
 ```
 
-You'll also need peer dependencies:
+The Solana libraries (`@solana/web3.js`, `@coral-xyz/anchor`, `@solana/spl-token`, `bn.js`) are dependencies of the SDK and install automatically. Add them to your own `package.json` too if your code imports from them directly:
 
 ```bash
 npm install @solana/web3.js @coral-xyz/anchor @solana/spl-token bn.js

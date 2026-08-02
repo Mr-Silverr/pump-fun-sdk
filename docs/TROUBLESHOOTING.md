@@ -8,7 +8,7 @@
 
 ### `Cannot find module '@nirholas/pump-sdk'`
 
-Make sure you've installed both the SDK and its peer dependencies:
+Make sure you've installed the SDK, and add the Solana libraries to your own project if your code imports from them directly:
 
 ```bash
 npm install @nirholas/pump-sdk @solana/web3.js @coral-xyz/anchor @solana/spl-token bn.js
@@ -16,7 +16,7 @@ npm install @nirholas/pump-sdk @solana/web3.js @coral-xyz/anchor @solana/spl-tok
 
 ### `Error: Cannot find module '@coral-xyz/anchor'`
 
-Anchor is a peer dependency. Install it explicitly:
+Anchor ships as a dependency of the SDK, but a hoisting conflict or strict package manager can leave it unresolved. Install it explicitly:
 
 ```bash
 npm install @coral-xyz/anchor@^0.31.1

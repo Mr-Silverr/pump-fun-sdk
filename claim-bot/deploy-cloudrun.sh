@@ -26,8 +26,9 @@ REGION="${REGION:-us-central1}"
 PROJECT="${PROJECT:-$(gcloud config get-value project 2>/dev/null)}"
 SECRET_NAME="${SECRET_NAME:-pumpfun-claim-bot-token}"
 STATE_BUCKET="${STATE_BUCKET:-pumpfun-bot-state}"
-# The project's default compute service account was deleted, so the runtime
-# identity has to be pinned or the revision fails to create.
+# The project's default compute service account was deleted, so both the build
+# and the runtime identity have to be pinned or the deploy fails.
+BUILD_SA="${BUILD_SA:-three-ws-build@${PROJECT}.iam.gserviceaccount.com}"
 RUNTIME_SA="${RUNTIME_SA:-three-ws@${PROJECT}.iam.gserviceaccount.com}"
 
 if [[ -z "${PROJECT}" || "${PROJECT}" == "(unset)" ]]; then
@@ -102,12 +103,26 @@ printf 'STATE_BUCKET: "%s"\n' "${STATE_BUCKET}" >> "${ENV_YAML}"
 
 echo "Shipping $(wc -l < "${ENV_YAML}") env vars (token comes from Secret Manager)"
 
+# Build from a copy, not from the live directory: other agents edit this
+# worktree concurrently and `gcloud run deploy --source` uploads files one by
+# one, so an edit landing mid-upload ships a torn tree that fails to compile.
+STAGE="$(mktemp -d -t claim-bot-src-XXXXXX)"
+trap 'rm -f "${ENV_YAML}"; rm -rf "${STAGE}"' EXIT
+cp -a package.json tsconfig.json Dockerfile src "${STAGE}/"
+for optional in .dockerignore .gcloudignore package-lock.json; do
+    [[ -f "${optional}" ]] && cp -a "${optional}" "${STAGE}/"
+done
+true
+echo "Staged build context at ${STAGE}"
+
 gcloud run deploy "${SERVICE}" \
-    --source . \
+    --source "${STAGE}" \
     --project "${PROJECT}" \
     --region "${REGION}" \
     --platform managed \
+    --build-service-account "projects/${PROJECT}/serviceAccounts/${BUILD_SA}" \
     --service-account "${RUNTIME_SA}" \
+    --memory 2Gi \
     --min-instances 1 \
     --max-instances 1 \
     --no-cpu-throttling \

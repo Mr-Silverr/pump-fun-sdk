@@ -643,13 +643,111 @@
       "title": "Create a Token",
       "category": "Token Lifecycle",
       "summary": "Builds the createV2 instruction that launches a new token on the Pump bonding curve, then inspects what the instruction contains. This is the first on-chain action of every token's life, and it costs nothing to build: no"
+    },
+    {
+      "file": "02-create-and-buy.ts",
+      "number": 2,
+      "title": "Create and Buy in One Transaction",
+      "category": "Token Lifecycle",
+      "summary": "Builds the four-instruction bundle that launches a token AND makes the creator's first buy atomically: createV2, extend the curve account, create the buyer's token account, then buy. The dev-buy quote is pure math on a b"
+    },
+    {
+      "file": "03-buy-tokens.ts",
+      "number": 3,
+      "title": "Buy Tokens",
+      "category": "Token Lifecycle",
+      "summary": "The canonical bonding curve buy flow: quote how many tokens a SOL budget purchases, then build slippage-protected buy instructions from explicit on-chain state. Fetching state (network) and computing the trade (pure math"
+    },
+    {
+      "file": "04-sell-tokens.ts",
+      "number": 4,
+      "title": "Sell Tokens",
+      "category": "Token Lifecycle",
+      "summary": "The canonical bonding curve sell flow: quote the SOL a token amount returns after fees, then build slippage-protected sell instructions from explicit state. Includes the u64 overflow pre-flight that refuses a sell the on"
+    },
+    {
+      "file": "05-buy-by-sol-amount.ts",
+      "number": 5,
+      "title": "Buy by SOL Amount",
+      "category": "Token Lifecycle",
+      "summary": "Most buyers think in SOL, not token units. OnlinePumpSdk.buyBySolAmount takes a SOL budget and does everything: fetch state, quote the token output, build slippage-protected instructions. This example exercises that one-"
+    },
+    {
+      "file": "06-sell-by-percentage.ts",
+      "number": 6,
+      "title": "Sell by Percentage",
+      "category": "Token Lifecycle",
+      "summary": "\"Sell half\" is how humans think about exits. This example exposes the exact basis-point math OnlinePumpSdk.sellByPercentage uses to turn a percentage of your balance into a token amount, then exercises the one-call onlin"
+    },
+    {
+      "file": "07-sell-all.ts",
+      "number": 7,
+      "title": "Sell All",
+      "category": "Token Lifecycle",
+      "summary": "The full exit: OnlinePumpSdk.sellAllInstructions sells the wallet's entire balance and closes the token account to reclaim its rent. This example also explains maxSafeSellAmount, the u64 overflow bound that decides when "
+    },
+    {
+      "file": "08-sell-to-target-sol.ts",
+      "number": 8,
+      "title": "Sell to a Target SOL Amount",
+      "category": "Token Lifecycle",
+      "summary": "\"I need 2 SOL back\" is a target, not a token amount. This example uses getTokenAmountForTargetSol, a binary search over the sell quote, to find the minimum tokens to part with, and shows sellToTargetSol and sellChunked f"
+    },
+    {
+      "file": "11-buy-quote-offline.ts",
+      "number": 11,
+      "title": "Buy Quotes, Fully Offline",
+      "category": "Curve Math & Fees",
+      "summary": "Quotes bonding curve buys in both directions with zero network access: SOL in to tokens out, and tokens wanted to SOL cost. The same math the on-chain program runs, so you can price trades, build UIs, or sanity check fil"
+    },
+    {
+      "file": "12-sell-quote-offline.ts",
+      "number": 12,
+      "title": "Sell Quotes and Fee Impact",
+      "category": "Curve Math & Fees",
+      "summary": "Quotes bonding curve sells offline and splits every quote into gross proceeds, fees taken, and net SOL received. Shows how the creator fee changes what a seller actually keeps, which any PnL display or exit calculator mu"
+    },
+    {
+      "file": "13-market-cap.ts",
+      "number": 13,
+      "title": "Market Cap Along the Curve",
+      "category": "Curve Math & Fees",
+      "summary": "Computes a token's SOL-denominated market cap at launch, mid-curve, and on the edge of graduation, entirely offline. Shows how the constant product invariant pins every market cap to a point on the curve, from ~28 SOL at"
+    },
+    {
+      "file": "14-target-sol.ts",
+      "number": 14,
+      "title": "Sell Enough Tokens to Extract N SOL",
+      "category": "Curve Math & Fees",
+      "summary": "Answers the exit-planning question \"how many tokens must I sell to take home N lamports after fees?\" using the SDK's binary search over the sell quote, offline. Also shows the hard ceiling every plan runs into: one sell "
+    },
+    {
+      "file": "15-max-safe-sell.ts",
+      "number": 15,
+      "title": "The u64 Sell Overflow Guard",
+      "category": "Curve Math & Fees",
+      "summary": "Demonstrates maxSafeSellAmount and validateSellAmount, the pre-flight checks that keep a sell's amount virtualSolReserves multiply inside u64 so the on-chain program never aborts with AnchorError 6024 (Overflow). Shows t"
+    },
+    {
+      "file": "16-launch-price-ladder.ts",
+      "number": 16,
+      "title": "Launch Price Ladder",
+      "category": "Curve Math & Fees",
+      "summary": "Starts from newBondingCurve(global), then simulates a sequence of buys by applying each quote to the virtual and real reserves with BN math, printing spot price and market cap after every step. This is constant product c"
+    },
+    {
+      "file": "41-amm-buy.ts",
+      "number": 41,
+      "title": "AMM Buy",
+      "category": "AMM & Advanced",
+      "summary": "Quotes a buy on a graduated token's PumpAMM pool with ammQuoteBuy, then builds the swap instructions with ammBuyInstructions without sending anything. Shows how to read a quote: effective price, fee load, and how far the"
     }
   ],
   "exampleTutorials": [],
   "stats": {
     "docs": 40,
     "tutorials": 44,
-    "examples": 1,
+    "examples": 15,
     "mcpTools": 67,
     "mcpResources": 4,
     "mcpPrompts": 5,

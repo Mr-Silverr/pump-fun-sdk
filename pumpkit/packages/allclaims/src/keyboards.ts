@@ -25,12 +25,6 @@ export interface KeyboardAffiliates {
     fomo?: string;
 }
 
-/** Append a referral code only when one is configured. */
-function withRef(url: string, param: string, ref?: string): string {
-    if (!ref) return url;
-    return url.includes('?') ? `${url}&${param}=${ref}` : `${url}?${param}=${ref}`;
-}
-
 /**
  * Trade rows first (Axiom/GMGN, then Padre/FOMO, referral-coded), then a row
  * for looking at it. Short rows keep every label readable on a narrow screen.

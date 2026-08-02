@@ -24,13 +24,6 @@ export interface TradeLink {
     url: string;
 }
 
-/** Append a query parameter, respecting any query string already present. */
-function withParam(url: string, key: string, value?: string): string {
-    if (!value) return url;
-    const sep = url.includes('?') ? '&' : '?';
-    return `${url}${sep}${key}=${encodeURIComponent(value)}`;
-}
-
 /**
  * Every trading venue for a mint, with referral codes applied.
  *

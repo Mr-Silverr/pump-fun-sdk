@@ -39,8 +39,8 @@ export function buildTokenKeyboard(mint: string, affiliates: KeyboardAffiliates 
     return {
         inline_keyboard: [
             [
-                { text: '⚡ Axiom', url: withRef(`https://axiom.trade/t/${mint}`, 'ref', affiliates.axiom) },
-                { text: '🐸 GMGN', url: withRef(`https://gmgn.ai/sol/token/${mint}`, 'ref', affiliates.gmgn) },
+                { text: '⚡ Axiom', url: `https://axiom.trade/t/${mint}` },
+                { text: '🐸 GMGN', url: `https://gmgn.ai/sol/token/${affiliates.gmgn ? `${encodeURIComponent(affiliates.gmgn)}_` : ''}${mint}` },
             ],
             [
                 {
@@ -51,7 +51,7 @@ export function buildTokenKeyboard(mint: string, affiliates: KeyboardAffiliates 
                 },
                 {
                     text: '🚀 FOMO',
-                    url: `https://fomo.family/${encodeURIComponent(affiliates.fomo ?? 'nichxbt')}`,
+                    url: `https://fomo.family/r/${encodeURIComponent(affiliates.fomo ?? 'nichxbt')}`,
                 },
             ],
             [

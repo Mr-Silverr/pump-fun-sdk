@@ -49,10 +49,10 @@ export function buildTradeLinks(mint: string, aff: Affiliates = {}): TradeLink[]
         { name: 'Axiom', short: 'AXI', url: `https://axiom.trade/t/${mint}` },
         { name: 'GMGN', short: 'GMG', url: `https://gmgn.ai/sol/token/${aff.gmgn ? `${encodeURIComponent(aff.gmgn)}_` : ''}${mint}` },
         { name: 'Padre', short: 'PDR', url: `https://trade.padre.gg/trade/solana/${mint}` },
-        // fomo.family/<code> is the verified referral entry point. It has no
+        // FOMO's documented referral form is fomo.family/r/<code>. It has no
         // per-token route, so unlike the others this one lands on the referral
         // page rather than the mint.
-        { name: 'FOMO', short: 'FMO', url: `https://fomo.family/${encodeURIComponent(aff.fomo ?? '')}` },
+        { name: 'FOMO', short: 'FMO', url: aff.fomo ? `https://fomo.family/r/${encodeURIComponent(aff.fomo)}` : 'https://fomo.family' },
     ];
 }
 

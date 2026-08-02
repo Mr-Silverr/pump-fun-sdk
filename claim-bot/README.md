@@ -13,7 +13,7 @@ Runs as [@pfclaimsbot](https://t.me/pfclaimsbot).
 - **Whale alerts**: any claim over a USD value, tracked or not, priced from a live SOL feed
 - **Rate-limit safe delivery**: bursts collapse into one digest instead of tripping Telegram's per-chat limit
 - **Claim history and leaderboard**: `/history` for anything you track, `/top` for the biggest claimers on PumpFun
-- **Inline buttons** on every alert: transaction, wallet, coin, history, and one-tap untrack
+- **Inline buttons** on every alert: transaction, wallet, coin, trading venues (Axiom, GMGN, Padre, FOMO), history, and one-tap untrack
 - **Real-time WebSocket monitoring** of the Pump, PumpSwap, and PumpFees programs, with automatic reconnect and an HTTP polling fallback
 - **RPC failover** across every endpoint in `SOLANA_RPC_URLS`, rotating after repeated failures
 - **JSON API** for the same data the bot posts: `/claims`, `/top`, `/health`
@@ -97,6 +97,10 @@ The dry run subscribes to the real programs, prints every claim it detects, and 
 | `DATA_DIR` | no | `./data` | Where the tracking store is persisted |
 | `STATE_BUCKET` | on Cloud Run | none | Cloud Storage bucket the state files are mirrored to. Unset means local disk only |
 | `STATE_PREFIX` | no | `claim-bot/` | Object prefix inside the bucket, so one bucket can hold several bots |
+| `AXIOM_REF` | no | `nich` | Axiom referral code used in alert links. Empty string drops the venue |
+| `GMGN_REF` | no | `nichxbt` | GMGN referral code |
+| `PADRE_REF` | no | `nichxbt` | Padre referral code |
+| `FOMO_REF` | no | `nichxbt` | FOMO referral code (fomo.family) |
 
 > **WebSocket is not optional in practice.** Polling asks for the 20 most recent signatures per program per tick. The Pump programs do thousands of transactions per minute, so polling mode will miss most claims. The bot logs a loud warning whenever it falls back to it.
 >
@@ -195,6 +199,7 @@ claim-bot/
 │   ├── store.ts          # Persistent tracking store (tokens, wallets, X handles)
 │   ├── settings.ts       # Per-chat alert settings (threshold, mute)
 │   ├── claim-history.ts  # Bounded claim log behind /history, /top, /claims
+│   ├── affiliates.ts     # Trading venue links and their referral codes
 │   ├── keyboards.ts      # Inline buttons and their callback encoding
 │   ├── delivery.ts       # Per-chat rate limiting, digest overflow, 429 backoff
 │   ├── price.ts          # Cached SOL price with failover, for USD figures

@@ -75,7 +75,13 @@ import {
   getPumpProgram,
   PUMP_SDK,
   PUMP_TOKEN_MINT,
+  PUMP_PROGRAM_ID,
+  PUMP_AMM_PROGRAM_ID,
+  PUMP_FEE_PROGRAM_ID,
 } from "./sdk";
+import pumpIdlJson from "./idl/pump.json";
+import pumpAmmIdlJson from "./idl/pump_amm.json";
+import pumpFeesIdlJson from "./idl/pump_fees.json";
 import {
   AdminSetCreatorEvent,
   AmmBuyEvent,
@@ -2943,80 +2949,6 @@ function decodePumpEventData(
   return null;
 }
 
-function tryDecodePumpEvent(data: Buffer): PumpEvent | null {
-  return decodePumpEventData(data);
-}
 
-function unusedLegacyDecoders(data: Buffer): PumpEvent | null {
-  const decoders: Array<() => PumpEvent | null> = [
-    // Pump bonding curve
-    () => { const d = PUMP_SDK.decodeTradeEvent(data); return d ? { type: "trade", data: d } : null; },
-    () => { const d = PUMP_SDK.decodeCreateEvent(data); return d ? { type: "create", data: d } : null; },
-    () => { const d = PUMP_SDK.decodeCompleteEvent(data); return d ? { type: "complete", data: d } : null; },
-    () => { const d = PUMP_SDK.decodeCompletePumpAmmMigrationEvent(data); return d ? { type: "completePumpAmmMigration", data: d } : null; },
-    () => { const d = PUMP_SDK.decodeSetCreatorEvent(data); return d ? { type: "setCreator", data: d } : null; },
-    () => { const d = PUMP_SDK.decodeCollectCreatorFeeEvent(data); return d ? { type: "collectCreatorFee", data: d } : null; },
-    () => { const d = PUMP_SDK.decodeClaimCashbackEvent(data); return d ? { type: "claimCashback", data: d } : null; },
-    () => { const d = PUMP_SDK.decodeClaimTokenIncentivesEvent(data); return d ? { type: "claimTokenIncentives", data: d } : null; },
-    () => { const d = PUMP_SDK.decodeExtendAccountEvent(data); return d ? { type: "extendAccount", data: d } : null; },
-    () => { const d = PUMP_SDK.decodeInitUserVolumeAccumulatorEvent(data); return d ? { type: "initUserVolumeAccumulator", data: d } : null; },
-    () => { const d = PUMP_SDK.decodeSyncUserVolumeAccumulatorEvent(data); return d ? { type: "syncUserVolumeAccumulator", data: d } : null; },
-    () => { const d = PUMP_SDK.decodeCloseUserVolumeAccumulatorEvent(data); return d ? { type: "closeUserVolumeAccumulator", data: d } : null; },
-    () => { const d = PUMP_SDK.decodeAdminSetCreatorEvent(data); return d ? { type: "adminSetCreator", data: d } : null; },
-    () => { const d = PUMP_SDK.decodeMigrateBondingCurveCreatorEvent(data); return d ? { type: "migrateBondingCurveCreator", data: d } : null; },
-    () => { const d = PUMP_SDK.decodeDistributeCreatorFeesEvent(data); return d ? { type: "distributeCreatorFees", data: d } : null; },
-    // PumpAMM
-    () => { const d = PUMP_SDK.decodeAmmBuyEvent(data); return d ? { type: "ammBuy", data: d } : null; },
-    () => { const d = PUMP_SDK.decodeAmmSellEvent(data); return d ? { type: "ammSell", data: d } : null; },
-    () => { const d = PUMP_SDK.decodeDepositEvent(data); return d ? { type: "deposit", data: d } : null; },
-    () => { const d = PUMP_SDK.decodeWithdrawEvent(data); return d ? { type: "withdraw", data: d } : null; },
-    () => { const d = PUMP_SDK.decodeCreatePoolEvent(data); return d ? { type: "createPool", data: d } : null; },
-    // PumpFees
-    () => { const d = PUMP_SDK.decodeCreateFeeSharingConfigEvent(data); return d ? { type: "createFeeSharingConfig", data: d } : null; },
-    () => { const d = PUMP_SDK.decodeUpdateFeeSharesEvent(data); return d ? { type: "updateFeeShares", data: d } : null; },
-    () => { const d = PUMP_SDK.decodeResetFeeSharingConfigEvent(data); return d ? { type: "resetFeeSharingConfig", data: d } : null; },
-    () => { const d = PUMP_SDK.decodeRevokeFeeSharingAuthorityEvent(data); return d ? { type: "revokeFeeSharingAuthority", data: d } : null; },
-    () => { const d = PUMP_SDK.decodeTransferFeeSharingAuthorityEvent(data); return d ? { type: "transferFeeSharingAuthority", data: d } : null; },
-    () => { const d = PUMP_SDK.decodeSocialFeePdaCreatedEvent(data); return d ? { type: "socialFeePdaCreated", data: d } : null; },
-    () => { const d = PUMP_SDK.decodeSocialFeePdaClaimedEvent(data); return d ? { type: "socialFeePdaClaimed", data: d } : null; },
-    // PumpAMM extra
-    () => { const d = PUMP_SDK.decodeAmmAdminSetCoinCreatorEvent(data); return d ? { type: "ammAdminSetCoinCreator", data: d } : null; },
-    () => { const d = PUMP_SDK.decodeAmmAdminUpdateTokenIncentivesEvent(data); return d ? { type: "ammAdminUpdateTokenIncentives", data: d } : null; },
-    () => { const d = PUMP_SDK.decodeAmmClaimCashbackEvent(data); return d ? { type: "ammClaimCashback", data: d } : null; },
-    () => { const d = PUMP_SDK.decodeAmmClaimTokenIncentivesEvent(data); return d ? { type: "ammClaimTokenIncentives", data: d } : null; },
-    () => { const d = PUMP_SDK.decodeAmmCloseUserVolumeAccumulatorEvent(data); return d ? { type: "ammCloseUserVolumeAccumulator", data: d } : null; },
-    () => { const d = PUMP_SDK.decodeAmmCollectCoinCreatorFeeEvent(data); return d ? { type: "ammCollectCoinCreatorFee", data: d } : null; },
-    () => { const d = PUMP_SDK.decodeAmmCreateConfigEvent(data); return d ? { type: "ammCreateConfig", data: d } : null; },
-    () => { const d = PUMP_SDK.decodeAmmDisableEvent(data); return d ? { type: "ammDisable", data: d } : null; },
-    () => { const d = PUMP_SDK.decodeAmmExtendAccountEvent(data); return d ? { type: "ammExtendAccount", data: d } : null; },
-    () => { const d = PUMP_SDK.decodeAmmInitUserVolumeAccumulatorEvent(data); return d ? { type: "ammInitUserVolumeAccumulator", data: d } : null; },
-    () => { const d = PUMP_SDK.decodeAmmMigratePoolCoinCreatorEvent(data); return d ? { type: "ammMigratePoolCoinCreator", data: d } : null; },
-    () => { const d = PUMP_SDK.decodeAmmReservedFeeRecipientsEvent(data); return d ? { type: "ammReservedFeeRecipients", data: d } : null; },
-    () => { const d = PUMP_SDK.decodeAmmSetBondingCurveCoinCreatorEvent(data); return d ? { type: "ammSetBondingCurveCoinCreator", data: d } : null; },
-    () => { const d = PUMP_SDK.decodeAmmSetMetaplexCoinCreatorEvent(data); return d ? { type: "ammSetMetaplexCoinCreator", data: d } : null; },
-    () => { const d = PUMP_SDK.decodeAmmSyncUserVolumeAccumulatorEvent(data); return d ? { type: "ammSyncUserVolumeAccumulator", data: d } : null; },
-    () => { const d = PUMP_SDK.decodeAmmUpdateAdminEvent(data); return d ? { type: "ammUpdateAdmin", data: d } : null; },
-    () => { const d = PUMP_SDK.decodeAmmUpdateFeeConfigEvent(data); return d ? { type: "ammUpdateFeeConfig", data: d } : null; },
-    // PumpFees extra
-    () => { const d = PUMP_SDK.decodeFeesInitializeFeeConfigEvent(data); return d ? { type: "feesInitializeFeeConfig", data: d } : null; },
-    () => { const d = PUMP_SDK.decodeFeesInitializeFeeProgramGlobalEvent(data); return d ? { type: "feesInitializeFeeProgramGlobal", data: d } : null; },
-    () => { const d = PUMP_SDK.decodeFeesSetAuthorityEvent(data); return d ? { type: "feesSetAuthority", data: d } : null; },
-    () => { const d = PUMP_SDK.decodeFeesSetClaimRateLimitEvent(data); return d ? { type: "feesSetClaimRateLimit", data: d } : null; },
-    () => { const d = PUMP_SDK.decodeFeesSetDisableFlagsEvent(data); return d ? { type: "feesSetDisableFlags", data: d } : null; },
-    () => { const d = PUMP_SDK.decodeFeesSetSocialClaimAuthorityEvent(data); return d ? { type: "feesSetSocialClaimAuthority", data: d } : null; },
-    () => { const d = PUMP_SDK.decodeFeesUpdateAdminEvent(data); return d ? { type: "feesUpdateAdmin", data: d } : null; },
-    () => { const d = PUMP_SDK.decodeFeesUpdateFeeConfigEvent(data); return d ? { type: "feesUpdateFeeConfig", data: d } : null; },
-    () => { const d = PUMP_SDK.decodeFeesUpsertFeeTiersEvent(data); return d ? { type: "feesUpsertFeeTiers", data: d } : null; },
-  ];
-  for (const decode of decoders) {
-    try {
-      const result = decode();
-      if (result) return result;
-    } catch {
-      // discriminator mismatch — try next
-    }
-  }
-  return null;
-}
 
 

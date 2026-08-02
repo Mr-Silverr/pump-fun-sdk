@@ -2428,3 +2428,24 @@ a.token-card:focus-visible,
   outline-offset: 3px;
   border-radius: 4px;
 }
+
+/* ---------- Skip link ---------- */
+.skip-link {
+  position: absolute;
+  left: 50%;
+  top: 8px;
+  transform: translate(-50%, -200%);
+  z-index: 100;
+  padding: 10px 18px;
+  border-radius: var(--radius-sm);
+  background: var(--green);
+  color: var(--bg-primary);
+  font-weight: 700;
+  font-size: 14px;
+  text-decoration: none;
+  transition: transform var(--transition);
+}
+
+.skip-link:focus {
+  transform: translate(-50%, 0);
+}

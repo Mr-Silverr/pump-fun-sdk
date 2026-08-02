@@ -3,12 +3,24 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Pump SDK — The Community SDK for Pump.fun</title>
+  <title>Pump SDK - The Community SDK for Pump.fun</title>
   <meta name="description" content="Unofficial community TypeScript SDK for creating, buying, and selling tokens on the Solana blockchain via the Pump protocol.">
+  <meta name="theme-color" content="#0a0a0f">
+  <link rel="canonical" href="https://sdk.pumpk.it/">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Pump SDK">
+  <meta property="og:title" content="Pump SDK - The Community SDK for Pump.fun">
+  <meta property="og:description" content="Unofficial community TypeScript SDK for creating, buying, and selling tokens on the Solana blockchain via the Pump protocol.">
+  <meta property="og:url" content="https://sdk.pumpk.it/">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="Pump SDK - The Community SDK for Pump.fun">
+  <meta name="twitter:description" content="Unofficial community TypeScript SDK for creating, buying, and selling tokens on the Solana blockchain via the Pump protocol.">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🟢</text></svg>">
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
+  <a class="skip-link" href="#main" onclick="skipToContent(event)">Skip to content</a>
+
   <!-- ========== TOP BANNER ========== -->
   <div class="top-banner">
     <span>🚀 Pump SDK v2 is live — createV2, Token2022, mayhem mode, social fees &amp; more</span>
@@ -53,14 +65,14 @@
         </a>
       </div>
 
-      <button class="mobile-menu-btn" onclick="toggleMobileMenu()" aria-label="Toggle menu">
+      <button class="mobile-menu-btn" onclick="toggleMobileMenu()" aria-label="Toggle menu" aria-expanded="false" aria-controls="navLinks">
         <span></span><span></span><span></span>
       </button>
     </div>
   </header>
 
   <!-- ========== MAIN CONTENT ========== -->
-  <main class="main">
+  <main class="main" id="main" tabindex="-1">
 
     <!-- ===== HOME PAGE ===== -->
     <section class="page page-home active" id="page-home">
@@ -884,8 +896,6 @@
     </div>
   </footer>
 
-  <script src="vendor/marked.umd.js"></script>
-  <script src="vendor/purify.min.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

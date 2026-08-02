@@ -82,6 +82,7 @@ const SEARCH_WORD_LIMIT = 10000;
 
 const fileCache = new Map();
 let manifestPromise = null;
+let markdownPromise = null;
 let hljsPromise = null;
 let tocObserver = null;
 let currentPage = 'home';
@@ -258,9 +259,56 @@ function openTutorial(file, anchor) {
   setRoute('tutorials/' + file + (anchor ? '~' + anchor : ''));
 }
 
-function toggleMobileMenu() {
-  byId('navLinks').classList.toggle('open');
+// The hash router owns every #fragment, so the skip link moves focus itself
+// instead of letting the browser navigate to a route named "main".
+function skipToContent(event) {
+  event.preventDefault();
+  const main = byId('main');
+  if (!main) return;
+  main.focus({ preventScroll: true });
+  main.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
+
+function toggleMobileMenu() {
+  const open = byId('navLinks').classList.toggle('open');
+  const btn = document.querySelector('.mobile-menu-btn');
+  if (btn) btn.setAttribute('aria-expanded', String(open));
+}
+
+function closeMobileMenu() {
+  byId('navLinks').classList.remove('open');
+  const btn = document.querySelector('.mobile-menu-btn');
+  if (btn) btn.setAttribute('aria-expanded', 'false');
+}
+
+const SITE_NAME = 'Pump SDK';
+const BASE_DESCRIPTION = 'Unofficial community TypeScript SDK for creating, buying, and selling tokens on the Solana blockchain via the Pump protocol.';
+
+// A hash router still owns the tab title, the share preview, and the canonical
+// URL, so every route sets them instead of leaving the landing page copy.
+function setDocumentMeta(title, description) {
+  document.title = title ? `${title} - ${SITE_NAME}` : `${SITE_NAME} - The Community SDK for Pump.fun`;
+
+  const text = description || BASE_DESCRIPTION;
+  document.querySelectorAll('meta[name="description"], meta[property="og:description"], meta[name="twitter:description"]')
+    .forEach((el) => el.setAttribute('content', text));
+  document.querySelectorAll('meta[property="og:title"], meta[name="twitter:title"]')
+    .forEach((el) => el.setAttribute('content', document.title));
+
+  const canonical = document.querySelector('link[rel="canonical"]');
+  if (canonical) canonical.setAttribute('href', window.location.href);
+  const ogUrl = document.querySelector('meta[property="og:url"]');
+  if (ogUrl) ogUrl.setAttribute('content', window.location.href);
+}
+
+const PAGE_META = {
+  home: [null, null],
+  docs: ['Documentation', 'Guides and references for the Pump SDK: architecture, bonding curve math, AMM trading, fees, and the full API surface.'],
+  tutorials: ['Tutorials', 'Step-by-step Pump SDK builds, in order, from your first token to a complete swap.'],
+  sdk: ['SDK Reference', 'Pump SDK architecture, key types, import map, and the pitfalls worth knowing before you build.'],
+  tools: ['Tools & Dashboards', 'MCP server, live dashboards, vanity generators, bots, and payment tooling built on the Pump SDK.'],
+  ecosystem: ['Ecosystem', 'Project structure, performance numbers, security practices, and links across the Pump SDK ecosystem.'],
+};
 
 function showPage(page) {
   const changed = currentPage !== page;
@@ -272,10 +320,14 @@ function showPage(page) {
   const target = byId(`page-${page}`);
   if (target) target.classList.add('active');
 
+  document.querySelectorAll('.nav-link').forEach((l) => l.removeAttribute('aria-current'));
   const navLink = document.querySelector(`.nav-link[data-page="${page}"]`);
-  if (navLink) navLink.classList.add('active');
+  if (navLink) {
+    navLink.classList.add('active');
+    navLink.setAttribute('aria-current', 'page');
+  }
 
-  byId('navLinks').classList.remove('open');
+  closeMobileMenu();
   return changed;
 }
 
@@ -284,6 +336,8 @@ function applyRoute() {
   const pageChanged = showPage(route.page);
 
   if (!route.collection) {
+    const [title, description] = PAGE_META[route.page] || PAGE_META.home;
+    setDocumentMeta(title, description);
     Object.keys(COLLECTIONS).forEach((c) => { state[c].file = null; });
     if (pageChanged) window.scrollTo({ top: 0, behavior: 'smooth' });
     return;
@@ -297,7 +351,13 @@ function applyRoute() {
 
   if (route.file) {
     showArticle(collection, route.file, route.anchor);
-  } else if (state[collection].query) {
+    return;
+  }
+
+  const [title, description] = PAGE_META[collection] || PAGE_META.home;
+  setDocumentMeta(title, description);
+
+  if (state[collection].query) {
     renderQuery(collection, state[collection].query);
   } else {
     showIndex(collection);
@@ -570,6 +630,18 @@ function slugify(text) {
     .trim()
     .replace(/\s+/g, '-')
     .replace(/-+/g, '-') || 'section';
+}
+
+// marked and DOMPurify are only needed once a document opens, so the landing
+// page never pays for them.
+function loadMarkdownEngine() {
+  if (!markdownPromise) {
+    markdownPromise = Promise.all([
+      import(SITE_ROOT + 'vendor/marked.esm.js'),
+      import(SITE_ROOT + 'vendor/purify.es.mjs'),
+    ]).then(([marked, purify]) => ({ marked: marked.marked, DOMPurify: purify.default }));
+  }
+  return markdownPromise;
 }
 
 function loadHighlighter() {
@@ -872,12 +944,14 @@ async function showArticle(collection, file, anchor) {
   slot.file = file;
   const token = ++slot.token;
   article.dataset.state = 'loading';
+  setDocumentMeta(entry ? entry.title : file, entry ? entry.summary : null);
   article.innerHTML = skeletonHtml(collection, entry, file);
   window.scrollTo({ top: 0, behavior: 'smooth' });
 
   let markdown;
+  let engine;
   try {
-    markdown = await loadFile(collection, file);
+    [markdown, engine] = await Promise.all([loadFile(collection, file), loadMarkdownEngine()]);
   } catch (err) {
     if (token !== slot.token) return;
     article.dataset.state = 'error';
@@ -896,10 +970,11 @@ async function showArticle(collection, file, anchor) {
   // The page header below carries the title and the lead blockquote summary, so
   // both are dropped from the body instead of being shown twice.
   const bodyMarkdown = stripLead(markdown, meta.summary);
-  const dirty = window.marked.parse(bodyMarkdown, { gfm: true });
-  const clean = window.DOMPurify.sanitize(dirty, { USE_PROFILES: { html: true } });
+  const dirty = engine.marked.parse(bodyMarkdown, { gfm: true });
+  const clean = engine.DOMPurify.sanitize(dirty, { USE_PROFILES: { html: true } });
 
   article.dataset.state = 'ready';
+  setDocumentMeta(meta.title, meta.summary);
   article.innerHTML = `
     <nav class="doc-breadcrumb">
       <a href="#${collection}">${COLLECTIONS[collection].label}</a><span>/</span><span>${escapeHtml(categoryLabel(collection, meta.category))}</span>
@@ -931,6 +1006,14 @@ async function showArticle(collection, file, anchor) {
   trackTocScroll(collection, body);
   highlightArticle(body);
   scrollToAnchor(anchor);
+
+  // Keyboard and screen-reader users land on the new document, not wherever
+  // the previous page left the caret.
+  const heading = article.querySelector('.doc-head-text h1');
+  if (heading) {
+    heading.setAttribute('tabindex', '-1');
+    heading.focus({ preventScroll: true });
+  }
 }
 
 function retryArticle(collection, file) {

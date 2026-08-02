@@ -6,14 +6,17 @@ except the one documented transform below.
 
 | File | Package | Version | License |
 |------|---------|---------|---------|
-| `marked.umd.js` | [marked](https://www.npmjs.com/package/marked) | 18.0.7 | MIT (`LICENSE.marked`) |
-| `purify.min.js` | [dompurify](https://www.npmjs.com/package/dompurify) | 3.4.12 | Apache-2.0 / MPL-2.0 (`LICENSE.dompurify`) |
+| `marked.esm.js` | [marked](https://www.npmjs.com/package/marked) | 18.0.7 | MIT (`LICENSE.marked`) |
+| `purify.es.mjs` | [dompurify](https://www.npmjs.com/package/dompurify) | 3.4.12 | Apache-2.0 / MPL-2.0 (`LICENSE.dompurify`) |
 | `highlight-core.mjs`, `lang-*.mjs` | [highlight.js](https://www.npmjs.com/package/highlight.js) | 11.11.1 | BSD-3-Clause (`LICENSE.highlightjs`) |
 | `hljs.mjs` | ours | - | MIT (repo license) |
 
 `marked` parses documentation markdown, `DOMPurify` sanitizes the resulting HTML
 before it reaches the DOM, and `highlight.js` colors fenced code blocks.
 `hljs.mjs` is our loader: it registers only the languages the docs use.
+
+All three are ES modules loaded with a dynamic `import()` the first time a
+document opens, so the landing page downloads none of them.
 
 ## Refreshing a vendored copy
 
@@ -22,8 +25,8 @@ cd website/vendor
 npm pack marked dompurify highlight.js --pack-destination /tmp/pumpvendor
 mkdir -p /tmp/pumpvendor/x && for t in /tmp/pumpvendor/*.tgz; do tar xzf "$t" -C /tmp/pumpvendor/x --one-top-level="$(basename "$t" .tgz)"; done
 
-cp /tmp/pumpvendor/x/marked-*/package/lib/marked.umd.js marked.umd.js
-cp /tmp/pumpvendor/x/dompurify-*/package/dist/purify.min.js purify.min.js
+cp /tmp/pumpvendor/x/marked-*/package/lib/marked.esm.js marked.esm.js
+cp /tmp/pumpvendor/x/dompurify-*/package/dist/purify.es.mjs purify.es.mjs
 for l in typescript javascript bash json rust xml; do
   cp /tmp/pumpvendor/x/highlight.js-*/package/es/languages/$l.js lang-$l.mjs
 done

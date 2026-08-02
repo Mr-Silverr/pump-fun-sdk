@@ -208,7 +208,7 @@
       "file": "roadmap.md",
       "title": "Roadmap",
       "summary": "Where pump-fun-sdk is headed. Updated quarterly. Community input welcome — open a Discussion or Feature Request.",
-      "words": 732,
+      "words": 735,
       "minutes": 3
     },
     {
@@ -438,7 +438,7 @@
     {
       "file": "20-mcp-server-ai-agents.md",
       "title": "Tutorial 20: MCP Server for AI Agents",
-      "summary": "Expose the Pump SDK as 53 AI tools via the Model Context Protocol — let Claude, GPT, and Cursor trade tokens with natural language.",
+      "summary": "Expose the Pump SDK as 67 AI tools via the Model Context Protocol — let Claude, GPT, and Cursor trade tokens with natural language.",
       "words": 1151,
       "minutes": 5,
       "number": 20

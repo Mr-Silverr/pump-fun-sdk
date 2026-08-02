@@ -33,6 +33,7 @@ const problems = [];
 const fail = (where, message) => problems.push(`${where}: ${message}`);
 
 const pages = new Set([...html.matchAll(/id="page-([\w-]+)"/g)].map((m) => m[1]));
+const elementIds = new Set([...html.matchAll(/\sid="([\w-]+)"/g)].map((m) => m[1]));
 const repoPrefix = 'https://github.com/nirholas/pump-fun-sdk/';
 
 function checkCollectionRoute(where, collection, file) {
@@ -52,6 +53,8 @@ function checkHash(where, hash) {
     return;
   }
   if (pages.has(head)) return;
+  // In-page landmarks such as the skip link's #main.
+  if (elementIds.has(value)) return;
   if (existsSync(join(root, 'docs', `${head}.md`))) return;
   fail(where, `#${value} matches no page and no documentation file`);
 }

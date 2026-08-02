@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Pump SDK - The Community SDK for Pump.fun</title>
   <meta name="description" content="Unofficial community TypeScript SDK for creating, buying, and selling tokens on the Solana blockchain via the Pump protocol.">
-  <meta name="theme-color" content="#0a0a0f">
+  <meta name="theme-color" content="#050505">
   <link rel="canonical" href="https://sdk.pumpk.it/">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="Pump SDK">
@@ -15,7 +15,7 @@
   <meta name="twitter:card" content="summary">
   <meta name="twitter:title" content="Pump SDK - The Community SDK for Pump.fun">
   <meta name="twitter:description" content="Unofficial community TypeScript SDK for creating, buying, and selling tokens on the Solana blockchain via the Pump protocol.">
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🟢</text></svg>">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%23050505'/><path d='M10 22 L16 8 L22 22 L16 18 Z' fill='%23ffffff'/></svg>">
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -23,8 +23,8 @@
 
   <!-- ========== TOP BANNER ========== -->
   <div class="top-banner">
-    <span>🚀 Pump SDK v2 is live — createV2, Token2022, mayhem mode, social fees &amp; more</span>
-    <a href="#getting-started">Get Started →</a>
+    <span>Pump SDK v2 is live: createV2, Token2022, mayhem mode, social fees, and 50 runnable examples</span>
+    <a href="#getting-started">Get started</a>
   </div>
 
   <!-- ========== HEADER ========== -->
@@ -32,15 +32,9 @@
     <div class="header-inner">
       <a href="#home" class="logo" onclick="navigateTo('home')">
         <div class="logo-icon">
-          <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
-            <circle cx="16" cy="16" r="14" fill="url(#logoGrad)" />
-            <path d="M10 20 L16 8 L22 20 L16 16 Z" fill="#0a0a0f" />
-            <defs>
-              <linearGradient id="logoGrad" x1="0" y1="0" x2="32" y2="32">
-                <stop offset="0%" stop-color="#00ff88" />
-                <stop offset="100%" stop-color="#00c2ff" />
-              </linearGradient>
-            </defs>
+          <svg width="26" height="26" viewBox="0 0 32 32" fill="none" aria-hidden="true">
+            <rect x="1" y="1" width="30" height="30" rx="7" stroke="#333333" />
+            <path d="M10 22 L16 8 L22 22 L16 18 Z" fill="#ffffff" />
           </svg>
         </div>
         <span class="logo-text">pump<span class="logo-accent">sdk</span></span>
@@ -49,10 +43,12 @@
       <nav class="nav-links" id="navLinks">
         <a href="#home" class="nav-link active" data-page="home" onclick="navigateTo('home')">Home</a>
         <a href="#docs" class="nav-link" data-page="docs" onclick="navigateTo('docs')">Docs</a>
+        <a href="#examples" class="nav-link" data-page="examples" onclick="navigateTo('examples')">Examples</a>
         <a href="#tutorials" class="nav-link" data-page="tutorials" onclick="navigateTo('tutorials')">Tutorials</a>
         <a href="#sdk" class="nav-link" data-page="sdk" onclick="navigateTo('sdk')">SDK</a>
         <a href="#tools" class="nav-link" data-page="tools" onclick="navigateTo('tools')">Tools</a>
         <a href="#ecosystem" class="nav-link" data-page="ecosystem" onclick="navigateTo('ecosystem')">Ecosystem</a>
+        <a href="live/launchpad.html" class="nav-link">Launchpad</a>
       </nav>
 
       <div class="header-actions">
@@ -87,19 +83,19 @@
           </h1>
           <p class="hero-subtitle">
             The unofficial TypeScript SDK for creating, buying, and selling tokens on the Solana blockchain.
-            Bonding curve pricing, AMM migration, tiered fees, creator fee sharing &amp; more.
+            Bonding curve pricing, AMM migration, tiered fees, creator fee sharing, and 50 tested, runnable examples.
           </p>
           <div class="hero-actions">
             <a href="#docs" class="btn btn-primary btn-lg" onclick="navigateTo('docs')">
-              📖 Read the Docs
+              Read the docs
             </a>
             <a href="#sdk" class="btn btn-outline btn-lg" onclick="navigateTo('sdk')">
-              ⚡ Quick Start
+              Quick start
             </a>
           </div>
           <div class="hero-install">
             <code>npm install @nirholas/pump-sdk</code>
-            <button onclick="copyInstall()" class="copy-btn" title="Copy to clipboard">📋</button>
+            <button onclick="copyInstall()" class="copy-btn" title="Copy to clipboard">copy</button>
           </div>
         </div>
       </div>
@@ -123,21 +119,21 @@
           <span class="stat-label">Doc Pages</span>
         </div>
         <div class="stat">
-          <span class="stat-value">100K+</span>
-          <span class="stat-label">Keys/sec (Rust)</span>
+          <span class="stat-value" data-stat="examples">50</span>
+          <span class="stat-label">Runnable Examples</span>
         </div>
       </div>
 
       <!-- King of the Hill — Featured -->
       <div class="section">
         <div class="section-header">
-          <h2>👑 King of the Hill</h2>
+          <h2>Core capabilities</h2>
           <p class="section-subtitle">Core features that make Pump SDK the go-to toolkit</p>
         </div>
         <div class="featured-grid">
           <div class="featured-card featured-main" onclick="navigateTo('sdk')">
             <div class="featured-card-glow"></div>
-            <div class="featured-icon">⚡</div>
+            <div class="featured-icon">Offline</div>
             <h3>Offline-First SDK</h3>
             <p>Build transaction instructions without a connection. Pure functions, &lt;1ms, zero async overhead. Compose your own transactions with full control.</p>
             <div class="featured-tags">
@@ -147,7 +143,7 @@
             </div>
           </div>
           <div class="featured-card" onclick="openDoc('bonding-curve-math.md')">
-            <div class="featured-icon">📈</div>
+            <div class="featured-icon">Math</div>
             <h3>Bonding Curve Math</h3>
             <p>Precise buy/sell calculations with BN.js. Get token amounts from SOL, SOL from tokens, price impact, graduation progress.</p>
             <div class="featured-tags">
@@ -156,7 +152,7 @@
             </div>
           </div>
           <div class="featured-card" onclick="openDoc('amm-trading.md')">
-            <div class="featured-icon">🏊</div>
+            <div class="featured-icon">AMM</div>
             <h3>AMM Pool Trading</h3>
             <p>Post-graduation PumpSwap AMM with swap, deposit, and withdraw. Constant-product pools with protocol fees.</p>
             <div class="featured-tags">
@@ -165,7 +161,7 @@
             </div>
           </div>
           <div class="featured-card" onclick="openDoc('fee-tiers.md')">
-            <div class="featured-icon">💰</div>
+            <div class="featured-icon">Fees</div>
             <h3>Fee System</h3>
             <p>Dynamic tiered fees based on market cap. Creator fee sharing with configurable shareholders (10,000 BPS). Cashback rewards.</p>
             <div class="featured-tags">
@@ -179,7 +175,7 @@
       <!-- Token Cards Section — "Recently Launched" Documentation -->
       <div class="section">
         <div class="section-header">
-          <h2>📚 Documentation</h2>
+          <h2>Documentation</h2>
           <p class="section-subtitle">Everything you need to build on Pump</p>
           <div class="filter-bar">
             <button class="filter-btn active" onclick="filterDocs('all')">All</button>
@@ -200,12 +196,12 @@
       <!-- Programs Section -->
       <div class="section">
         <div class="section-header">
-          <h2>🔗 On-Chain Programs</h2>
+          <h2>On-chain programs</h2>
           <p class="section-subtitle">Three programs powering the Pump protocol</p>
         </div>
         <div class="program-grid">
           <div class="program-card">
-            <div class="program-icon">🟢</div>
+            <div class="program-icon">Curve</div>
             <h3>Pump Program</h3>
             <code class="program-id">6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P</code>
             <p>Bonding curve operations — create tokens, buy, sell, with virtual and real reserves. Supports create_v2, Token2022, and mayhem mode.</p>
@@ -214,7 +210,7 @@
             </div>
           </div>
           <div class="program-card">
-            <div class="program-icon">🔵</div>
+            <div class="program-icon">AMM</div>
             <h3>PumpSwap AMM</h3>
             <code class="program-id">pAMMBay6oceH9fJKBRHGP5D4bD4sWpmSwMn52FMfXEA</code>
             <p>Graduated AMM pools — constant-product swap, deposit liquidity, withdraw. Post-graduation trading with protocol fees.</p>
@@ -223,7 +219,7 @@
             </div>
           </div>
           <div class="program-card">
-            <div class="program-icon">🟣</div>
+            <div class="program-icon">Fees</div>
             <h3>PumpFees</h3>
             <code class="program-id">pfeeUxB6jkeY1Hxd7CsFCAjcbHA9rWtchMGdZ6VojVZ</code>
             <p>Fee sharing and distribution — dynamic tiers based on market cap, creator fee configs with shareholders summing to 10,000 BPS.</p>
@@ -237,7 +233,7 @@
       <!-- Quickstart Code -->
       <div class="section" id="getting-started">
         <div class="section-header">
-          <h2>🚀 Quick Start</h2>
+          <h2>Quick start</h2>
           <p class="section-subtitle">Go from zero to building in under a minute</p>
         </div>
         <div class="code-showcase">
@@ -252,8 +248,9 @@
             <pre><code><span class="code-comment">// Install the SDK</span>
 <span class="code-keyword">npm</span> install @nirholas/pump-sdk
 
-<span class="code-comment">// Peer dependencies</span>
-<span class="code-keyword">npm</span> install @solana/web3.js @solana/spl-token @coral-xyz/anchor bn.js</code></pre>
+<span class="code-comment">// @solana/web3.js, spl-token, anchor and bn.js install with it.</span>
+<span class="code-comment">// Then run any of the 50 examples:</span>
+<span class="code-keyword">npm</span> run example 11</code></pre>
           </div>
           <div class="code-panel" id="code-create">
             <pre><code><span class="code-keyword">import</span> { PUMP_SDK } <span class="code-keyword">from</span> <span class="code-string">"@nirholas/pump-sdk"</span>;
@@ -324,7 +321,7 @@
     <!-- ===== DOCS PAGE ===== -->
     <section class="page page-docs reader-page" id="page-docs">
       <div class="page-header">
-        <h1>📚 Documentation</h1>
+        <h1>Documentation</h1>
         <p>Comprehensive guides and references for the Pump SDK</p>
         <div class="search-bar">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
@@ -348,10 +345,37 @@
       </div>
     </section>
 
+    <!-- ===== EXAMPLES PAGE ===== -->
+    <section class="page page-examples reader-page" id="page-examples">
+      <div class="page-header">
+        <h1>Examples</h1>
+        <p>Fifty runnable, tested examples covering the full SDK surface. Each one runs with a single command and has a step-by-step walkthrough.</p>
+        <div class="search-bar">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+          <input type="search" id="exampleSearch" placeholder="Search examples..." aria-label="Search examples" oninput="searchExamples(this.value)">
+          <kbd class="search-hint">/</kbd>
+        </div>
+      </div>
+      <div class="docs-layout">
+        <aside class="docs-sidebar" id="examplesSidebar" aria-label="Example index">
+          <!-- Populated by JS -->
+        </aside>
+        <div class="docs-main">
+          <div class="docs-content" id="examplesContent">
+            <!-- Card index, populated by JS -->
+          </div>
+          <article class="doc-article" id="exampleArticle" hidden>
+            <!-- Rendered markdown, populated by JS -->
+          </article>
+        </div>
+        <aside class="docs-toc" id="examplesToc" aria-label="On this page" hidden></aside>
+      </div>
+    </section>
+
     <!-- ===== TUTORIALS PAGE ===== -->
     <section class="page page-tutorials reader-page" id="page-tutorials">
       <div class="page-header">
-        <h1>🧭 Tutorials</h1>
+        <h1>Tutorials</h1>
         <p>Step-by-step builds, in order, from your first token to a full swap</p>
         <div class="search-bar">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
@@ -378,7 +402,7 @@
     <!-- ===== SDK PAGE ===== -->
     <section class="page page-sdk" id="page-sdk">
       <div class="page-header">
-        <h1>⚡ SDK Reference</h1>
+        <h1>SDK Reference</h1>
         <p>Architecture, API surface, types, and patterns</p>
       </div>
 
@@ -489,35 +513,35 @@
 
         <!-- Common Pitfalls -->
         <div class="sdk-section">
-          <h2>⚠️ Common Pitfalls</h2>
+          <h2>Common pitfalls</h2>
           <div class="pitfall-grid">
             <div class="pitfall-card pitfall-danger">
-              <div class="pitfall-icon">🚫</div>
+              <div class="pitfall-icon">Never</div>
               <h4>Using createInstruction (v1)</h4>
               <p>DEPRECATED. Always use <code>createV2Instruction</code>.</p>
             </div>
             <div class="pitfall-card pitfall-danger">
-              <div class="pitfall-icon">🚫</div>
+              <div class="pitfall-icon">Never</div>
               <h4>Using number for amounts</h4>
               <p>WRONG. Use <code>new BN(...)</code> for all financial math. Always.</p>
             </div>
             <div class="pitfall-card pitfall-warning">
-              <div class="pitfall-icon">⚠️</div>
+              <div class="pitfall-icon">Watch</div>
               <h4>Trading a graduated curve</h4>
               <p>Check <code>bondingCurve.complete</code>. If true, use AMM methods instead.</p>
             </div>
             <div class="pitfall-card pitfall-warning">
-              <div class="pitfall-icon">⚠️</div>
+              <div class="pitfall-icon">Watch</div>
               <h4>Shares not summing to 10,000</h4>
               <p>Fee sharing config requires exactly 10,000 BPS total.</p>
             </div>
             <div class="pitfall-card pitfall-danger">
-              <div class="pitfall-icon">🚫</div>
+              <div class="pitfall-icon">Never</div>
               <h4>Returning Transaction objects</h4>
               <p>SDK returns <code>TransactionInstruction[]</code>, never Transaction.</p>
             </div>
             <div class="pitfall-card pitfall-warning">
-              <div class="pitfall-icon">⚠️</div>
+              <div class="pitfall-icon">Watch</div>
               <h4>Importing from internal paths</h4>
               <p>Import from <code>@nirholas/pump-sdk</code>, not <code>.../dist/...</code></p>
             </div>
@@ -529,13 +553,28 @@
     <!-- ===== TOOLS PAGE ===== -->
     <section class="page page-tools" id="page-tools">
       <div class="page-header">
-        <h1>🛠️ Tools &amp; Dashboards</h1>
+        <h1>Tools &amp; Dashboards</h1>
         <p>Live tools, generators, bots, and dashboards built with Pump SDK</p>
       </div>
       <div class="tools-grid">
+        <article class="tool-card tool-card-featured" data-tool="launchpad">
+          <div class="tool-badge">New</div>
+          <div class="tool-icon">Launch</div>
+          <h3>Token Launchpad</h3>
+          <p>Launch a token on the bonding curve and trade any live Pump token from your browser. Wallet signing, live quotes, price impact, and route selection, all built on the SDK's browser bundle.</p>
+          <div class="tool-stats">
+            <span>createV2</span>
+            <span>Live quotes</span>
+            <span>Curve + AMM routing</span>
+          </div>
+          <div class="tool-links">
+            <a class="tool-link tool-link-primary" href="live/launchpad.html">Open launchpad</a>
+            <a class="tool-link" href="https://github.com/nirholas/pump-fun-sdk/blob/main/live/launchpad.html" target="_blank" rel="noopener">Source</a>
+          </div>
+        </article>
         <article class="tool-card tool-card-featured" data-tool="mcp">
           <div class="tool-badge">MCP Server</div>
-          <div class="tool-icon">🤖</div>
+          <div class="tool-icon">MCP</div>
           <h3>AI Agent Integration</h3>
           <p>Model Context Protocol server exposing the SDK to any AI agent: quotes, instruction builders, analytics, and wallet tools.</p>
           <div class="tool-stats">
@@ -550,7 +589,7 @@
           </div>
         </article>
         <article class="tool-card" data-tool="launches">
-          <div class="tool-icon">📡</div>
+          <div class="tool-icon">Feed</div>
           <h3>Live Token Launches</h3>
           <p>Real-time launch feed over WebSocket, with GitHub detection, metadata fetching, and auto-reconnect.</p>
           <div class="tool-stats">
@@ -563,7 +602,7 @@
           </div>
         </article>
         <article class="tool-card" data-tool="trades">
-          <div class="tool-icon">📊</div>
+          <div class="tool-icon">Charts</div>
           <h3>Live Trades Dashboard</h3>
           <p>Buy, sell, create and migrate feed with volume charts, whale alerts, top tokens, and an analytics sidebar.</p>
           <div class="tool-stats">
@@ -576,7 +615,7 @@
           </div>
         </article>
         <article class="tool-card" data-tool="vanity">
-          <div class="tool-icon">🔑</div>
+          <div class="tool-icon">Keys</div>
           <h3>Vanity Address Generator</h3>
           <p>Client-side Solana vanity address generation. Multi-threaded, difficulty estimation, keypair export.</p>
           <div class="tool-stats">
@@ -589,7 +628,7 @@
           </div>
         </article>
         <article class="tool-card" data-tool="rust">
-          <div class="tool-icon">🦀</div>
+          <div class="tool-icon">Rust</div>
           <h3>Rust Vanity Generator</h3>
           <p>High-performance generator built on rayon and solana-sdk. 100K+ keys per second, multi-threaded.</p>
           <div class="tool-stats">
@@ -602,7 +641,7 @@
           </div>
         </article>
         <article class="tool-card" data-tool="telegram">
-          <div class="tool-icon">💬</div>
+          <div class="tool-icon">Bot</div>
           <h3>Telegram Bot</h3>
           <p>Pump activity monitor with 10 commands: fee claims, CTO alerts, whale trades, and graduation tracking.</p>
           <div class="tool-stats">
@@ -615,7 +654,7 @@
           </div>
         </article>
         <article class="tool-card" data-tool="relay">
-          <div class="tool-icon">🌊</div>
+          <div class="tool-icon">Relay</div>
           <h3>WebSocket Relay</h3>
           <p>Token launch broadcasting server. 10K connections and 50K messages per second per vCPU.</p>
           <div class="tool-stats">
@@ -628,7 +667,7 @@
           </div>
         </article>
         <article class="tool-card" data-tool="channel">
-          <div class="tool-icon">📱</div>
+          <div class="tool-icon">Channel</div>
           <h3>Channel Bot</h3>
           <p>Telegram channel bot broadcasting launches, claims, and graduation events to your community.</p>
           <div class="tool-stats">
@@ -641,7 +680,7 @@
           </div>
         </article>
         <article class="tool-card" data-tool="claim">
-          <div class="tool-icon">💸</div>
+          <div class="tool-icon">Claims</div>
           <h3>Claim Bot</h3>
           <p>Automated fee claiming. Monitors creator fees on bonding curves and AMM pools, and claims them.</p>
           <div class="tool-stats">
@@ -655,7 +694,7 @@
           </div>
         </article>
         <article class="tool-card" data-tool="x402">
-          <div class="tool-icon">💳</div>
+          <div class="tool-icon">x402</div>
           <h3>x402 Payments</h3>
           <p>HTTP 402 micropayments settled in USDC on Solana. Pay-per-request monetization for SDK-backed APIs.</p>
           <div class="tool-stats">
@@ -668,7 +707,7 @@
           </div>
         </article>
         <article class="tool-card" data-tool="swarm">
-          <div class="tool-icon">🐝</div>
+          <div class="tool-icon">Swarm</div>
           <h3>Swarm Agents</h3>
           <p>Multi-agent DeFi intelligence: coordinated agents for token analysis and trading strategies.</p>
           <div class="tool-stats">
@@ -686,7 +725,7 @@
     <!-- ===== ECOSYSTEM PAGE ===== -->
     <section class="page page-ecosystem" id="page-ecosystem">
       <div class="page-header">
-        <h1>🌐 Ecosystem</h1>
+        <h1>Ecosystem</h1>
         <p>The complete Pump SDK ecosystem — everything you need to build on Pump.fun</p>
       </div>
 
@@ -696,77 +735,82 @@
           <h2>Project Structure</h2>
           <div class="eco-tree">
             <div class="eco-tree-item eco-core">
-              <span class="eco-tree-icon">📦</span>
+              <span class="eco-tree-icon">core</span>
               <span class="eco-tree-name">src/</span>
               <span class="eco-tree-desc">Core SDK — instruction builders, bonding curve math, PDAs, state, events, analytics</span>
             </div>
             <div class="eco-tree-item">
-              <span class="eco-tree-icon">🦀</span>
+              <span class="eco-tree-icon">code</span>
+              <span class="eco-tree-name">examples/</span>
+              <span class="eco-tree-desc">50 runnable, tested examples covering the full SDK surface, one tutorial each</span>
+            </div>
+            <div class="eco-tree-item">
+              <span class="eco-tree-icon">rust</span>
               <span class="eco-tree-name">rust/</span>
               <span class="eco-tree-desc">Rust vanity address generator — rayon + solana-sdk, 100K+ keys/sec</span>
             </div>
             <div class="eco-tree-item">
-              <span class="eco-tree-icon">📘</span>
+              <span class="eco-tree-icon">ts</span>
               <span class="eco-tree-name">typescript/</span>
               <span class="eco-tree-desc">TypeScript vanity generator — educational @solana/web3.js implementation</span>
             </div>
             <div class="eco-tree-item">
-              <span class="eco-tree-icon">🤖</span>
+              <span class="eco-tree-icon">mcp</span>
               <span class="eco-tree-name">mcp-server/</span>
               <span class="eco-tree-desc">MCP server — <span data-stat="mcpTools">67</span> tools, <span data-stat="mcpResources">4</span> resources, <span data-stat="mcpPrompts">5</span> prompts for AI agents</span>
             </div>
             <div class="eco-tree-item">
-              <span class="eco-tree-icon">💬</span>
+              <span class="eco-tree-icon">bot</span>
               <span class="eco-tree-name">telegram-bot/</span>
               <span class="eco-tree-desc">PumpFun Telegram monitor — 10 commands, fee claims, whale alerts</span>
             </div>
             <div class="eco-tree-item">
-              <span class="eco-tree-icon">📡</span>
+              <span class="eco-tree-icon">bot</span>
               <span class="eco-tree-name">channel-bot/</span>
               <span class="eco-tree-desc">Telegram channel bot — broadcasting launches and graduations</span>
             </div>
             <div class="eco-tree-item">
-              <span class="eco-tree-icon">💸</span>
+              <span class="eco-tree-icon">bot</span>
               <span class="eco-tree-name">claim-bot/</span>
               <span class="eco-tree-desc">Automated fee claiming — monitors and claims creator fees</span>
             </div>
             <div class="eco-tree-item">
-              <span class="eco-tree-icon">🌊</span>
+              <span class="eco-tree-icon">ws</span>
               <span class="eco-tree-name">websocket-server/</span>
               <span class="eco-tree-desc">WebSocket relay — real-time token launch broadcasting</span>
             </div>
             <div class="eco-tree-item">
-              <span class="eco-tree-icon">📊</span>
+              <span class="eco-tree-icon">web</span>
               <span class="eco-tree-name">live/</span>
               <span class="eco-tree-desc">Browser dashboards — token launches, trades, vanity generator</span>
             </div>
             <div class="eco-tree-item">
-              <span class="eco-tree-icon">📝</span>
+              <span class="eco-tree-icon">learn</span>
               <span class="eco-tree-name">tutorials/</span>
-              <span class="eco-tree-desc">19 hands-on guides covering the full SDK</span>
+              <span class="eco-tree-desc"><span data-stat="tutorials">44</span> hands-on guides covering the full SDK</span>
             </div>
             <div class="eco-tree-item">
-              <span class="eco-tree-icon">📚</span>
+              <span class="eco-tree-icon">docs</span>
               <span class="eco-tree-name">docs/</span>
-              <span class="eco-tree-desc">39+ documentation pages — architecture, math, fees, security</span>
+              <span class="eco-tree-desc"><span data-stat="docs">40</span> documentation pages: architecture, math, fees, security</span>
             </div>
             <div class="eco-tree-item">
-              <span class="eco-tree-icon">🐝</span>
+              <span class="eco-tree-icon">agents</span>
               <span class="eco-tree-name">swarm/</span>
               <span class="eco-tree-desc">Multi-agent DeFi intelligence swarm</span>
             </div>
             <div class="eco-tree-item">
-              <span class="eco-tree-icon">💳</span>
+              <span class="eco-tree-icon">pay</span>
               <span class="eco-tree-name">x402/</span>
               <span class="eco-tree-desc">HTTP 402 micropayments with Solana USDC</span>
             </div>
             <div class="eco-tree-item">
-              <span class="eco-tree-icon">🔐</span>
+              <span class="eco-tree-icon">sec</span>
               <span class="eco-tree-name">security/</span>
               <span class="eco-tree-desc">Security audits, checklists, and practices</span>
             </div>
             <div class="eco-tree-item">
-              <span class="eco-tree-icon">🧪</span>
+              <span class="eco-tree-icon">test</span>
               <span class="eco-tree-name">tests/</span>
               <span class="eco-tree-desc">Integration tests and verification suites</span>
             </div>
@@ -812,26 +856,26 @@
 
         <!-- Security -->
         <div class="eco-section">
-          <h2>🔐 Security</h2>
+          <h2>Security</h2>
           <div class="security-list">
             <div class="security-item">
-              <span class="security-check">✅</span>
+              <span class="security-check">ok</span>
               <span>ONLY official Solana Labs crypto: solana-sdk, @solana/web3.js, solana-keygen</span>
             </div>
             <div class="security-item">
-              <span class="security-check">✅</span>
+              <span class="security-check">ok</span>
               <span>Zeroize all key material after use</span>
             </div>
             <div class="security-item">
-              <span class="security-check">✅</span>
+              <span class="security-check">ok</span>
               <span>Keypair file permissions set to 0600</span>
             </div>
             <div class="security-item">
-              <span class="security-check">✅</span>
+              <span class="security-check">ok</span>
               <span>No network calls for key generation — fully offline</span>
             </div>
             <div class="security-item">
-              <span class="security-check">✅</span>
+              <span class="security-check">ok</span>
               <span>60+ item security checklist in security/SECURITY_CHECKLIST.md</span>
             </div>
           </div>
@@ -842,15 +886,15 @@
           <h2>Links</h2>
           <div class="links-grid">
             <a href="https://github.com/nirholas/pump-fun-sdk" target="_blank" rel="noopener" class="link-card">
-              <span class="link-icon">🐙</span>
+              <span class="link-icon">git</span>
               <span class="link-name">GitHub</span>
             </a>
             <a href="https://www.npmjs.com/package/@nirholas/pump-sdk" target="_blank" rel="noopener" class="link-card">
-              <span class="link-icon">📦</span>
+              <span class="link-icon">npm</span>
               <span class="link-name">npm</span>
             </a>
             <a href="https://pump.fun" target="_blank" rel="noopener" class="link-card">
-              <span class="link-icon">🟢</span>
+              <span class="link-icon">app</span>
               <span class="link-name">Pump.fun</span>
             </a>
           </div>
@@ -872,11 +916,13 @@
           <h4>Documentation</h4>
           <a href="#docs/getting-started.md">Getting Started</a>
           <a href="#sdk" onclick="navigateTo('sdk')">SDK Reference</a>
+          <a href="#examples" onclick="navigateTo('examples')">Examples</a>
           <a href="#tutorials" onclick="navigateTo('tutorials')">Tutorials</a>
           <a href="#docs/faq.md">FAQ</a>
         </div>
         <div class="footer-col">
           <h4>Tools</h4>
+          <a href="live/launchpad.html">Launchpad</a>
           <a href="#tools" onclick="navigateTo('tools')">MCP Server</a>
           <a href="#tools" onclick="navigateTo('tools')">Telegram Bot</a>
           <a href="#tools" onclick="navigateTo('tools')">Live Dashboards</a>

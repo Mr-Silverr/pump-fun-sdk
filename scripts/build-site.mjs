@@ -56,13 +56,18 @@ function copyMarkdown(dir) {
   return count;
 }
 
-const mdCount = copyMarkdown('docs') + copyMarkdown('tutorials');
+const mdCount =
+  copyMarkdown('docs') +
+  copyMarkdown('tutorials') +
+  copyMarkdown('tutorials/examples');
 cpSync(join(root, 'docs', 'assets'), join(out, 'docs', 'assets'), { recursive: true });
 
 mkdirSync(join(out, 'live'), { recursive: true });
 for (const f of readdirSync(join(root, 'live'))) {
   if (f.endsWith('.html')) cpSync(join(root, 'live', f), join(out, 'live', f));
 }
+// The launchpad imports the SDK browser bundle from live/vendor/.
+cpSync(join(root, 'live', 'vendor'), join(out, 'live', 'vendor'), { recursive: true });
 
 writeFileSync(
   join(out, '_redirects'),
@@ -70,6 +75,7 @@ writeFileSync(
     '/trades /live/trades 302',
     '/vanity /live/vanity 302',
     '/chart /live/dashboard 302',
+    '/launchpad /live/launchpad 302',
     '',
   ].join('\n'),
 );

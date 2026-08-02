@@ -5,41 +5,41 @@
 // ==================== Documentation Data ====================
 const DOCS = [
   // Getting Started
-  { title: "Getting Started", ticker: "GUIDE", emoji: "🚀", category: "getting-started", desc: "Prerequisites, installation, peer dependencies, and your first SDK call.", file: "getting-started.md" },
-  { title: "End-to-End Workflow", ticker: "FLOW", emoji: "🔄", category: "getting-started", desc: "Complete token lifecycle — create, buy, sell, migrate, claim fees.", file: "end-to-end-workflow.md" },
-  { title: "Examples", ticker: "CODE", emoji: "💡", category: "getting-started", desc: "Practical code examples for common SDK operations.", file: "examples.md" },
-  { title: "CLI Guide", ticker: "CLI", emoji: "⌨️", category: "getting-started", desc: "Command-line tools and Bash wrappers for production use.", file: "cli-guide.md" },
-  { title: "FAQ", ticker: "FAQ", emoji: "❓", category: "getting-started", desc: "Frequently asked questions and quick answers.", file: "faq.md" },
+  { title: "Getting Started", ticker: "GUIDE", category: "getting-started", desc: "Prerequisites, installation, peer dependencies, and your first SDK call.", file: "getting-started.md" },
+  { title: "End-to-End Workflow", ticker: "FLOW", category: "getting-started", desc: "Complete token lifecycle — create, buy, sell, migrate, claim fees.", file: "end-to-end-workflow.md" },
+  { title: "Examples", ticker: "CODE", category: "getting-started", desc: "Practical code examples for common SDK operations.", file: "examples.md" },
+  { title: "CLI Guide", ticker: "CLI", category: "getting-started", desc: "Command-line tools and Bash wrappers for production use.", file: "cli-guide.md" },
+  { title: "FAQ", ticker: "FAQ", category: "getting-started", desc: "Frequently asked questions and quick answers.", file: "faq.md" },
 
   // Core Concepts
-  { title: "Architecture", ticker: "ARCH", emoji: "🏗️", category: "core", desc: "PumpSdk vs OnlinePumpSdk, offline-first design, program layout.", file: "architecture.md" },
-  { title: "Bonding Curve Math", ticker: "MATH", emoji: "📐", category: "core", desc: "Virtual/real reserves, buy/sell formulas, price calculations with BN.js.", file: "bonding-curve-math.md" },
-  { title: "AMM Trading", ticker: "AMM", emoji: "🏊", category: "core", desc: "PumpSwap constant-product pools — swap, deposit, withdraw post-graduation.", file: "amm-trading.md" },
-  { title: "Fee Tiers", ticker: "TIER", emoji: "📊", category: "core", desc: "Dynamic fee tiers based on market cap thresholds.", file: "fee-tiers.md" },
-  { title: "Fee Sharing", ticker: "SHARE", emoji: "💰", category: "core", desc: "Creator fee sharing configs — shareholders, BPS, claiming.", file: "fee-sharing.md" },
-  { title: "Token Incentives", ticker: "EARN", emoji: "🎁", category: "core", desc: "Volume-based cashback rewards and token incentive programs.", file: "token-incentives.md" },
-  { title: "Analytics", ticker: "DATA", emoji: "📈", category: "core", desc: "Price impact, graduation progress, token price, market analytics.", file: "analytics.md" },
+  { title: "Architecture", ticker: "ARCH", category: "core", desc: "PumpSdk vs OnlinePumpSdk, offline-first design, program layout.", file: "architecture.md" },
+  { title: "Bonding Curve Math", ticker: "MATH", category: "core", desc: "Virtual/real reserves, buy/sell formulas, price calculations with BN.js.", file: "bonding-curve-math.md" },
+  { title: "AMM Trading", ticker: "AMM", category: "core", desc: "PumpSwap constant-product pools — swap, deposit, withdraw post-graduation.", file: "amm-trading.md" },
+  { title: "Fee Tiers", ticker: "TIER", category: "core", desc: "Dynamic fee tiers based on market cap thresholds.", file: "fee-tiers.md" },
+  { title: "Fee Sharing", ticker: "SHARE", category: "core", desc: "Creator fee sharing configs — shareholders, BPS, claiming.", file: "fee-sharing.md" },
+  { title: "Token Incentives", ticker: "EARN", category: "core", desc: "Volume-based cashback rewards and token incentive programs.", file: "token-incentives.md" },
+  { title: "Analytics", ticker: "DATA", category: "core", desc: "Price impact, graduation progress, token price, market analytics.", file: "analytics.md" },
 
   // Advanced
-  { title: "Mayhem Mode", ticker: "CHAOS", emoji: "🔥", category: "advanced", desc: "Mayhem mode tokens with special bonding curve behavior.", file: "mayhem-mode.md" },
-  { title: "Social Fees", ticker: "SOCIAL", emoji: "🤝", category: "advanced", desc: "Social referral fees and community-driven fee distribution.", file: "social-fees.md" },
-  { title: "Cashback Rewards", ticker: "CASH", emoji: "💸", category: "advanced", desc: "UserVolumeAccumulator PDA and cashback reward mechanics.", file: "cashback.md" },
-  { title: "DeFi Agents", ticker: "AGENT", emoji: "🤖", category: "advanced", desc: "AI agent integration patterns with MCP server and DeFi tools.", file: "defi-agents.md" },
-  { title: "Admin Operations", ticker: "ADMIN", emoji: "🔧", category: "advanced", desc: "Protocol admin operations — global config, authority management.", file: "admin-operations.md" },
-  { title: "Governance", ticker: "GOV", emoji: "🏛️", category: "advanced", desc: "Protocol governance and upgrade mechanisms.", file: "governance.md" },
-  { title: "Performance", ticker: "PERF", emoji: "⚡", category: "advanced", desc: "Benchmarks, CU optimization, RPC batching strategies.", file: "performance.md" },
+  { title: "Mayhem Mode", ticker: "CHAOS", category: "advanced", desc: "Mayhem mode tokens with special bonding curve behavior.", file: "mayhem-mode.md" },
+  { title: "Social Fees", ticker: "SOCIAL", category: "advanced", desc: "Social referral fees and community-driven fee distribution.", file: "social-fees.md" },
+  { title: "Cashback Rewards", ticker: "CASH", category: "advanced", desc: "UserVolumeAccumulator PDA and cashback reward mechanics.", file: "cashback.md" },
+  { title: "DeFi Agents", ticker: "AGENT", category: "advanced", desc: "AI agent integration patterns with MCP server and DeFi tools.", file: "defi-agents.md" },
+  { title: "Admin Operations", ticker: "ADMIN", category: "advanced", desc: "Protocol admin operations — global config, authority management.", file: "admin-operations.md" },
+  { title: "Governance", ticker: "GOV", category: "advanced", desc: "Protocol governance and upgrade mechanisms.", file: "governance.md" },
+  { title: "Performance", ticker: "PERF", category: "advanced", desc: "Benchmarks, CU optimization, RPC batching strategies.", file: "performance.md" },
 
   // Reference
-  { title: "API Reference", ticker: "API", emoji: "📖", category: "reference", desc: "Complete SDK method reference with parameter types.", file: "api-reference.md" },
-  { title: "Events Reference", ticker: "EVENT", emoji: "📡", category: "reference", desc: "On-chain event types — CreateEvent, BuyEvent, SellEvent, MigrateEvent.", file: "events-reference.md" },
-  { title: "Error Codes", ticker: "ERR", emoji: "🚨", category: "reference", desc: "Common errors, causes, and solutions.", file: "errors.md" },
-  { title: "Glossary", ticker: "GLOSS", emoji: "📝", category: "reference", desc: "Key terms — bonding curve, graduation, AMM, slippage, PDA, BPS.", file: "glossary.md" },
-  { title: "Security", ticker: "SEC", emoji: "🔐", category: "reference", desc: "Security practices, audit checklist, key management.", file: "security.md" },
-  { title: "Testing", ticker: "TEST", emoji: "🧪", category: "reference", desc: "Test patterns, fixtures, Jest config, coverage.", file: "testing.md" },
-  { title: "RPC Best Practices", ticker: "RPC", emoji: "🌐", category: "reference", desc: "Connection management, batching, rate limiting, error handling.", file: "rpc-best-practices.md" },
-  { title: "Migration Guide", ticker: "MIGRATE", emoji: "📦", category: "reference", desc: "Upgrading from v1 to v2 — breaking changes and migration steps.", file: "MIGRATION.md" },
-  { title: "Troubleshooting", ticker: "FIX", emoji: "🔍", category: "reference", desc: "Common issues and debugging strategies.", file: "TROUBLESHOOTING.md" },
-  { title: "Deployment", ticker: "DEPLOY", emoji: "🚢", category: "reference", desc: "Deploying bots, servers, and dashboards to production.", file: "deployment.md" },
+  { title: "API Reference", ticker: "API", category: "reference", desc: "Complete SDK method reference with parameter types.", file: "api-reference.md" },
+  { title: "Events Reference", ticker: "EVENT", category: "reference", desc: "On-chain event types — CreateEvent, BuyEvent, SellEvent, MigrateEvent.", file: "events-reference.md" },
+  { title: "Error Codes", ticker: "ERR", category: "reference", desc: "Common errors, causes, and solutions.", file: "errors.md" },
+  { title: "Glossary", ticker: "GLOSS", category: "reference", desc: "Key terms — bonding curve, graduation, AMM, slippage, PDA, BPS.", file: "glossary.md" },
+  { title: "Security", ticker: "SEC", category: "reference", desc: "Security practices, audit checklist, key management.", file: "security.md" },
+  { title: "Testing", ticker: "TEST", category: "reference", desc: "Test patterns, fixtures, Jest config, coverage.", file: "testing.md" },
+  { title: "RPC Best Practices", ticker: "RPC", category: "reference", desc: "Connection management, batching, rate limiting, error handling.", file: "rpc-best-practices.md" },
+  { title: "Migration Guide", ticker: "MIGRATE", category: "reference", desc: "Upgrading from v1 to v2 — breaking changes and migration steps.", file: "MIGRATION.md" },
+  { title: "Troubleshooting", ticker: "FIX", category: "reference", desc: "Common issues and debugging strategies.", file: "TROUBLESHOOTING.md" },
+  { title: "Deployment", ticker: "DEPLOY", category: "reference", desc: "Deploying bots, servers, and dashboards to production.", file: "deployment.md" },
 ];
 
 const CATEGORIES = [
@@ -72,8 +72,13 @@ const COLLECTIONS = {
     label: 'Tutorials',
     view: { content: 'tutorialsContent', article: 'tutorialArticle', toc: 'tutorialsToc', sidebar: 'tutorialsSidebar', search: 'tutorialSearch' },
   },
+  examples: {
+    dir: 'tutorials/examples/',
+    label: 'Examples',
+    view: { content: 'examplesContent', article: 'exampleArticle', toc: 'examplesToc', sidebar: 'examplesSidebar', search: 'exampleSearch' },
+  },
 };
-const PAGES = ['home', 'docs', 'tutorials', 'sdk', 'tools', 'ecosystem'];
+const PAGES = ['home', 'docs', 'examples', 'tutorials', 'sdk', 'tools', 'ecosystem'];
 const DOC_FILE_RE = /^[A-Za-z0-9][\w.-]*\.md$/;
 // Two upstream mirrors in docs/ are an order of magnitude larger than the rest.
 // They stay listed and readable, but full-text search matches them by title so
@@ -90,6 +95,7 @@ let currentPage = 'home';
 const state = {
   docs: { entries: [], file: null, query: '', token: 0, index: null, indexPromise: null },
   tutorials: { entries: [], file: null, query: '', token: 0, index: null, indexPromise: null },
+  examples: { entries: [], file: null, query: '', token: 0, index: null, indexPromise: null },
 };
 
 const byId = (id) => document.getElementById(id);
@@ -110,7 +116,15 @@ function trackKey(number) {
   return `track-${Math.floor((number - 1) / 10)}`;
 }
 
+// Docs render a mono ticker chip instead of an emoji; entries without a
+// curated ticker get one derived from the filename.
+function docTicker(entry) {
+  const base = entry.ticker || entry.file.replace(/\.md$/i, '').split(/[-_.]/)[0].slice(0, 5);
+  return `<span class="doc-ticker">${escapeHtml(String(base).toUpperCase())}</span>`;
+}
+
 function categoryLabel(collection, key, entries) {
+  if (collection === 'examples') return key;
   if (collection === 'tutorials') {
     const group = entries || state.tutorials.entries.filter((e) => e.category === key);
     const numbers = group.map((e) => e.number).filter(Boolean);
@@ -128,7 +142,7 @@ function categoryLabel(collection, key, entries) {
 // and the bare "getting-started" slug. Returns null for anything else.
 function normalizeFile(collection, value) {
   if (!value) return null;
-  const clean = value.trim().replace(/^\.?\//, '').replace(/^(docs|tutorials)\//i, '');
+  const clean = value.trim().replace(/^\.?\//, '').replace(/^(docs|tutorials\/examples|tutorials)\//i, '');
   if (clean.includes('..') || clean.includes('/')) return null;
   if (DOC_FILE_RE.test(clean)) return clean;
   const bySlug = state[collection].entries.find((e) => docSlug(e.file) === clean.toLowerCase());
@@ -181,7 +195,6 @@ function curatedEntries() {
     title: doc.title,
     summary: doc.desc,
     category: doc.category,
-    emoji: doc.emoji,
     ticker: doc.ticker,
   }));
 }
@@ -195,7 +208,6 @@ function applyManifest(manifest) {
       title: doc.title,
       summary: doc.summary,
       category: 'project',
-      emoji: '📄',
       minutes: doc.minutes,
       words: doc.words,
     }));
@@ -210,6 +222,24 @@ function applyManifest(manifest) {
     minutes: item.minutes,
     words: item.words,
   }));
+
+  // Example walkthroughs join the tutorial markdown (what the reader shows)
+  // with the example source metadata (title, category, number).
+  const exampleMeta = new Map(
+    (manifest.examples || []).map((ex) => [ex.file.replace(/\.ts$/, '.md'), ex]),
+  );
+  state.examples.entries = (manifest.exampleTutorials || []).map((item) => {
+    const meta = exampleMeta.get(item.file);
+    return {
+      file: item.file,
+      title: (meta && meta.title) || item.title,
+      summary: (meta && meta.summary) || item.summary,
+      category: (meta && meta.category) || 'Examples',
+      number: (meta && meta.number) || Number((item.file.match(/^(\d+)-/) || [])[1]) || null,
+      minutes: item.minutes,
+      words: item.words,
+    };
+  });
 
   renderStats(manifest.stats);
 }
@@ -304,6 +334,7 @@ function setDocumentMeta(title, description) {
 const PAGE_META = {
   home: [null, null],
   docs: ['Documentation', 'Guides and references for the Pump SDK: architecture, bonding curve math, AMM trading, fees, and the full API surface.'],
+  examples: ['Examples', 'Fifty runnable, tested Pump SDK examples: token lifecycle, curve math, accounts and events, live data, AMM and advanced.'],
   tutorials: ['Tutorials', 'Step-by-step Pump SDK builds, in order, from your first token to a complete swap.'],
   sdk: ['SDK Reference', 'Pump SDK architecture, key types, import map, and the pitfalls worth knowing before you build.'],
   tools: ['Tools & Dashboards', 'MCP server, live dashboards, vanity generators, bots, and payment tooling built on the Pump SDK.'],
@@ -367,16 +398,18 @@ function applyRoute() {
 
 // ==================== Cards ====================
 function cardArt(collection, entry) {
-  if (collection === 'tutorials') {
+  if (collection === 'tutorials' || collection === 'examples') {
     return `<span class="tutorial-number">${String(entry.number || 0).padStart(2, '0')}</span>`;
   }
-  return entry.emoji;
+  return docTicker(entry);
 }
 
 function cardHtml(collection, entry, snippet) {
-  const meta = collection === 'tutorials'
-    ? `<span>${entry.minutes} min</span><span>${escapeHtml(entry.file)}</span>`
-    : `<span>${escapeHtml(categoryLabel(collection, entry.category))}</span><span>${escapeHtml(entry.file)}</span>`;
+  const meta = collection === 'examples'
+    ? `<span>npm run example ${String(entry.number || 0).padStart(2, '0')}</span><span>${entry.minutes} min</span>`
+    : collection === 'tutorials'
+      ? `<span>${entry.minutes} min</span><span>${escapeHtml(entry.file)}</span>`
+      : `<span>${escapeHtml(categoryLabel(collection, entry.category))}</span><span>${escapeHtml(entry.file)}</span>`;
 
   return `
     <a class="token-card" data-category="${entry.category}" href="#${collection}/${encodeURIComponent(entry.file)}">
@@ -438,11 +471,11 @@ function renderSidebar(collection, activeFile) {
       <div class="docs-category">
         <div class="docs-category-title">${escapeHtml(categoryLabel(collection, key, entries))}</div>
         ${entries.map((entry) => `
-          <a href="#${collection}/${encodeURIComponent(entry.file)}"
+          <a href="${entry.external ? entry.external : `#${collection}/${encodeURIComponent(entry.file)}`}"${entry.external ? ' target="_blank" rel="noopener noreferrer"' : ''}
              class="docs-category-link${activeFile === entry.file ? ' active' : ''}"
-             title="${escapeHtml(entry.summary || entry.title)}">${collection === 'tutorials'
-               ? `<span class="docs-link-number">${String(entry.number || 0).padStart(2, '0')}</span>`
-               : entry.emoji} ${escapeHtml(entry.title)}</a>
+             title="${escapeHtml(entry.summary || entry.title)}">${collection === 'tutorials' || collection === 'examples'
+               ? `<span class="docs-link-number">${String(entry.number || 0).padStart(2, '0')}</span> `
+               : ''}${escapeHtml(entry.title)}</a>
         `).join('')}
       </div>
     `).join('')}
@@ -479,7 +512,7 @@ function showIndex(collection, cards) {
   const entries = state[collection].entries;
   content.innerHTML = entries.length
     ? entries.map((entry) => cardHtml(collection, entry)).join('')
-    : `<div class="docs-empty"><div class="docs-empty-icon">⏳</div><h3>Loading ${escapeHtml(COLLECTIONS[collection].label.toLowerCase())}…</h3>
+    : `<div class="docs-empty"><div class="docs-empty-icon">Loading</div><h3>Loading ${escapeHtml(COLLECTIONS[collection].label.toLowerCase())}…</h3>
        <p>Reading the index generated from the repository.</p></div>`;
 }
 
@@ -557,7 +590,7 @@ function renderSearchResults(collection, query, results, deep) {
     showIndex(collection, `
       ${note}
       <div class="docs-empty">
-        <div class="docs-empty-icon">🔍</div>
+        <div class="docs-empty-icon">No match</div>
         <h3>Nothing matches “${escapeHtml(query)}”</h3>
         <p>Try a broader term, browse the list on the left, or search the full repository.</p>
         <div class="docs-empty-actions">
@@ -613,6 +646,10 @@ function searchDocs(value) {
 
 function searchTutorials(value) {
   searchCollection('tutorials', value);
+}
+
+function searchExamples(value) {
+  searchCollection('examples', value);
 }
 
 function clearSearch(collection) {
@@ -671,8 +708,11 @@ function rewriteLink(anchor, collection, file) {
   const [path, hash] = href.split('#');
   const bare = path.replace(/^\.?\//, '');
   // A link may cross collections: ../tutorials/01-create-token.md from a doc.
-  const crossed = bare.match(/^(?:\.\.\/)?(docs|tutorials)\/(.+)$/);
-  const targetCollection = crossed ? crossed[1] : collection;
+  const crossed = bare.match(/^(?:\.\.\/)*(docs|tutorials\/examples|tutorials|examples)\/(.+)$/);
+  const crossedName = crossed
+    ? (crossed[1] === 'tutorials/examples' ? 'examples' : crossed[1])
+    : null;
+  const targetCollection = crossedName && COLLECTIONS[crossedName] ? crossedName : collection;
   const target = normalizeFile(targetCollection, crossed ? crossed[2] : bare);
 
   if (target) {
@@ -830,23 +870,22 @@ function fallbackEntry(collection, file, markdown) {
   return {
     title: heading ? heading[1].replace(/[#*`]/g, '').trim() : file.replace(/\.md$/i, ''),
     summary: collection === 'tutorials' ? 'Repository tutorial.' : 'Repository documentation.',
-    category: collection === 'tutorials' ? 'track-0' : 'project',
-    emoji: '📄',
+    category: collection === 'examples' ? 'Examples' : collection === 'tutorials' ? 'track-0' : 'project',
     file,
   };
 }
 
 function articleArt(collection, entry) {
-  return collection === 'tutorials'
+  return collection === 'tutorials' || collection === 'examples'
     ? `<span class="tutorial-number">${String(entry.number || 0).padStart(2, '0')}</span>`
-    : (entry.emoji || '📄');
+    : docTicker(entry);
 }
 
 function skeletonHtml(collection, entry, file) {
   return `
     <nav class="doc-breadcrumb"><a href="#${collection}">${COLLECTIONS[collection].label}</a><span>/</span><span>${escapeHtml(entry ? categoryLabel(collection, entry.category) : file)}</span></nav>
     <header class="doc-head">
-      <div class="doc-head-icon">${entry ? articleArt(collection, entry) : '📄'}</div>
+      <div class="doc-head-icon">${entry ? articleArt(collection, entry) : '<span class="doc-ticker">DOC</span>'}</div>
       <div class="doc-head-text">
         <h1>${escapeHtml(entry ? entry.title : file)}</h1>
         <p class="doc-head-desc">${escapeHtml(entry ? entry.summary || '' : 'Loading document…')}</p>
@@ -867,7 +906,7 @@ function errorHtml(collection, file, message) {
   return `
     <nav class="doc-breadcrumb"><a href="#${collection}">${COLLECTIONS[collection].label}</a><span>/</span><span>${escapeHtml(file)}</span></nav>
     <div class="doc-error">
-      <div class="doc-error-icon">⚠️</div>
+      <div class="doc-error-icon">Error</div>
       <h2>This page could not be loaded</h2>
       <p>${escapeHtml(message)}</p>
       <p class="doc-error-hint">The site tried the bundled copy and then GitHub. A network block or an offline connection is the usual cause.</p>
@@ -885,7 +924,9 @@ function footerHtml(collection, entry) {
   const index = entries.findIndex((e) => e.file === entry.file);
   const prev = index > 0 ? entries[index - 1] : null;
   const next = index >= 0 && index < entries.length - 1 ? entries[index + 1] : null;
-  const label = (e) => `${collection === 'tutorials' ? String(e.number || 0).padStart(2, '0') : e.emoji} ${escapeHtml(e.title)}`;
+  const label = (e) => `${collection === 'tutorials' || collection === 'examples'
+    ? String(e.number || 0).padStart(2, '0') + ' '
+    : ''}${escapeHtml(e.title)}`;
 
   return `
     <footer class="doc-footer">
@@ -1065,8 +1106,8 @@ function flashButton(btn, done, fail) {
 function copyInstall() {
   const btn = document.querySelector('.copy-btn');
   writeClipboard('npm install @nirholas/pump-sdk')
-    .then(() => btn && flashButton(btn, '✅'))
-    .catch(() => btn && flashButton(btn, '', '⚠️'));
+    .then(() => btn && flashButton(btn, 'copied'))
+    .catch(() => btn && flashButton(btn, '', 'blocked'));
 }
 
 function copyCodeBlock(btn, code) {
@@ -1106,7 +1147,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (tutorials) {
         tutorials.innerHTML = `
           <div class="docs-empty">
-            <div class="docs-empty-icon">⚠️</div>
+            <div class="docs-empty-icon">Offline</div>
             <h3>The tutorial index could not be loaded</h3>
             <p>Read them on GitHub while the site index is unavailable.</p>
             <div class="docs-empty-actions">

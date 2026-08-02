@@ -223,21 +223,26 @@ function applyManifest(manifest) {
     words: item.words,
   }));
 
-  // Example walkthroughs join the tutorial markdown (what the reader shows)
-  // with the example source metadata (title, category, number).
-  const exampleMeta = new Map(
-    (manifest.examples || []).map((ex) => [ex.file.replace(/\.ts$/, '.md'), ex]),
+  // The example index is driven by the example SOURCES, so every example is
+  // listed the moment it lands. A card opens the in-site walkthrough when
+  // tutorials/examples/<NN-name>.md exists, and the example's source on
+  // GitHub until it does.
+  const exampleTutorials = new Map(
+    (manifest.exampleTutorials || []).map((item) => [item.file, item]),
   );
-  state.examples.entries = (manifest.exampleTutorials || []).map((item) => {
-    const meta = exampleMeta.get(item.file);
+  state.examples.entries = (manifest.examples || []).map((ex) => {
+    const mdFile = ex.file.replace(/\.ts$/, '.md');
+    const tutorial = exampleTutorials.get(mdFile);
     return {
-      file: item.file,
-      title: (meta && meta.title) || item.title,
-      summary: (meta && meta.summary) || item.summary,
-      category: (meta && meta.category) || 'Examples',
-      number: (meta && meta.number) || Number((item.file.match(/^(\d+)-/) || [])[1]) || null,
-      minutes: item.minutes,
-      words: item.words,
+      file: mdFile,
+      sourceFile: ex.file,
+      external: tutorial ? null : `${BLOB_ROOT}examples/${ex.file}`,
+      title: ex.title,
+      summary: ex.summary,
+      category: ex.category || 'Examples',
+      number: ex.number || null,
+      minutes: tutorial ? tutorial.minutes : null,
+      words: tutorial ? tutorial.words : null,
     };
   });
 
@@ -406,13 +411,16 @@ function cardArt(collection, entry) {
 
 function cardHtml(collection, entry, snippet) {
   const meta = collection === 'examples'
-    ? `<span>npm run example ${String(entry.number || 0).padStart(2, '0')}</span><span>${entry.minutes} min</span>`
+    ? `<span>npm run example ${String(entry.number || 0).padStart(2, '0')}</span><span>${entry.external ? 'source' : `${entry.minutes} min`}</span>`
     : collection === 'tutorials'
       ? `<span>${entry.minutes} min</span><span>${escapeHtml(entry.file)}</span>`
       : `<span>${escapeHtml(categoryLabel(collection, entry.category))}</span><span>${escapeHtml(entry.file)}</span>`;
 
+  const href = entry.external
+    ? `${entry.external}" target="_blank" rel="noopener noreferrer`
+    : `#${collection}/${encodeURIComponent(entry.file)}`;
   return `
-    <a class="token-card" data-category="${entry.category}" href="#${collection}/${encodeURIComponent(entry.file)}">
+    <a class="token-card" data-category="${entry.category}" href="${href}">
       <div class="token-card-header">${cardArt(collection, entry)}</div>
       <div class="token-card-body">
         <div class="token-card-title">

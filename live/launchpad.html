@@ -177,6 +177,10 @@
   .tabs button.buy-tab[aria-selected="true"] { color: var(--buy); }
   .tabs button.sell-tab[aria-selected="true"] { color: var(--sell); }
 
+  .trade-links { display: flex; gap: 16px; margin-top: 10px; font-size: 13px; flex-wrap: wrap; }
+  .trade-links a { color: var(--text-dim); transition: color 140ms ease; }
+  .trade-links a:hover { color: var(--text); text-decoration: none; }
+
   .rpc-row { display: flex; gap: 8px; align-items: center; margin-bottom: 22px; flex-wrap: wrap; }
   .rpc-row input { flex: 1; min-width: 220px; }
   .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--text-faint); display: inline-block; }
@@ -271,6 +275,7 @@
       </div>
       <div id="t-info" hidden>
         <dl class="kv" id="t-stats"></dl>
+        <div id="t-links" class="trade-links"></div>
         <div id="t-grad-wrap" hidden>
           <p class="hint" style="margin-top: 10px">Graduation progress <span id="t-grad-pct" class="mono"></span></p>
           <div class="progress-track"><div id="t-grad-fill" class="progress-fill"></div></div>
@@ -558,10 +563,12 @@ $("l-send").addEventListener("click", async () => {
     const tx = new Transaction().add(...pendingLaunch.ixs);
     const sig = await signAndSend(tx, [pendingLaunch.mintKp]);
     const wrap = document.createElement("span");
+    const newMint = pendingLaunch.mintKp.publicKey.toBase58();
     wrap.append("Launched. ",
       link(`https://solscan.io/tx/${sig}`, "Transaction"), " · ",
-      link(`https://solscan.io/token/${pendingLaunch.mintKp.publicKey.toBase58()}`, "Token"), " · ",
-      link(`https://pump.fun/coin/${pendingLaunch.mintKp.publicKey.toBase58()}`, "pump.fun page"));
+      link(`https://pump.fun/coin/${newMint}`, "pump.fun"), " · ",
+      link(`https://gmgn.ai/sol/token/${newMint}?ref=nichxbt`, "GMGN"), " · ",
+      link(`https://axiom.trade/t/${newMint}?ref=nich`, "Axiom"));
     setStatus(status, wrap, "ok");
     $("t-mint").value = pendingLaunch.mintKp.publicKey.toBase58();
     pendingLaunch = null;
@@ -607,6 +614,7 @@ async function loadToken() {
       token = { mint, kind: "amm", pool };
       renderAmm(pool);
     }
+    renderTradeLinks(mint);
     setStatus(status, "");
     $("t-info").hidden = false;
     requote();
@@ -616,6 +624,20 @@ async function loadToken() {
 }
 $("t-load").addEventListener("click", loadToken);
 $("t-mint").addEventListener("keydown", (e) => { if (e.key === "Enter") loadToken(); });
+
+// Chart and trading destinations for the loaded token (referral-coded).
+function renderTradeLinks(mint) {
+  const el = $("t-links");
+  el.textContent = "";
+  const links = [
+    ["GMGN", `https://gmgn.ai/sol/token/${mint.toBase58()}?ref=nichxbt`],
+    ["Axiom", `https://axiom.trade/t/${mint.toBase58()}?ref=nich`],
+    ["Padre", "https://trade.padre.gg/rk/nichxbt"],
+    ["FOMO", "https://fomo.family/nichxbt"],
+    ["Solscan", `https://solscan.io/token/${mint.toBase58()}`],
+  ];
+  for (const [label, href] of links) el.append(link(href, label));
+}
 
 function renderCurve(s) {
   kv($("t-stats"), [

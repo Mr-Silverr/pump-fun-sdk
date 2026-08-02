@@ -16,6 +16,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { log } from './logger.js';
+import { formatTicker } from './formatters.js';
 import { fetchTokenInfo, fetchDevWalletInfo } from './pump-client.js';
 
 export interface TrackedPost {
@@ -102,7 +103,7 @@ function formatAge(ms: number): string {
 export function formatMilestoneUpdate(post: TrackedPost, multiple: number, currentMcap: number, now: number): string {
     const rocket = multiple >= 50 ? '🌕' : multiple >= 10 ? '🚀🚀' : '🚀';
     return [
-        `${rocket} <b>$${post.symbol} ${multiple}x since this call</b>`,
+        `${rocket} <b>${formatTicker(post.symbol)} ${multiple}x since this call</b>`,
         `${formatUsd(post.baselineMcapUsd)} → ${formatUsd(currentMcap)} in ${formatAge(now - post.postedAt)}`,
     ].join('\n');
 }
@@ -111,7 +112,7 @@ export function formatMilestoneUpdate(post: TrackedPost, multiple: number, curre
 export function formatCollapseUpdate(post: TrackedPost, currentMcap: number, now: number): string {
     const dropPct = ((post.baselineMcapUsd - currentMcap) / post.baselineMcapUsd) * 100;
     const lines = [
-        `💀 <b>$${post.symbol} -${dropPct.toFixed(0)}% since this call</b>`,
+        `💀 <b>${formatTicker(post.symbol)} -${dropPct.toFixed(0)}% since this call</b>`,
         `${formatUsd(post.baselineMcapUsd)} → ${formatUsd(currentMcap)} in ${formatAge(now - post.postedAt)}`,
     ];
     if (post.peakMcapUsd > post.baselineMcapUsd * 1.5) {
@@ -125,7 +126,7 @@ export function formatDevDumpUpdate(post: TrackedPost, currentPct: number, now: 
     const from = post.baselineDevPct ?? 0;
     const dropPct = from > 0 ? ((from - currentPct) / from) * 100 : 0;
     return [
-        `🚨 <b>$${post.symbol} dev is selling</b>`,
+        `🚨 <b>${formatTicker(post.symbol)} dev is selling</b>`,
         `Dev position ${from.toFixed(1)}% → ${currentPct.toFixed(1)}% of supply (-${dropPct.toFixed(0)}%)`,
         `${formatAge(now - post.postedAt)} after this call`,
     ].join('\n');
@@ -198,6 +199,11 @@ export class PerformanceTracker {
 
     get activeCount(): number {
         return this.posts.size;
+    }
+
+    /** Open calls, newest first, for the /calls admin command. */
+    openCalls(): TrackedPost[] {
+        return [...this.posts.values()].sort((a, b) => b.postedAt - a.postedAt);
     }
 
     /** One pass over every tracked call. Never throws. */

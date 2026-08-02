@@ -4,7 +4,9 @@
  * Tests claim tracking, formatters, and the GitHub claim feed pipeline.
  */
 
-import { describe, it, expect, beforeAll, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+
+import { RpcFallback } from '../rpc-fallback.js';
 
 // ── Claim Tracker Tests ────────────────────────────────────────────────────
 
@@ -191,16 +193,10 @@ describe('Formatters', () => {
 // ── RPC Fallback Tests ─────────────────────────────────────────────────────
 
 describe('RPC Fallback', () => {
-  let rpcFallback: typeof import('../rpc-fallback.js');
-
-  // Imported once, not per test: rpc-fallback pulls in @solana/web3.js, and
-  // re-importing it after vi.resetModules() on every test intermittently blew
-  // the 10s hook timeout when the suite ran under load. Nothing here depends
-  // on fresh module state.
-  beforeAll(async () => {
-    rpcFallback = await import('../rpc-fallback.js');
-  });
-
+  // RpcFallback is imported statically at the top of this file rather than in
+  // a hook. It pulls in @solana/web3.js, and doing that inside beforeEach or
+  // beforeAll blew the 10s hook timeout whenever the full suite ran in
+  // parallel. Nothing in this block depends on fresh module state.
   afterEach(() => {
     vi.restoreAllMocks();
   });
@@ -212,7 +208,7 @@ describe('RPC Fallback', () => {
       'https://rpc3.example.com',
     ];
 
-    const fallback = new rpcFallback.RpcFallback(urls);
+    const fallback = new RpcFallback(urls);
     expect(fallback).toBeDefined();
     expect(fallback.getConnection()).toBeDefined();
   });

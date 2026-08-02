@@ -93,7 +93,7 @@ export function formatGitHubClaimFeed(ctx: ClaimFeedContext): { imageUrl: string
 
     // ━━ TOKEN INFO ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     if (tokenInfo) {
-        const ticker = tokenInfo.symbol ? `<b>$${esc(tokenInfo.symbol)}</b>` : '';
+        const ticker = tokenInfo.symbol ? `<b>${esc(formatTicker(tokenInfo.symbol))}</b>` : '';
         const name = tokenInfo.name ? esc(tokenInfo.name) : '';
         L.push(`🐙 ${ticker}${ticker && name ? ' — ' : ''}${name}`);
         if (tokenInfo.usdMarketCap > 0) {
@@ -481,7 +481,7 @@ export function formatGitHubClaimFeed(ctx: ClaimFeedContext): { imageUrl: string
     L.push('━━━━━━━━━━━━━━━━');
     L.push('<b>TLDR</b>');
     if (tokenInfo) {
-        const ticker = tokenInfo.symbol ? `<b>$${esc(tokenInfo.symbol)}</b>` : '';
+        const ticker = tokenInfo.symbol ? `<b>${esc(formatTicker(tokenInfo.symbol))}</b>` : '';
         const name = tokenInfo.name ? esc(tokenInfo.name) : '';
         L.push(`🐙 ${ticker}${ticker && name ? ' — ' : ''}${name}`);
         if (tokenInfo.usdMarketCap > 0) {
@@ -715,7 +715,7 @@ export function formatGraduationFeed(
     const nameLink = `<a href="https://pump.fun/coin/${mint}">${esc(coinName)}</a>`;
     const speedStr = speedEmoji ? ` ${speedEmoji}` : '';
     const ageStr   = timeLabel  ? ` [${timeLabel}]` : '';
-    L.push(`🆕💊 <b>${nameLink}</b> — $${esc(coinTicker)}${speedStr}${ageStr}`);
+    L.push(`🆕💊 <b>${nameLink}</b> — ${esc(formatTicker(coinTicker))}${speedStr}${ageStr}`);
 
     // ── Description subtitle (if any) ───────────────────────────────────────
     if (token?.description) {
@@ -885,7 +885,7 @@ export function formatWhaleFeed(
     const coinName = token?.name ?? 'Unknown';
     const coinTicker = token?.symbol ?? '???';
     const pumpLink = `<a href="https://pump.fun/coin/${event.mintAddress}">${esc(coinName)}</a>`;
-    lines.push(`🪙  <b>${pumpLink}</b>  <code>$${esc(coinTicker)}</code>`);
+    lines.push(`🪙  <b>${pumpLink}</b>  <code>${esc(formatTicker(coinTicker))}</code>`);
 
     lines.push('');
 
@@ -929,7 +929,7 @@ export function formatFeeDistributionFeed(
     const coinName = token?.name ?? 'Unknown';
     const coinTicker = token?.symbol ?? '???';
     const pumpLink = `<a href="https://pump.fun/coin/${event.mintAddress}">${esc(coinName)}</a>`;
-    lines.push(`🪙  <b>${pumpLink}</b>  <code>$${esc(coinTicker)}</code>`);
+    lines.push(`🪙  <b>${pumpLink}</b>  <code>${esc(formatTicker(coinTicker))}</code>`);
 
     lines.push('');
 
@@ -1013,6 +1013,15 @@ export function summarizeCreatorTrackRecord(creator: CreatorProfile | null | und
     // Mostly-dead history is a warning; a real graduation record is not.
     const icon = dead > graduated ? '⚠️' : '📈';
     return `${icon} Dev record: ${parts.join(' · ')}`;
+}
+
+/**
+ * Render a ticker with exactly one leading "$". Creators routinely put the
+ * dollar sign in the symbol itself, which used to render as "$$PANIC".
+ */
+export function formatTicker(symbol: string | null | undefined): string {
+    const clean = (symbol ?? '').trim().replace(/^\$+/, '');
+    return clean ? `$${clean}` : '';
 }
 
 export function shortAddr(addr: string): string {

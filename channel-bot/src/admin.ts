@@ -19,6 +19,7 @@ import type { Bot, Context } from 'grammy';
 
 import type { ChannelBotConfig } from './config.js';
 import type { EventStore } from './event-store.js';
+import type { PerformanceTracker } from './performance-tracker.js';
 import type { WebhookDispatcher } from './webhooks.js';
 import { log } from './logger.js';
 
@@ -39,6 +40,7 @@ export interface AdminContext {
     store: EventStore;
     webhooks: WebhookDispatcher;
     startedAt: number;
+    performance?: PerformanceTracker;
 }
 
 const FEED_NAMES = ['claims', 'launches', 'graduations', 'whales', 'feeDistributions'] as const;
@@ -88,6 +90,11 @@ export function registerAdminCommands(bot: Bot, ctx: AdminContext): void {
         const webhookLine = ctx.webhooks.enabled
             ? `\nWebhooks: ${ctx.webhooks.stats.delivered} delivered, ${ctx.webhooks.stats.failed} failed`
             : '';
+        const perf = ctx.performance;
+        const perfLine = perf
+            ? `\nOpen calls: ${perf.activeCount} (${perf.stats.milestonesPosted} milestones, ` +
+              `${perf.stats.collapsesPosted} collapses, ${perf.stats.devDumpsPosted} dev sells)`
+            : '';
         const health = ctx.state.getDelivery?.();
         const deliveryLine = health && !health.healthy
             ? `\n\n⚠️ <b>Delivery blocked</b> (${health.fault}, ${health.failures} failures)\n${health.fix ?? ''}`
@@ -101,7 +108,7 @@ export function registerAdminCommands(bot: Bot, ctx: AdminContext): void {
             `Posted: ${ctx.state.posted}\n` +
             `Whale threshold: ${config.whaleThresholdSol} SOL\n` +
             `Events seen: ${counts}\n` +
-            `API subscribers: ${ctx.store.subscriberCount}${webhookLine}\n\n${feeds}${deliveryLine}`,
+            `API subscribers: ${ctx.store.subscriberCount}${perfLine}${webhookLine}\n\n${feeds}${deliveryLine}`,
             { parse_mode: 'HTML' },
         );
     });
@@ -177,6 +184,26 @@ export function registerAdminCommands(bot: Bot, ctx: AdminContext): void {
         await c.reply(lines.join('\n'));
     });
 
+    bot.command('calls', async (c: Context) => {
+        const perf = ctx.performance;
+        if (!perf) {
+            await c.reply('Call follow-ups are disabled (PERFORMANCE_UPDATES=false).');
+            return;
+        }
+        const open = perf.openCalls();
+        if (open.length === 0) {
+            await c.reply('No open calls being tracked right now.');
+            return;
+        }
+        const lines = open.slice(0, 20).map((p) => {
+            const ageMin = Math.floor((Date.now() - p.postedAt) / 60_000);
+            const hit = p.announced.length > 0 ? ` [${Math.max(...p.announced)}x hit]` : '';
+            return `$${p.symbol} — ${ageMin}m ago${hit}`;
+        });
+        const more = open.length > 20 ? `\n<i>... +${open.length - 20} more</i>` : '';
+        await c.reply(`<b>Open calls (${open.length})</b>\n${lines.join('\n')}${more}`, { parse_mode: 'HTML' });
+    });
+
     bot.command('help', async (c: Context) => {
         await c.reply(
             '/status — uptime, transport, counters\n' +
@@ -184,7 +211,8 @@ export function registerAdminCommands(bot: Bot, ctx: AdminContext): void {
             '/threshold <sol> — whale alert threshold\n' +
             '/mute <minutes> — pause posting\n' +
             '/unmute — resume posting\n' +
-            '/recent [n] — last n events',
+            '/recent [n] — last n events\n' +
+            '/calls — open calls being tracked for follow-ups',
         );
     });
 

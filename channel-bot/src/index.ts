@@ -546,7 +546,7 @@ async function main(): Promise<void> {
 
     // ── Telegram bot: admin commands + long polling ──────────────────
     const startedAt = Date.now();
-    registerAdminCommands(bot, { config, state, store, webhooks, startedAt });
+    registerAdminCommands(bot, { config, state, store, webhooks, startedAt, performance: config.performance.enabled ? performance : undefined });
     await bot.init();
     log.info('Bot initialized: @%s', bot.botInfo.username);
 

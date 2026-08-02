@@ -1,6 +1,12 @@
 /**
  * Tests for the single source of truth for outbound trading links.
- * These links are revenue, so a missing referral code is a real defect.
+ * These links are revenue, so a wrong referral form is a real defect.
+ *
+ * The documented referral forms (see trade-links.ts):
+ *   GMGN  {code}_{contract} in the token path
+ *   FOMO  fomo.family/r/{code} (no per-token route)
+ *   Axiom and Padre document no referral form on token deep links,
+ *   so those stay clean.
  */
 
 import { describe, it, expect } from 'vitest';
@@ -11,13 +17,18 @@ const MINT = 'MintSynthetic1111111111111111111111111111111';
 const AFF = { axiom: 'nich', gmgn: 'nichxbt', padre: 'nichxbt', fomo: 'nichxbt' };
 
 describe('buildTradeLinks', () => {
-    it('applies a referral code to every venue that supports one', () => {
+    it('applies the documented referral form on every venue that has one', () => {
         const links = buildTradeLinks(MINT, AFF);
         const byName = Object.fromEntries(links.map((l) => [l.name, l.url]));
-        expect(byName.Axiom).toContain('ref=nich');
-        expect(byName.GMGN).toContain('ref=nichxbt');
-        expect(byName.Padre).toContain('ref=nichxbt');
-        expect(byName.FOMO).toContain('nichxbt');
+        expect(byName.GMGN).toBe(`https://gmgn.ai/sol/token/nichxbt_${MINT}`);
+        expect(byName.FOMO).toBe('https://fomo.family/r/nichxbt');
+    });
+
+    it('keeps token deep links clean on venues that document no token referral form', () => {
+        const links = buildTradeLinks(MINT, AFF);
+        const byName = Object.fromEntries(links.map((l) => [l.name, l.url]));
+        expect(byName.Axiom).toBe(`https://axiom.trade/t/${MINT}`);
+        expect(byName.Padre).toBe(`https://trade.padre.gg/trade/solana/${MINT}`);
     });
 
     it('keeps the mint in the path for every per-token venue', () => {
@@ -28,16 +39,13 @@ describe('buildTradeLinks', () => {
     });
 
     it('still produces working links when no codes are configured', () => {
-        for (const link of buildTradeLinks(MINT)) {
+        const links = buildTradeLinks(MINT);
+        const byName = Object.fromEntries(links.map((l) => [l.name, l.url]));
+        expect(byName.GMGN).toBe(`https://gmgn.ai/sol/token/${MINT}`);
+        expect(byName.FOMO).toBe('https://fomo.family');
+        for (const link of links) {
             expect(link.url).toMatch(/^https:\/\//);
             expect(link.url).not.toContain('undefined');
-            expect(link.url).not.toContain('ref=&');
-        }
-    });
-
-    it('never emits a double question mark when appending a code', () => {
-        for (const link of buildTradeLinks(MINT, AFF)) {
-            expect(link.url.split('?').length).toBeLessThanOrEqual(2);
         }
     });
 });
@@ -57,6 +65,7 @@ describe('renderTradeLinkRow', () => {
         for (const short of ['AXI', 'GMG', 'PDR', 'FMO']) {
             expect(row).toContain(`>${short}</a>`);
         }
-        expect(row).toContain('ref=nich');
+        expect(row).toContain(`nichxbt_${MINT}`);
+        expect(row).toContain('fomo.family/r/nichxbt');
     });
 });

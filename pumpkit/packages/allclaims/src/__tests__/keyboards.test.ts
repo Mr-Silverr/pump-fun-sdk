@@ -24,11 +24,12 @@ describe('buildTokenKeyboard', () => {
         expect(gmgn).toBe(`https://gmgn.ai/sol/token/${MINT}`);
     });
 
-    it('tags links with referrals when they are configured', () => {
-        const joined = urls(buildTokenKeyboard(MINT, { axiom: 'nich', gmgn: 'nichxbt', padre: 'nichxbt' })).join(' ');
-        expect(joined).toContain('axiom.trade/t/');
-        expect(joined).toContain('ref=nich');
+    it('tags links with their documented referral forms when configured', () => {
+        const joined = urls(buildTokenKeyboard(MINT, { axiom: 'nich', gmgn: 'nichxbt', padre: 'nichxbt', fomo: 'nichxbt' })).join(' ');
+        expect(joined).toContain(`axiom.trade/t/${MINT}`);
+        expect(joined).toContain(`gmgn.ai/sol/token/nichxbt_${MINT}`);
         expect(joined).toContain('trade.padre.gg/rk/nichxbt');
+        expect(joined).toContain('fomo.family/r/nichxbt');
     });
 });
 

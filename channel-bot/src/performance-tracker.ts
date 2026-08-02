@@ -13,7 +13,7 @@
  */
 
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 
 import { log } from './logger.js';
 import { formatTicker } from './formatters.js';
@@ -67,7 +67,12 @@ export interface PerformanceTrackerOptions {
     minDevPct?: number;
     /** RPC endpoint used for the on-chain dev balance lookup */
     rpcUrl?: string;
+    /** Where open calls persist across restarts; null disables persistence */
+    statePath?: string | null;
 }
+
+const DATA_DIR = process.env.DATA_DIR || join(process.cwd(), 'data');
+const STATE_FILE = join(DATA_DIR, 'performance-tracker.json');
 
 const DEFAULTS = {
     windowHours: 24,
@@ -79,10 +84,9 @@ const DEFAULTS = {
     devDumpPct: 30,
     minDevPct: 0.5,
     rpcUrl: 'https://api.mainnet-beta.solana.com',
+    statePath: STATE_FILE as string | null,
 };
 
-const DATA_DIR = process.env.DATA_DIR || join(process.cwd(), 'data');
-const STATE_FILE = join(DATA_DIR, 'performance-tracker.json');
 const SAVE_DEBOUNCE_MS = 5_000;
 
 function formatUsd(n: number): string {
@@ -296,8 +300,10 @@ export class PerformanceTracker {
 
     private save(): void {
         try {
-            if (!existsSync(DATA_DIR)) mkdirSync(DATA_DIR, { recursive: true });
-            writeFileSync(STATE_FILE, JSON.stringify([...this.posts.values()]), 'utf8');
+            const statePath = this.opts.statePath;
+            if (!statePath) return;
+            mkdirSync(dirname(statePath), { recursive: true });
+            writeFileSync(statePath, JSON.stringify([...this.posts.values()]), 'utf8');
         } catch (err) {
             log.warn('Performance tracker save failed: %s', err);
         }
@@ -305,8 +311,9 @@ export class PerformanceTracker {
 
     private load(): void {
         try {
-            if (!existsSync(STATE_FILE)) return;
-            const raw = JSON.parse(readFileSync(STATE_FILE, 'utf8')) as TrackedPost[];
+            const statePath = this.opts.statePath;
+            if (!statePath || !existsSync(statePath)) return;
+            const raw = JSON.parse(readFileSync(statePath, 'utf8')) as TrackedPost[];
             for (const p of raw) {
                 if (p?.mint && p.messageId) this.posts.set(p.mint, p);
             }

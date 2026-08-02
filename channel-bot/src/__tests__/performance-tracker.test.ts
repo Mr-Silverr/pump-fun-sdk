@@ -80,20 +80,20 @@ describe('update formatting', () => {
 
 describe('PerformanceTracker', () => {
     it('ignores dust baselines that would fake huge multiples', () => {
-        const tracker = new PerformanceTracker({ postUpdate: async () => {}, minBaselineUsd: 1_000 });
+        const tracker = new PerformanceTracker({ statePath: null, postUpdate: async () => {}, minBaselineUsd: 1_000 });
         tracker.track({ mint: MINT, messageId: 1, symbol: 'A', mcapUsd: 50 });
         expect(tracker.activeCount).toBe(0);
     });
 
     it('ignores a post with no message id, since a reply would have no target', () => {
-        const tracker = new PerformanceTracker({ postUpdate: async () => {} });
+        const tracker = new PerformanceTracker({ statePath: null, postUpdate: async () => {} });
         tracker.track({ mint: MINT, messageId: 0, symbol: 'A', mcapUsd: 50_000 });
         expect(tracker.activeCount).toBe(0);
     });
 
     it('posts a milestone reply to the original message exactly once', async () => {
         const postUpdate = vi.fn(async (_text: string, _replyTo: number) => {});
-        const tracker = new PerformanceTracker({
+        const tracker = new PerformanceTracker({ statePath: null,
             postUpdate,
             fetchMcap: async () => 30_000,
             milestones: [2, 5],
@@ -113,7 +113,7 @@ describe('PerformanceTracker', () => {
 
     it('announces a collapse and then stops tracking the call', async () => {
         const postUpdate = vi.fn(async (_text: string, _replyTo: number) => {});
-        const tracker = new PerformanceTracker({ postUpdate, fetchMcap: async () => 1_000, collapsePct: 80 });
+        const tracker = new PerformanceTracker({ statePath: null, postUpdate, fetchMcap: async () => 1_000, collapsePct: 80 });
         tracker.track({ mint: MINT, messageId: 7, symbol: 'A', mcapUsd: 50_000 });
 
         await tracker.sweep();
@@ -127,7 +127,7 @@ describe('PerformanceTracker', () => {
     });
 
     it('drops calls once the tracking window closes', async () => {
-        const tracker = new PerformanceTracker({
+        const tracker = new PerformanceTracker({ statePath: null,
             postUpdate: async () => {},
             fetchMcap: async () => 20_000,
             windowHours: 1,
@@ -139,7 +139,7 @@ describe('PerformanceTracker', () => {
     });
 
     it('survives a lookup failure without losing the call', async () => {
-        const tracker = new PerformanceTracker({
+        const tracker = new PerformanceTracker({ statePath: null,
             postUpdate: async () => {},
             fetchMcap: async () => { throw new Error('rpc down'); },
         });
@@ -150,7 +150,7 @@ describe('PerformanceTracker', () => {
 
     it('ignores an unpriceable token rather than calling it a collapse', async () => {
         const postUpdate = vi.fn(async (_text: string, _replyTo: number) => {});
-        const tracker = new PerformanceTracker({ postUpdate, fetchMcap: async () => null });
+        const tracker = new PerformanceTracker({ statePath: null, postUpdate, fetchMcap: async () => null });
         tracker.track({ mint: MINT, messageId: 5, symbol: 'A', mcapUsd: 10_000 });
         await tracker.sweep();
         expect(postUpdate).not.toHaveBeenCalled();
@@ -158,7 +158,7 @@ describe('PerformanceTracker', () => {
     });
 
     it('evicts the oldest call past the cap', () => {
-        const tracker = new PerformanceTracker({ postUpdate: async () => {}, maxTracked: 2 });
+        const tracker = new PerformanceTracker({ statePath: null, postUpdate: async () => {}, maxTracked: 2 });
         tracker.track({ mint: 'MintA1111', messageId: 1, symbol: 'A', mcapUsd: 10_000 });
         tracker.track({ mint: 'MintB2222', messageId: 2, symbol: 'B', mcapUsd: 10_000 });
         tracker.track({ mint: 'MintC3333', messageId: 3, symbol: 'C', mcapUsd: 10_000 });
@@ -169,7 +169,7 @@ describe('PerformanceTracker', () => {
 describe('dev position monitoring', () => {
     it('announces a dev selling down their position, once', async () => {
         const postUpdate = vi.fn(async (_text: string, _replyTo: number) => {});
-        const tracker = new PerformanceTracker({
+        const tracker = new PerformanceTracker({ statePath: null,
             postUpdate,
             fetchMcap: async () => 11_000,
             fetchDevPct: async () => 1,
@@ -194,7 +194,7 @@ describe('dev position monitoring', () => {
 
     it('stays quiet when the dev trims a little', async () => {
         const postUpdate = vi.fn(async (_text: string, _replyTo: number) => {});
-        const tracker = new PerformanceTracker({
+        const tracker = new PerformanceTracker({ statePath: null,
             postUpdate,
             fetchMcap: async () => 11_000,
             fetchDevPct: async () => 7.5,
@@ -210,7 +210,7 @@ describe('dev position monitoring', () => {
 
     it('ignores devs whose starting position was already negligible', async () => {
         const fetchDevPct = vi.fn(async () => 0);
-        const tracker = new PerformanceTracker({
+        const tracker = new PerformanceTracker({ statePath: null,
             postUpdate: async () => {},
             fetchMcap: async () => 11_000,
             fetchDevPct,
@@ -226,7 +226,7 @@ describe('dev position monitoring', () => {
 
     it('does not check the dev when no wallet was recorded', async () => {
         const fetchDevPct = vi.fn(async () => 0);
-        const tracker = new PerformanceTracker({
+        const tracker = new PerformanceTracker({ statePath: null,
             postUpdate: async () => {}, fetchMcap: async () => 11_000, fetchDevPct,
         });
         tracker.track({ mint: MINT, messageId: 33, symbol: 'A', mcapUsd: 10_000 });

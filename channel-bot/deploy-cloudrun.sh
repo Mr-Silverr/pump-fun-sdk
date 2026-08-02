@@ -19,6 +19,12 @@ REGION="${REGION:-us-central1}"
 PROJECT="${PROJECT:-$(gcloud config get-value project 2>/dev/null)}"
 SECRET_NAME="${SECRET_NAME:-pumpfun-channel-bot-token}"
 
+# The project's default compute service account was deleted, so both the build
+# and the runtime identity must be pinned explicitly or the deploy fails with an
+# opaque permissions error.
+BUILD_SA="${BUILD_SA:-three-ws-build@${PROJECT}.iam.gserviceaccount.com}"
+RUNTIME_SA="${RUNTIME_SA:-three-ws@${PROJECT}.iam.gserviceaccount.com}"
+
 if [[ -z "${PROJECT}" || "${PROJECT}" == "(unset)" ]]; then
     echo "No GCP project set. Use: PROJECT=my-project $0" >&2
     exit 1
@@ -36,7 +42,18 @@ if [[ -z "${TOKEN}" ]]; then
     exit 1
 fi
 
+# This bot must never post to the all-claims channel. A numeric -100... id is
+# also the only form that survives a chat username change, and getChat by
+# @handle is not reliable across chat types.
+CHANNEL="$(grep -E '^CHANNEL_ID=' .env | head -1 | cut -d= -f2-)"
+if [[ ! "${CHANNEL}" =~ ^-100[0-9]+$ ]]; then
+    echo "CHANNEL_ID must be the numeric -100... chat id, got: '${CHANNEL}'" >&2
+    echo "Recover it with: curl -s \"https://api.telegram.org/bot\${TOKEN}/getChat?chat_id=@handle\"" >&2
+    exit 1
+fi
+
 echo "Project: ${PROJECT}   Service: ${SERVICE}   Region: ${REGION}"
+echo "Channel: ${CHANNEL}   Build SA: ${BUILD_SA}   Runtime SA: ${RUNTIME_SA}"
 
 # Store (or rotate) the bot token in Secret Manager.
 if gcloud secrets describe "${SECRET_NAME}" --project "${PROJECT}" >/dev/null 2>&1; then
@@ -57,26 +74,52 @@ fi
 ENV_YAML="$(mktemp -t channel-bot-env-XXXXXX.yaml)"
 trap 'rm -f "${ENV_YAML}"' EXIT
 
-while IFS= read -r line; do
+while IFS= read -r line || [[ -n "${line}" ]]; do
+    line="${line%$'\r'}"
     [[ "${line}" =~ ^[[:space:]]*# || -z "${line// }" ]] && continue
+    [[ "${line}" != *=* ]] && continue
     key="${line%%=*}"
     value="${line#*=}"
-    [[ "${key}" == "TELEGRAM_BOT_TOKEN" ]] && continue
     [[ -z "${key}" ]] && continue
+    # The token ships from Secret Manager, and PORT is reserved by Cloud Run:
+    # including it makes the deploy fail outright. The container already reads
+    # process.env.PORT, which Cloud Run injects to match --port.
+    [[ "${key}" == "TELEGRAM_BOT_TOKEN" || "${key}" == "PORT" ]] && continue
     # Escape double quotes for YAML, then emit a quoted scalar.
     printf '%s: "%s"\n' "${key}" "${value//\"/\\\"}" >> "${ENV_YAML}"
 done < .env
 
-echo "Shipping $(wc -l < "${ENV_YAML}") env vars (token comes from Secret Manager)"
+echo "Shipping $(wc -l < "${ENV_YAML}") env vars (token comes from Secret Manager, PORT from Cloud Run)"
 
+# Typecheck before uploading. The image build runs `tsc`, so a type error here
+# would otherwise surface ~6 minutes later as an opaque "Build failed".
+echo "Typechecking..."
+npm run typecheck
+
+# Deploy from a snapshot, not from the live directory. Other agents edit this
+# worktree concurrently, and `gcloud run deploy --source .` uploads files one by
+# one: an edit landing mid-upload ships a torn tree that fails to compile in
+# Cloud Build even though the source on disk is fine. Copying first makes the
+# build context atomic with respect to those edits.
+STAGE="$(mktemp -d -t channel-bot-src-XXXXXX)"
+trap 'rm -f "${ENV_YAML}"; rm -rf "${STAGE}"' EXIT
+cp -a package.json tsconfig.json Dockerfile .dockerignore .gcloudignore src "${STAGE}/"
+echo "Staged build context at ${STAGE}"
+
+# --min-instances 1 + --no-cpu-throttling keep the websocket subscription alive
+# between requests; a scale-to-zero service would drop the feed. --max-instances 1
+# keeps it a singleton so the channel never receives duplicate posts.
 gcloud run deploy "${SERVICE}" \
-    --source . \
+    --source "${STAGE}" \
     --project "${PROJECT}" \
     --region "${REGION}" \
     --platform managed \
+    --build-service-account "projects/${PROJECT}/serviceAccounts/${BUILD_SA}" \
+    --service-account "${RUNTIME_SA}" \
     --min-instances 1 \
     --max-instances 1 \
     --no-cpu-throttling \
+    --memory 2Gi \
     --port 3000 \
     --no-allow-unauthenticated \
     --env-vars-file "${ENV_YAML}" \
@@ -85,3 +128,6 @@ gcloud run deploy "${SERVICE}" \
 echo
 echo "Deployed. Logs:"
 echo "  gcloud run services logs tail ${SERVICE} --region ${REGION} --project ${PROJECT}"
+echo "Stats (service is private, so mint a token):"
+echo "  curl -H \"Authorization: Bearer \$(gcloud auth print-identity-token)\" \\"
+echo "    \$(gcloud run services describe ${SERVICE} --region ${REGION} --project ${PROJECT} --format='value(status.url)')/stats"

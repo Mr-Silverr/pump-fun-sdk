@@ -63,6 +63,9 @@ export class ClaimMonitor {
 
     async start(): Promise<void> {
         if (this.alive) return;
+        if (!this.config.relayWsUrl) {
+            throw new Error('Relay mode requires RELAY_WS_URL. Set SOLANA_RPC_URL for direct RPC mode instead.');
+        }
         this.alive = true;
         this.startedAt = Date.now();
 
@@ -95,8 +98,10 @@ export class ClaimMonitor {
 
     private connect(): void {
         if (!this.alive) return;
+        const relayUrl = this.config.relayWsUrl;
+        if (!relayUrl) return;
 
-        this.ws = new WebSocket(this.config.relayWsUrl);
+        this.ws = new WebSocket(relayUrl);
 
         this.ws.on('open', () => {
             log.info('Connected to relay');

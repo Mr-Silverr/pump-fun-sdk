@@ -92,18 +92,52 @@ function countPrograms() {
   return new Set(src.match(/export const [A-Z_]*PROGRAM_ID\b/g) || []).size;
 }
 
+// Runnable examples: examples/NN-name.ts, each with a doc-comment header
+// (`Example NN: Title`, `Category: ...`, summary paragraph, `Run:` line)
+// and a matching tutorial in tutorials/examples/NN-name.md.
+function describeExample(file) {
+  const raw = readFileSync(join(root, 'examples', file), 'utf8');
+  const header = raw.match(/\/\*\*([\s\S]*?)\*\//);
+  const lines = (header ? header[1] : '')
+    .split('\n')
+    .map((l) => l.replace(/^\s*\*\s?/, '').trim());
+
+  const titleLine = lines.find((l) => /^Example\s+\d+:/.test(l)) || '';
+  const number = Number((titleLine.match(/^Example\s+(\d+):/) || [])[1] || 0);
+  const title = titleLine.replace(/^Example\s+\d+:\s*/, '') || file.replace(/\.ts$/, '');
+  const category = (lines.find((l) => /^Category:/.test(l)) || '').replace(/^Category:\s*/, '');
+  const summary = clean(
+    lines
+      .filter((l) => l && !/^Example\s+\d+:/.test(l) && !/^Category:/.test(l) && !/^Run:/.test(l))
+      .join(' '),
+  );
+
+  return { file, number, title, category, summary };
+}
+
 const docs = markdownFiles('docs').map((file) => describe('docs', file));
 const tutorials = markdownFiles('tutorials')
   .filter((file) => file !== 'README.md')
   .map((file) => describe('tutorials', file));
+const exampleTutorials = markdownFiles('tutorials/examples')
+  .filter((file) => file !== 'README.md')
+  .map((file) => describe('tutorials/examples', file));
+const examples = readdirSync(join(root, 'examples'), { withFileTypes: true })
+  .filter((entry) => entry.isFile() && /^\d{2}-.*\.ts$/.test(entry.name))
+  .map((entry) => entry.name)
+  .sort((a, b) => a.localeCompare(b, 'en', { numeric: true }))
+  .map((file) => describeExample(file));
 
 const manifest = {
   generatedBy: 'scripts/build-manifest.mjs',
   docs,
   tutorials,
+  examples,
+  exampleTutorials,
   stats: {
     docs: docs.length,
     tutorials: tutorials.length,
+    examples: examples.length,
     mcpTools: countRegistry(['mcp-server', 'src', 'tools', 'index.ts'], 'ALL_TOOLS'),
     mcpResources: countRegistry(['mcp-server', 'src', 'resources', 'index.ts'], 'RESOURCES'),
     mcpPrompts: countRegistry(['mcp-server', 'src', 'prompts', 'index.ts'], 'PROMPT_DEFINITIONS'),
@@ -116,6 +150,7 @@ writeFileSync(outFile, JSON.stringify(manifest, null, 2) + '\n');
 
 console.log(
   `website/data/manifest.json: ${docs.length} docs, ${tutorials.length} tutorials, ` +
+  `${examples.length} examples (${exampleTutorials.length} example tutorials), ` +
   `${manifest.stats.mcpTools} MCP tools, ${manifest.stats.mcpResources} resources, ` +
   `${manifest.stats.mcpPrompts} prompts, ${manifest.stats.programs} programs`,
 );

@@ -3,151 +3,212 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🟢</text></svg>">
-<title>PumpFun Live — New Token Launches</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><rect width='16' height='16' rx='3' fill='%23050505'/><circle cx='8' cy='8' r='3.5' fill='%23f5f5f5'/></svg>">
+<title>Launches / pump sdk live</title>
 <style>
+  :root {
+    --bg: #050505;
+    --bg-elevated: #0e0e0e;
+    --bg-hover: #161616;
+    --border: #222;
+    --border-strong: #333;
+    --text: #f5f5f5;
+    --text-dim: #9a9a9a;
+    --text-faint: #555;
+    --accent-buy: #00e68a;
+    --accent-sell: #ff5c5c;
+    --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+    --radius: 6px;
+  }
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body {
-    background: #0a0a0a;
-    color: #00ff41;
-    font-family: 'Courier New', monospace;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-sans);
     font-size: 13px;
     line-height: 1.5;
-    padding: 0;
   }
+  .mono { font-family: var(--font-mono); }
 
-  /* ── Header ────────────────────────────────────────── */
-  #header {
-    background: #111;
-    border-bottom: 1px solid #222;
-    padding: 12px 20px;
-    display: flex;
-    align-items: center;
-    gap: 16px;
-    flex-wrap: wrap;
-    position: sticky;
-    top: 0;
-    z-index: 10;
+  /* Shared header */
+  .site-header {
+    display: flex; align-items: center; gap: 16px;
+    padding: 0 16px; height: 48px;
+    background: var(--bg); border-bottom: 1px solid var(--border);
+    position: sticky; top: 0; z-index: 50;
   }
-  #header h1 {
-    font-size: 16px;
-    color: #00ff41;
-    white-space: nowrap;
+  .site-header .wordmark {
+    font-family: var(--font-mono); font-size: 13px; font-weight: 600;
+    color: var(--text); text-decoration: none; white-space: nowrap;
   }
-  #header .status {
-    font-size: 12px;
-    color: #666;
+  .site-header .wordmark span { color: var(--text-faint); font-weight: 400; }
+  .site-nav { display: flex; gap: 2px; overflow-x: auto; scrollbar-width: none; }
+  .site-nav::-webkit-scrollbar { display: none; }
+  .site-nav a {
+    color: var(--text-dim); text-decoration: none; font-size: 12px;
+    padding: 5px 9px; border-radius: var(--radius); white-space: nowrap;
+    transition: color 140ms ease, background 140ms ease;
   }
-  #header .status.connected { color: #00ff41; }
-  #header .status.error { color: #ff4141; }
-  #header .controls {
-    margin-left: auto;
-    display: flex;
-    gap: 8px;
-    align-items: center;
+  .site-nav a:hover { color: var(--text); background: var(--bg-hover); }
+  .site-nav a:active { background: var(--bg-elevated); }
+  .site-nav a:focus-visible { outline: 1px solid #fff; outline-offset: 2px; }
+  .site-nav a[aria-current="page"] { color: var(--text); background: var(--bg-elevated); }
+
+  /* Shared footer */
+  .site-footer {
+    border-top: 1px solid var(--border); padding: 14px 16px;
+    display: flex; gap: 16px; flex-wrap: wrap; align-items: center;
+    font-size: 12px; color: var(--text-faint); font-family: var(--font-mono);
   }
+  .site-footer a { color: var(--text-dim); text-decoration: none; transition: color 140ms ease; }
+  .site-footer a:hover { color: var(--text); text-decoration: underline; }
+  .site-footer a:focus-visible { outline: 1px solid #fff; outline-offset: 2px; }
+  .site-footer .grow { flex: 1; }
+
+  /* Page toolbar */
+  .toolbar {
+    background: var(--bg); border-bottom: 1px solid var(--border);
+    padding: 8px 16px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+    position: sticky; top: 48px; z-index: 40;
+  }
+  .toolbar .page-title { font-size: 13px; font-weight: 600; white-space: nowrap; }
+  .status { font-size: 12px; color: var(--text-faint); font-family: var(--font-mono); }
+  .status.connected { color: var(--accent-buy); }
+  .status.error { color: var(--accent-sell); }
+  .toolbar .controls { margin-left: auto; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
   input[type="text"] {
-    background: #1a1a1a;
-    border: 1px solid #333;
-    color: #ccc;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    color: var(--text);
     padding: 6px 10px;
-    font-family: inherit;
+    font-family: var(--font-mono);
     font-size: 12px;
-    width: 340px;
-    border-radius: 3px;
+    width: 320px;
+    border-radius: var(--radius);
+    transition: border-color 140ms ease;
   }
-  input[type="text"]:focus { outline: none; border-color: #00ff41; }
+  input[type="text"]:hover { border-color: var(--border-strong); }
+  input[type="text"]:focus { outline: 1px solid #fff; outline-offset: 2px; border-color: var(--border-strong); }
+  input::placeholder { color: var(--text-faint); }
   button {
-    background: #1a1a1a;
-    border: 1px solid #333;
-    color: #00ff41;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    color: var(--text-dim);
     padding: 6px 14px;
     cursor: pointer;
-    font-family: inherit;
+    font-family: var(--font-sans);
     font-size: 12px;
-    border-radius: 3px;
+    border-radius: var(--radius);
+    transition: background 140ms ease, border-color 140ms ease, color 140ms ease;
   }
-  button:hover { background: #252525; border-color: #00ff41; }
-  button.active { background: #002200; border-color: #00ff41; }
+  button:hover { background: var(--bg-hover); border-color: var(--border-strong); color: var(--text); }
+  button:active { background: var(--bg-elevated); }
+  button:focus-visible { outline: 1px solid #fff; outline-offset: 2px; }
+  button.active { background: var(--bg-hover); border-color: var(--border-strong); color: var(--text); }
 
-  /* ── Stats bar ─────────────────────────────────────── */
+  /* Stats bar */
   #stats {
-    background: #0d0d0d;
-    border-bottom: 1px solid #1a1a1a;
-    padding: 6px 20px;
+    background: var(--bg);
+    border-bottom: 1px solid var(--border);
+    padding: 6px 16px;
     font-size: 11px;
-    color: #555;
+    color: var(--text-faint);
     display: flex;
-    gap: 24px;
+    gap: 20px;
+    flex-wrap: wrap;
+    font-family: var(--font-mono);
   }
-  #stats span { color: #888; }
-  #stats .val { color: #00ff41; }
+  #stats .val { color: var(--text); }
 
-  /* ── Log area ──────────────────────────────────────── */
+  /* Empty state */
+  .empty-state {
+    margin: 24px 16px;
+    border: 1px dashed var(--border-strong);
+    border-radius: var(--radius);
+    padding: 28px 20px;
+    text-align: center;
+    color: var(--text-dim);
+  }
+  .empty-state[hidden] { display: none; }
+  .empty-state .empty-title { color: var(--text); font-size: 13px; font-weight: 600; margin-bottom: 6px; }
+  .empty-state .empty-detail { font-size: 12px; max-width: 560px; margin: 0 auto; }
+  .empty-state .mono { color: var(--text-dim); font-size: 11px; }
+
+  /* Log area */
   #log {
-    padding: 12px 20px;
-    max-height: calc(100vh - 110px);
+    padding: 4px 16px 12px;
+    max-height: calc(100vh - 200px);
     overflow-y: auto;
   }
   .entry {
-    border-bottom: 1px solid #111;
+    border-bottom: 1px solid var(--border);
     padding: 8px 0;
-    animation: fadeIn 0.3s ease;
+    animation: fadeIn 140ms ease;
   }
   @keyframes fadeIn {
     from { opacity: 0; transform: translateY(-4px); }
     to { opacity: 1; transform: translateY(0); }
   }
 
-  .entry .time { color: #444; }
-  .entry .label { color: #888; }
-  .entry .name { color: #ffcc00; font-weight: bold; font-size: 15px; }
-  .entry .symbol { color: #ff9900; font-weight: bold; }
-  .entry .addr { color: #4a9eff; }
-  .entry .github { color: #00ff41; font-weight: bold; }
-  .entry .raw { color: #333; font-size: 11px; word-break: break-all; display: none; }
-  .entry a { color: #4a9eff; text-decoration: none; }
-  .entry a:hover { text-decoration: underline; }
+  .entry .time { color: var(--text-faint); font-family: var(--font-mono); font-size: 11px; }
+  .entry .label { color: var(--text-faint); font-size: 11px; }
+  .entry .name { color: var(--text); font-weight: 600; font-size: 14px; }
+  .entry .symbol { color: var(--text-dim); font-weight: 600; font-family: var(--font-mono); }
+  .entry .addr { color: var(--text-dim); font-family: var(--font-mono); }
+  .entry .github { color: var(--text); font-weight: 600; }
+  .entry .raw { color: var(--border-strong); font-size: 11px; word-break: break-all; display: none; }
+  .entry a { color: var(--text-dim); text-decoration: none; transition: color 140ms ease; }
+  .entry a:hover { color: var(--text); text-decoration: underline; }
+  .entry a:focus-visible { outline: 1px solid #fff; outline-offset: 2px; }
 
   .entry .token-row { display: flex; align-items: center; gap: 10px; margin: 4px 0; }
-  .entry .token-img { width: 36px; height: 36px; border-radius: 50%; border: 1px solid #333; object-fit: cover; background: #111; }
+  .entry .token-img { width: 36px; height: 36px; border-radius: 50%; border: 1px solid var(--border-strong); object-fit: cover; background: var(--bg-elevated); }
   .entry .token-details { flex: 1; min-width: 0; }
-  .entry .meta-row { display: flex; gap: 12px; flex-wrap: wrap; font-size: 11px; color: #666; margin-top: 3px; }
-  .entry .meta-row .key { color: #555; }
-  .entry .meta-row .val { color: #aaa; }
-  .entry .meta-row .val.green { color: #00ff41; }
-  .entry .meta-row .val.blue { color: #4a9eff; }
-  .entry .meta-row a { font-size: 11px; }
-  .entry .sol-val { color: #00e5ff; font-weight: bold; }
-  .entry .mcap { color: #b366ff; font-weight: bold; }
+  .entry .meta-row { display: flex; gap: 12px; flex-wrap: wrap; font-size: 11px; color: var(--text-faint); margin-top: 3px; font-family: var(--font-mono); }
+  .entry .meta-row .key { color: var(--text-faint); }
+  .entry .meta-row .val { color: var(--text-dim); }
+  .entry .sol-val { color: var(--text); font-weight: 600; font-family: var(--font-mono); }
+  .entry .mcap { color: var(--text); font-weight: 600; font-family: var(--font-mono); }
 
-  .sys { color: #555; padding: 4px 0; }
-  .sys.error { color: #ff4141; }
-  .sys.warn { color: #ffcc00; }
+  .sys { color: var(--text-faint); padding: 4px 0; font-family: var(--font-mono); font-size: 11px; }
+  .sys.error { color: var(--accent-sell); }
+  .sys.warn { color: var(--text-dim); }
 
-  /* ── Scrollbar ─────────────────────────────────────── */
+  /* Scrollbar */
   ::-webkit-scrollbar { width: 6px; }
-  ::-webkit-scrollbar-track { background: #0a0a0a; }
-  ::-webkit-scrollbar-thumb { background: #222; border-radius: 3px; }
-  ::-webkit-scrollbar-thumb:hover { background: #333; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--border-strong); }
 
-  /* ── Responsive ────────────────────────────────────── */
+  /* Responsive */
   @media (max-width: 700px) {
     input[type="text"] { width: 100%; }
-    #header { flex-direction: column; align-items: flex-start; }
-    #header .controls { margin-left: 0; width: 100%; flex-wrap: wrap; }
+    .toolbar { flex-direction: column; align-items: flex-start; gap: 8px; }
+    .toolbar .controls { margin-left: 0; width: 100%; }
   }
 </style>
 </head>
 <body>
 
-<div id="header">
-  <h1>⚡ PumpFun Live</h1>
-  <a href="/trades" style="color:#4a9eff; text-decoration:none; font-size:12px; border:1px solid #333; padding:4px 10px; border-radius:3px;">📊 Trades Dashboard</a>
-  <a href="/vanity" style="color:#ffcc00; text-decoration:none; font-size:12px; border:1px solid #333; padding:4px 10px; border-radius:3px;">🔑 Vanity Generator</a>
-  <div class="status" id="status">● Disconnected</div>
+<header class="site-header">
+  <a class="wordmark" href="/live/">pump sdk <span>/ live</span></a>
+  <nav class="site-nav" aria-label="Live dashboards">
+    <a href="/live/" aria-current="page">Launches</a>
+    <a href="/live/trades">Trades</a>
+    <a href="/live/dashboard">Dashboard</a>
+    <a href="/live/vanity">Vanity</a>
+    <a href="/live/sell-demo">Sell Demo</a>
+    <a href="/live/launchpad">Launchpad</a>
+    <a href="/">Docs</a>
+  </nav>
+</header>
+
+<div class="toolbar">
+  <div class="page-title">Token launches</div>
+  <div class="status" id="status" role="status" aria-live="polite">● Disconnected</div>
   <div class="controls">
-    <input type="text" id="rpc" value="" placeholder="wss:// custom RPC" style="display:none" />
+    <input type="text" id="rpc" value="" placeholder="wss:// custom RPC" style="display:none" aria-label="Custom RPC WebSocket URL" />
     <button id="btn-connect">Disconnect</button>
     <button id="btn-pause">Pause</button>
     <button id="btn-clear">Clear</button>
@@ -157,12 +218,28 @@
 <div id="stats">
   <div>Tokens: <span class="val" id="s-total">0</span></div>
   <div>With GitHub: <span class="val" id="s-github">0</span></div>
-  <div>Viewers: <span class="val" id="s-viewers">—</span></div>
+  <div>Viewers: <span class="val" id="s-viewers">-</span></div>
   <div>Logs/sec: <span class="val" id="s-rate">0</span></div>
   <div>Uptime: <span class="val" id="s-uptime">0s</span></div>
 </div>
 
+<div id="empty" class="empty-state">
+  <div class="empty-title">Waiting for the first token launch</div>
+  <div class="empty-detail">
+    Streaming new pump.fun tokens from <span class="mono">wss://pumpportal.fun/api/data</span>
+    with an automatic relay fallback. Launches appear here the moment they are created;
+    the status above turns green once the stream is connected.
+  </div>
+</div>
+
 <div id="log"></div>
+
+<footer class="site-footer">
+  <span>pump sdk / live</span>
+  <span class="grow"></span>
+  <a href="https://github.com/nirholas/pump-fun-sdk" target="_blank" rel="noopener">GitHub</a>
+  <a href="/">Docs</a>
+</footer>
 
 <script>
 // ════════════════════════════════════════════════════════════════════
@@ -640,7 +717,7 @@ async function fetchMetadata(uri, signature) {
       const el = document.getElementById('tx-' + signature.slice(0, 16));
       if (el) {
         const githubDiv = document.createElement('div');
-        githubDiv.innerHTML = '🌐 <span class="github">GitHub: ' +
+        githubDiv.innerHTML = '<span class="github">GitHub: ' +
           githubUrls.map(u => `<a href="${esc(u)}" target="_blank">${esc(u)}</a>`).join(', ') +
           '</span>';
         el.appendChild(githubDiv);
@@ -714,6 +791,8 @@ function shortAddr(addr) {
 
 // ── Render a token launch entry ─────────────────────────────────────
 function renderEntry(info) {
+  const $empty = document.getElementById('empty');
+  if ($empty) $empty.hidden = true;
   const div = document.createElement('div');
   div.className = 'entry';
   div.id = 'tx-' + info.signature.slice(0, 16);
@@ -732,10 +811,10 @@ function renderEntry(info) {
   html += `<img class="token-img" src="" alt="" style="display:none" onerror="this.style.display='none'" />`;
   html += `<div class="token-details">`;
   html += `<div><span class="time">${info.time}</span> `;
-  html += `🚀 <span class="name">${esc(displayName)}</span> `;
+  html += `<span class="name">${esc(displayName)}</span> `;
   html += `<span class="symbol">${esc(displaySymbol)}</span> `;
   html += `<span class="label">[${version}]</span>`;
-  if (info.hasGithub) html += ` <span class="github">★ GitHub</span>`;
+  if (info.hasGithub) html += ` <span class="github">GitHub</span>`;
   html += `</div>`;
 
   // Description placeholder

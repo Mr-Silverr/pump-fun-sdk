@@ -1,0 +1,11 @@
+# The Dockerfile runs its own `npm install` and `npm run build`, so a host
+# node_modules/ or dist/ in the build context is dead weight at best and a
+# wrong-architecture binary at worst.
+.git
+.gitignore
+node_modules/
+dist/
+.env
+.env.bak
+*.log
+.DS_Store

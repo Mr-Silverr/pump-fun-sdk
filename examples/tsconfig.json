@@ -1,0 +1,16 @@
+{
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "rootDir": "..",
+    "outDir": null,
+    "noEmit": true,
+    "declaration": false,
+    "declarationMap": false,
+    "sourceMap": false,
+    "baseUrl": "..",
+    "paths": {
+      "@nirholas/pump-sdk": ["src/index.ts"]
+    }
+  },
+  "include": ["./**/*.ts", "../src/**/*"]
+}

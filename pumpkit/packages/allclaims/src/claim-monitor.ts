@@ -177,6 +177,39 @@ function formatUptime(ms: number): string {
     return `${Math.floor(s / 3600)}h${Math.floor((s % 3600) / 60)}m`;
 }
 
+/** A claim decoded from one instruction, with the provenance of its amount. */
+export interface DecodedClaim {
+    event: FeeClaimEvent;
+    /** True when the amount was read from a claim event rather than a balance diff. */
+    amountFromEvent: boolean;
+}
+
+/**
+ * Collapse the duplicate a single transaction can produce.
+ *
+ * A creator claiming from both venues at once invokes the pump program and the
+ * pumpswap program in one transaction, so a claim instruction matches in each
+ * even though only one of them emits a claim event. The instruction with no
+ * event falls back to the signer's balance change and reports the same money a
+ * second time, which posts the claim twice and doubles the window total.
+ *
+ * The fallback measures the signer's *aggregate* balance change, so once any
+ * event in the transaction has been decoded the fallback cannot describe a
+ * second distinct claim: it is measuring the first claim's proceeds, net of the
+ * transaction fee. That fee is also why matching on the exact lamport figure
+ * does not work, since the two land a few thousand lamports apart.
+ *
+ * So a fallback-priced claim is dropped whenever the same transaction produced
+ * any event-priced claim. Transactions where nothing decoded keep their
+ * fallback claims, and claims that each carry their own event all survive.
+ */
+export function dedupeWithinTransaction(claims: DecodedClaim[]): DecodedClaim[] {
+    if (claims.length < 2) return claims;
+    const hasEventPriced = claims.some((c) => c.amountFromEvent);
+    if (!hasEventPriced) return claims;
+    return claims.filter((c) => c.amountFromEvent);
+}
+
 // ============================================================================
 // Monitor
 // ============================================================================
@@ -467,21 +500,24 @@ export class ClaimMonitor {
             const slot = tx.slot;
 
             // Process all claim instructions (social, creator, distribution — not just social)
+            const decoded: DecodedClaim[] = [];
             for (const ix of instructions) {
                 if (!('data' in ix) || !ix.data) continue;
                 const programId = ix.programId.toBase58();
                 const matchedDef = this.matchClaimInstruction(ix.data, programId);
                 if (!matchedDef) continue;
 
-                const event = this.buildClaimEvent(
+                const claim = this.buildClaimEvent(
                     signature, slot, timestamp, tx, matchedDef, ix,
                 );
-                if (event) {
-                    this.claimsDetected++;
-                    const typeCount = (this.claimsByType.get(event.claimType) ?? 0) + 1;
-                    this.claimsByType.set(event.claimType, typeCount);
-                    this.onClaim(event);
-                }
+                if (claim) decoded.push(claim);
+            }
+
+            for (const { event } of dedupeWithinTransaction(decoded)) {
+                this.claimsDetected++;
+                const typeCount = (this.claimsByType.get(event.claimType) ?? 0) + 1;
+                this.claimsByType.set(event.claimType, typeCount);
+                this.onClaim(event);
             }
         } catch (err) {
             const msg = String(err);
@@ -512,7 +548,7 @@ export class ClaimMonitor {
         tx: import('@solana/web3.js').ParsedTransactionWithMeta,
         def: InstructionDef,
         ix: import('@solana/web3.js').ParsedInstruction | import('@solana/web3.js').PartiallyDecodedInstruction,
-    ): FeeClaimEvent | null {
+    ): DecodedClaim | null {
         // Find the claimer from account keys
         const accountKeys = tx.transaction.message.accountKeys;
         const signerKey = accountKeys.find((a) => a.signer)?.pubkey?.toBase58();
@@ -526,6 +562,7 @@ export class ClaimMonitor {
         let socialFeePda: string | undefined;
         let lifetimeClaimedLamports: number | undefined;
         let quoteMint: string | undefined;
+        let creatorWallet: string | undefined;
 
         if (def.claimType === 'distribute_creator_fees') {
             // distribute_creator_fees: accounts[0] = mint
@@ -578,7 +615,16 @@ export class ClaimMonitor {
                 // CollectCreatorFeeEvent: disc=7a027f010ebf0caf
                 // V1 layout: disc(8) + timestamp(8) + creator(32) + creatorFee(8)
                 // V2 layout (post-2026-05-21): ... + quote_mint(32)
-                if (disc === '7a027f010ebf0caf') {
+                // The claimType guard matters: this loop scans every event line in the
+                // transaction for every matched instruction, so without it a pump
+                // instruction would read the pumpswap event and report that amount as
+                // its own, posting one claim twice at the same value.
+                if (disc === '7a027f010ebf0caf' && def.claimType === 'collect_creator_fee') {
+                    // The creator is the coin author whose vault is being drained. It is
+                    // not always the signer: claim bots sign on a creator's behalf.
+                    if (bytes.length >= 48) {
+                        creatorWallet = new PublicKey(bytes.subarray(16, 48)).toBase58();
+                    }
                     if (bytes.length >= 56) {
                         const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
                         amountLamports = Number(view.getBigUint64(48, true));
@@ -599,7 +645,10 @@ export class ClaimMonitor {
 
                 // CollectCoinCreatorFeeEvent: disc=e8f5c2eeeada3a59
                 // Layout: disc(8) + timestamp(8) + coinCreator(32) + coinCreatorFee(8) + ...
-                if (disc === 'e8f5c2eeeada3a59') {
+                if (disc === 'e8f5c2eeeada3a59' && def.claimType === 'collect_coin_creator_fee') {
+                    if (bytes.length >= 48) {
+                        creatorWallet = new PublicKey(bytes.subarray(16, 48)).toBase58();
+                    }
                     if (bytes.length >= 56) {
                         const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
                         amountLamports = Number(view.getBigUint64(48, true));
@@ -664,6 +713,13 @@ export class ClaimMonitor {
                 }
             } catch { /* skip unparseable log lines */ }
         }
+
+        // Whether the amount came from a decoded claim event rather than a
+        // balance-diff guess. A transaction that invokes both the pump and the
+        // pumpswap program matches a claim instruction in each, but only one
+        // emits an event; the other would otherwise inherit the same amount
+        // from the fallback below and post the claim twice.
+        const amountFromEvent = amountLamports > 0;
 
         // Fallback: calculate SOL amount from balance changes
         if (amountLamports === 0) {
@@ -757,10 +813,13 @@ export class ClaimMonitor {
         const amountSol = quoteInfo.isStable ? 0 : amountLamports / LAMPORTS_PER_SOL;
 
         return {
+            amountFromEvent,
+            event: {
             txSignature: signature,
             slot,
             timestamp,
             claimerWallet: signerKey,
+            creatorWallet,
             tokenMint,
             amountSol,
             amountLamports,
@@ -780,6 +839,7 @@ export class ClaimMonitor {
             isStableQuote: quoteInfo.isStable,
             amountQuote,
             lifetimeClaimedQuote,
+            },
         };
     }
 

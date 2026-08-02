@@ -1,0 +1,10 @@
+# Uploaded to Cloud Build on `gcloud run deploy --source .`. Everything the
+# Dockerfile rebuilds from scratch stays out of the upload.
+.git
+.gitignore
+node_modules/
+dist/
+.env
+.env.bak
+*.log
+.DS_Store

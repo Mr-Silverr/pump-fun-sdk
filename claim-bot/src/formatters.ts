@@ -4,9 +4,10 @@
  * Rich HTML message formatting for Telegram.
  */
 
-import type { FeeClaimEvent } from './types.js';
-import type { TrackedItem } from './types.js';
+import type { ChatSettings, ClaimRecord, FeeClaimEvent, TrackedItem } from './types.js';
+import type { LeaderboardRow } from './claim-history.js';
 import type { TokenInfo } from './pump-client.js';
+import { formatUsd } from './price.js';
 import { formatFollowerCount } from './twitter-client.js';
 
 // ============================================================================
@@ -30,6 +31,17 @@ function formatTime(unixSeconds: number): string {
     return new Date(unixSeconds * 1000).toUTCString().replace('GMT', 'UTC');
 }
 
+/** Compact relative time for list rows: 12s, 4m, 3h, 2d. */
+export function timeAgo(unixSeconds: number): string {
+    const seconds = Math.max(0, Math.floor(Date.now() / 1000 - unixSeconds));
+    if (seconds < 60) return `${seconds}s ago`;
+    const minutes = Math.floor(seconds / 60);
+    if (minutes < 60) return `${minutes}m ago`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `${hours}h ago`;
+    return `${Math.floor(hours / 24)}d ago`;
+}
+
 // ============================================================================
 // Welcome / Help
 // ============================================================================
@@ -38,12 +50,14 @@ export function formatWelcome(name: string): string {
     return (
         `🔔 <b>Welcome to PumpFun Fee Tracker, ${escapeHtml(name)}!</b>\n\n` +
         `I monitor PumpFun fee claims and notify you instantly when:\n` +
-        `• Anyone claims fees for tokens you're tracking\n` +
-        `• Tracked X accounts claim fees on any token\n\n` +
+        `• Anyone claims fees for a token you're tracking\n` +
+        `• A tracked X account claims fees on any token\n` +
+        `• A tracked wallet claims anything at all\n\n` +
         `<b>Get started:</b>\n` +
         `/add &lt;token CA&gt; — Track a token\n` +
+        `/add &lt;wallet&gt; — Track a wallet\n` +
         `/add @handle — Track an X account\n` +
-        `/list — See your tracked items\n` +
+        `/top — Biggest claimers of the last 24h\n` +
         `/help — Full command list\n\n` +
         `Stay ahead of the fee claims! 💰`
     );
@@ -54,21 +68,27 @@ export function formatHelp(): string {
         `🤖 <b>PumpFun Fee Claim Tracker</b>\n\n` +
         `<b>📌 Tracking:</b>\n` +
         `/add <code>&lt;token CA&gt;</code> — Track a token by contract address\n` +
+        `/add <code>&lt;wallet&gt;</code> — Track every claim by a wallet\n` +
         `/add <code>@handle</code> — Track an X (Twitter) account\n` +
-        `/remove <code>&lt;token CA or @handle&gt;</code> — Stop tracking\n` +
+        `/remove <code>&lt;CA, wallet or @handle&gt;</code> — Stop tracking\n` +
         `/list — View all tracked items\n\n` +
         `<b>📊 Info:</b>\n` +
-        `/status — Monitor status &amp; stats\n` +
-        `/help — Show this message\n\n` +
+        `/history <code>[CA, wallet or @handle]</code> — Recent claims\n` +
+        `/top <code>[hours]</code> — Biggest claimers, default 24h\n` +
+        `/status — Monitor status &amp; stats\n\n` +
+        `<b>⚙️ Alerts:</b>\n` +
+        `/settings — Show your alert settings\n` +
+        `/minsol <code>&lt;amount&gt;</code> — Skip claims below this size\n` +
+        `/whale <code>&lt;usd&gt;</code> — Alert on any claim over this, tracked or not\n` +
+        `/mute · /unmute — Pause or resume alerts\n\n` +
         `<b>How it works:</b>\n` +
-        `• <b>Token tracking:</b> I watch the Solana blockchain for fee claim ` +
-        `transactions on the Pump & PumpSwap programs. When someone claims fees ` +
-        `for a token you're tracking, you get notified instantly.\n` +
-        `• <b>X handle tracking:</b> When a fee claim is detected, I check if ` +
-        `the token's creator X account matches any handles you're tracking. ` +
-        `If so, you get notified.\n\n` +
-        `💡 <i>Tip: Use a paid RPC endpoint (Helius, QuickNode) for reliable ` +
-        `real-time WebSocket monitoring.</i>`
+        `• <b>Token tracking:</b> most fee claims name no mint on chain, so I match ` +
+        `them through the token's creator wallet. Add a CA and it just works.\n` +
+        `• <b>Wallet tracking:</b> every claim signed by, or paid to, that address.\n` +
+        `• <b>X handle tracking:</b> I resolve the coins a claiming wallet created ` +
+        `and match their X handles against yours.\n\n` +
+        `💡 <i>Tip: /minsol filters out dust so only claims worth your attention ` +
+        `reach you.</i>`
     );
 }
 
@@ -82,11 +102,13 @@ export function formatTrackedList(items: TrackedItem[]): string {
             `📋 <b>No tracked items</b>\n\n` +
             `Add items with:\n` +
             `<code>/add &lt;token CA&gt;</code> — Track a token\n` +
+            `<code>/add &lt;wallet&gt;</code> — Track a wallet\n` +
             `<code>/add @handle</code> — Track an X account`
         );
     }
 
     const tokens = items.filter((i) => i.type === 'token');
+    const wallets = items.filter((i) => i.type === 'wallet');
     const handles = items.filter((i) => i.type === 'xhandle');
 
     let text = `📋 <b>Tracked Items (${items.length})</b>\n`;
@@ -99,6 +121,14 @@ export function formatTrackedList(items: TrackedItem[]): string {
         }
     }
 
+    if (wallets.length > 0) {
+        text += `\n👤 <b>Wallets (${wallets.length}):</b>\n`;
+        for (const w of wallets) {
+            const label = w.label ? ` — ${escapeHtml(w.label)}` : '';
+            text += `  • <code>${shortAddr(w.value)}</code>${label}\n`;
+        }
+    }
+
     if (handles.length > 0) {
         text += `\n🐦 <b>X Accounts (${handles.length}):</b>\n`;
         for (const h of handles) {
@@ -108,7 +138,7 @@ export function formatTrackedList(items: TrackedItem[]): string {
         }
     }
 
-    text += `\nRemove with: <code>/remove &lt;token CA or @handle&gt;</code>`;
+    text += `\nTap a button below to untrack, or use <code>/remove &lt;value&gt;</code>`;
     return text;
 }
 
@@ -120,12 +150,22 @@ export function formatClaimNotification(
     event: FeeClaimEvent,
     item: TrackedItem,
     token: TokenInfo | null,
+    usdValue?: number | null,
 ): string {
     const emoji = event.isCashback ? '💸' : '🏦';
     const typeLabel = event.claimLabel || (event.isCashback ? 'Cashback Claim' : 'Creator Fee Claim');
 
     const shortWallet = shortAddr(event.claimerWallet);
-    const solAmount = event.amountSol.toFixed(4);
+    // Claims can be quoted in USDC as well as SOL. amountSol is zero for a
+    // stable quote on purpose, so render the quote amount and its ticker.
+    const ticker = event.quoteTicker ?? 'SOL';
+    const amountValue = event.amountQuote ?? event.amountSol;
+    // USD is appended only when a price was actually available: a claim shown
+    // with an invented dollar value is worse than one shown without it.
+    const usdSuffix = typeof usdValue === 'number' && usdValue > 0 && !event.isStableQuote
+        ? ` (≈${formatUsd(usdValue)})`
+        : '';
+    const claimAmount = `${amountValue.toFixed(event.isStableQuote ? 2 : 4)} ${ticker}${usdSuffix}`;
 
     // Token info line
     let tokenLine: string;
@@ -135,7 +175,10 @@ export function formatClaimNotification(
             tokenLine += ` · $${formatNumber(token.usdMarketCap)} mcap`;
         }
     } else if (event.tokenSymbol) {
-        tokenLine = `<b>Token:</b> ${escapeHtml(event.tokenSymbol)}`;
+        // Fall back to whatever the event carries rather than dropping the name.
+        tokenLine = event.tokenName
+            ? `<b>Token:</b> ${escapeHtml(event.tokenSymbol)} (${escapeHtml(event.tokenName)})`
+            : `<b>Token:</b> ${escapeHtml(event.tokenSymbol)}`;
     } else {
         tokenLine = `<b>Token:</b> <code>${shortAddr(event.tokenMint)}</code>`;
     }
@@ -157,6 +200,8 @@ export function formatClaimNotification(
     let matchLine: string;
     if (item.type === 'token') {
         matchLine = `📌 <b>Matched:</b> Tracked token <code>${shortAddr(item.value)}</code>`;
+    } else if (item.type === 'wallet') {
+        matchLine = `📌 <b>Matched:</b> Tracked wallet <code>${shortAddr(item.value)}</code>`;
     } else {
         const handle = item.value.startsWith('@') ? item.value : `@${item.value}`;
         matchLine = `📌 <b>Matched:</b> Tracked X account ${escapeHtml(handle)}`;
@@ -190,7 +235,7 @@ export function formatClaimNotification(
     return (
         `${emoji} <b>${typeLabel} Detected!</b>\n\n` +
         `👤 <b>Claimer:</b> <code>${shortWallet}</code>\n` +
-        `💰 <b>Amount:</b> ${solAmount} SOL\n` +
+        `💰 <b>Amount:</b> ${claimAmount}\n` +
         `${tokenLine}\n` +
             `${twitterLine}` +
         `${caLine}` +
@@ -199,6 +244,166 @@ export function formatClaimNotification(
         `${matchLine}\n\n` +
         `${links}`
     );
+}
+
+// ============================================================================
+// Settings
+// ============================================================================
+
+export function formatSettings(settings: ChatSettings, trackedCount: number): string {
+    const threshold = settings.minAmount > 0
+        ? `${settings.minAmount} (in each claim's own currency)`
+        : 'off (every claim)';
+
+    const whale = settings.whaleMinUsd > 0
+        ? `on, ${formatUsd(settings.whaleMinUsd)}+`
+        : 'off';
+
+    return (
+        `⚙️ <b>Alert Settings</b>\n\n` +
+        `🔔 <b>Notifications:</b> ${settings.muted ? '🔕 muted' : '✅ on'}\n` +
+        `📉 <b>Minimum claim:</b> ${threshold}\n` +
+        `🐋 <b>Whale alerts:</b> ${whale}\n` +
+        `📌 <b>Tracked items:</b> ${trackedCount}\n\n` +
+        `<b>Change them:</b>\n` +
+        `<code>/minsol 0.5</code> — only alert on claims of 0.5 or more\n` +
+        `<code>/minsol 0</code> — alert on every claim\n` +
+        `<code>/whale 5000</code> — alert on any claim over $5K, tracked or not\n` +
+        `<code>/whale off</code> — turn whale alerts off\n` +
+        `/mute — pause alerts, keep your tracked items\n` +
+        `/unmute — resume alerts`
+    );
+}
+
+// ============================================================================
+// History
+// ============================================================================
+
+function claimLine(record: ClaimRecord): string {
+    const amount = `${record.amount.toFixed(record.isStableQuote ? 2 : 4)} ${record.ticker}`;
+    const who = shortAddr(record.recipientWallet || record.claimerWallet);
+    const label = record.claimType.replace(/_/g, ' ');
+    return `• <b>${amount}</b> · ${escapeHtml(label)} · <code>${who}</code> · ${timeAgo(record.timestamp)}`;
+}
+
+export function formatHistory(records: ClaimRecord[], target: string): string {
+    if (records.length === 0) {
+        return (
+            `📜 <b>No claims recorded for ${escapeHtml(target)}</b>\n\n` +
+            `History only covers claims seen since the bot last started. ` +
+            `If this was just added, give it time: the next claim will appear here.`
+        );
+    }
+
+    const lines = records.map(claimLine).join('\n');
+    const totals = new Map<string, number>();
+    for (const record of records) {
+        totals.set(record.ticker, (totals.get(record.ticker) ?? 0) + record.amount);
+    }
+    const totalLine = [...totals.entries()]
+        .map(([ticker, sum]) => `${sum.toFixed(ticker === 'SOL' ? 4 : 2)} ${ticker}`)
+        .join(' + ');
+
+    return (
+        `📜 <b>Recent claims for ${escapeHtml(target)}</b>\n\n` +
+        `${lines}\n\n` +
+        `💰 <b>Total shown:</b> ${totalLine}`
+    );
+}
+
+// ============================================================================
+// Leaderboard
+// ============================================================================
+
+export function formatLeaderboard(
+    rows: LeaderboardRow[],
+    summary: { claims: number; totals: Record<string, number>; wallets: number },
+    hours: number,
+): string {
+    if (rows.length === 0) {
+        return (
+            `🏆 <b>Top claimers (last ${hours}h)</b>\n\n` +
+            `Nothing recorded yet in this window. The bot logs every claim it sees ` +
+            `on chain, tracked or not, so this fills in as claims land.`
+        );
+    }
+
+    const medals = ['🥇', '🥈', '🥉'];
+    const lines = rows.map((row, i) => {
+        const rank = medals[i] ?? `${i + 1}.`;
+        const totals = Object.entries(row.totals)
+            .map(([ticker, sum]) => `${sum.toFixed(ticker === 'SOL' ? 3 : 2)} ${ticker}`)
+            .join(' + ');
+        const link = `https://solscan.io/account/${encodeURIComponent(row.wallet)}`;
+        return `${rank} <a href="${link}">${shortAddr(row.wallet)}</a> · <b>${totals}</b> · ${row.claims} claim${row.claims === 1 ? '' : 's'}`;
+    }).join('\n');
+
+    const summaryTotals = Object.entries(summary.totals)
+        .map(([ticker, sum]) => `${sum.toFixed(ticker === 'SOL' ? 3 : 2)} ${ticker}`)
+        .join(' + ');
+
+    return (
+        `🏆 <b>Top claimers (last ${hours}h)</b>\n\n` +
+        `${lines}\n\n` +
+        `📊 ${summary.claims} claims · ${summary.wallets} wallets · ${summaryTotals}`
+    );
+}
+
+// ============================================================================
+// Whale Alert
+// ============================================================================
+
+/**
+ * A claim nobody in this chat tracks, surfaced because of its size.
+ *
+ * Deliberately different copy from a tracked alert: the user should never have
+ * to work out why a wallet they never added just messaged them.
+ */
+export function formatWhaleAlert(
+    event: FeeClaimEvent,
+    token: TokenInfo | null,
+    usdValue: number,
+    thresholdUsd: number,
+): string {
+    const ticker = event.quoteTicker ?? 'SOL';
+    const amountValue = event.amountQuote ?? event.amountSol;
+    const amount = `${amountValue.toFixed(event.isStableQuote ? 2 : 4)} ${ticker}`;
+    const who = event.recipientWallet || event.claimerWallet;
+
+    const tokenLine = token
+        ? `🪙 <b>Token:</b> ${escapeHtml(token.symbol)} (${escapeHtml(token.name)})\n`
+        : '';
+
+    const solscanTx = `https://solscan.io/tx/${encodeURIComponent(event.txSignature)}`;
+    const solscanWallet = `https://solscan.io/account/${encodeURIComponent(who)}`;
+    const mint = event.tokenMint?.trim();
+    const links = mint
+        ? `🔗 <a href="${solscanTx}">TX</a> · <a href="${solscanWallet}">Wallet</a> · <a href="https://pump.fun/coin/${encodeURIComponent(mint)}">pump.fun</a>`
+        : `🔗 <a href="${solscanTx}">TX</a> · <a href="${solscanWallet}">Wallet</a>`;
+
+    return (
+        `🐋 <b>Whale Claim</b> ${formatUsd(usdValue)}\n\n` +
+        `💰 <b>Amount:</b> ${amount}\n` +
+        `👤 <b>Wallet:</b> <code>${shortAddr(who)}</code>\n` +
+        `${tokenLine}` +
+        `⚙️ <b>Type:</b> ${escapeHtml(event.claimLabel)}\n` +
+        `🕐 <b>Time:</b> ${formatTime(event.timestamp)}\n` +
+        `📌 <b>Matched:</b> whale alerts over ${formatUsd(thresholdUsd)}\n\n` +
+        `${links}`
+    );
+}
+
+/** One-line form of a claim, used when a burst collapses into a digest. */
+export function formatDigestLine(event: FeeClaimEvent, usdValue?: number | null): string {
+    const ticker = event.quoteTicker ?? 'SOL';
+    const amountValue = event.amountQuote ?? event.amountSol;
+    const usd = typeof usdValue === 'number' && usdValue > 0 && !event.isStableQuote
+        ? ` (≈${formatUsd(usdValue)})`
+        : '';
+    const who = shortAddr(event.recipientWallet || event.claimerWallet);
+    const link = `https://solscan.io/tx/${encodeURIComponent(event.txSignature)}`;
+    const symbol = event.tokenSymbol ? ` · ${escapeHtml(event.tokenSymbol)}` : '';
+    return `• <b>${amountValue.toFixed(event.isStableQuote ? 2 : 4)} ${ticker}</b>${usd}${symbol} · <code>${who}</code> · <a href="${link}">tx</a>`;
 }
 
 // ============================================================================

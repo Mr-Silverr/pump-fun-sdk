@@ -3,161 +3,256 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📊</text></svg>">
-<title>PumpFun Live Trades — Real-Time Analytics Dashboard</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><rect width='16' height='16' rx='3' fill='%23050505'/><circle cx='8' cy='8' r='3.5' fill='%23f5f5f5'/></svg>">
+<title>Trades / pump sdk live</title>
 <meta name="description" content="Real-time Solana PumpFun trade analytics. Monitor buys, sells, token launches, migrations, and whale activity via WebSocket.">
 <style>
   :root {
-    --bg: #0a0a0a; --bg2: #111; --bg3: #1a1a1a; --border: #222;
-    --green: #00ff41; --red: #ff4141; --yellow: #ffcc00; --blue: #4a9eff;
-    --orange: #ff9900; --purple: #b366ff; --cyan: #00e5ff; --dim: #555; --text: #ccc;
+    --bg: #050505;
+    --bg-elevated: #0e0e0e;
+    --bg-hover: #161616;
+    --border: #222;
+    --border-strong: #333;
+    --text: #f5f5f5;
+    --text-dim: #9a9a9a;
+    --text-faint: #555;
+    --accent-buy: #00e68a;
+    --accent-sell: #ff5c5c;
+    --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+    --radius: 6px;
   }
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { background: var(--bg); color: var(--green); font-family: 'Courier New', monospace; font-size: 13px; line-height: 1.5; overflow-x: hidden; }
+  body { background: var(--bg); color: var(--text); font-family: var(--font-sans); font-size: 13px; line-height: 1.5; overflow-x: hidden; }
+  .mono { font-family: var(--font-mono); }
 
-  /* ── Layout ─────────────────────────────────────────── */
-  #app { display: grid; grid-template-rows: auto auto 1fr; height: 100vh; }
-
-  /* ── Header ─────────────────────────────────────────── */
-  #header {
-    background: var(--bg2); border-bottom: 1px solid var(--border);
-    padding: 10px 20px; display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
-    position: sticky; top: 0; z-index: 10;
+  /* Shared header */
+  .site-header {
+    display: flex; align-items: center; gap: 16px;
+    padding: 0 16px; height: 48px;
+    background: var(--bg); border-bottom: 1px solid var(--border);
+    position: sticky; top: 0; z-index: 50;
   }
-  #header h1 { font-size: 16px; white-space: nowrap; }
-  .status { font-size: 12px; color: var(--dim); }
-  .status.ok { color: var(--green); }
-  .status.err { color: var(--red); }
-  .controls { margin-left: auto; display: flex; gap: 8px; align-items: center; }
+  .site-header .wordmark {
+    font-family: var(--font-mono); font-size: 13px; font-weight: 600;
+    color: var(--text); text-decoration: none; white-space: nowrap;
+  }
+  .site-header .wordmark span { color: var(--text-faint); font-weight: 400; }
+  .site-nav { display: flex; gap: 2px; overflow-x: auto; scrollbar-width: none; }
+  .site-nav::-webkit-scrollbar { display: none; }
+  .site-nav a {
+    color: var(--text-dim); text-decoration: none; font-size: 12px;
+    padding: 5px 9px; border-radius: var(--radius); white-space: nowrap;
+    transition: color 140ms ease, background 140ms ease;
+  }
+  .site-nav a:hover { color: var(--text); background: var(--bg-hover); }
+  .site-nav a:active { background: var(--bg-elevated); }
+  .site-nav a:focus-visible { outline: 1px solid #fff; outline-offset: 2px; }
+  .site-nav a[aria-current="page"] { color: var(--text); background: var(--bg-elevated); }
+
+  /* Shared footer */
+  .site-footer {
+    border-top: 1px solid var(--border); padding: 10px 16px;
+    display: flex; gap: 16px; flex-wrap: wrap; align-items: center;
+    font-size: 12px; color: var(--text-faint); font-family: var(--font-mono);
+  }
+  .site-footer a { color: var(--text-dim); text-decoration: none; transition: color 140ms ease; }
+  .site-footer a:hover { color: var(--text); text-decoration: underline; }
+  .site-footer a:focus-visible { outline: 1px solid #fff; outline-offset: 2px; }
+  .site-footer .grow { flex: 1; }
+
+  /* Layout: toolbar, stats, main, footer inside the viewport */
+  #app { display: grid; grid-template-rows: auto auto 1fr auto; height: calc(100vh - 48px); }
+
+  /* Toolbar */
+  .toolbar {
+    background: var(--bg); border-bottom: 1px solid var(--border);
+    padding: 8px 16px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  }
+  .toolbar .page-title { font-size: 13px; font-weight: 600; white-space: nowrap; }
+  .status { font-size: 12px; color: var(--text-faint); font-family: var(--font-mono); }
+  .status.ok { color: var(--accent-buy); }
+  .status.err { color: var(--accent-sell); }
+  .controls { margin-left: auto; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
   button {
-    background: var(--bg3); border: 1px solid #333; color: var(--green);
-    padding: 5px 12px; cursor: pointer; font-family: inherit; font-size: 12px; border-radius: 3px;
+    background: var(--bg-elevated); border: 1px solid var(--border); color: var(--text-dim);
+    padding: 5px 12px; cursor: pointer; font-family: var(--font-sans); font-size: 12px; border-radius: var(--radius);
+    transition: background 140ms ease, border-color 140ms ease, color 140ms ease;
   }
-  button:hover { background: #252525; border-color: var(--green); }
-  button.active { background: #002200; border-color: var(--green); }
-  button.danger { color: var(--red); }
-  button.danger:hover { border-color: var(--red); }
+  button:hover { background: var(--bg-hover); border-color: var(--border-strong); color: var(--text); }
+  button:active { background: var(--bg-elevated); }
+  button:focus-visible { outline: 1px solid #fff; outline-offset: 2px; }
+  button.active { background: var(--bg-hover); border-color: var(--border-strong); color: var(--text); }
+  button.danger { color: var(--accent-sell); }
+  button.danger:hover { border-color: var(--accent-sell); }
   select {
-    background: var(--bg3); border: 1px solid #333; color: var(--text);
-    padding: 5px 8px; font-family: inherit; font-size: 12px; border-radius: 3px;
+    background: var(--bg-elevated); border: 1px solid var(--border); color: var(--text);
+    padding: 5px 8px; font-family: var(--font-sans); font-size: 12px; border-radius: var(--radius);
+    transition: border-color 140ms ease;
   }
   input[type="text"] {
-    background: var(--bg3); border: 1px solid #333; color: var(--text);
-    padding: 5px 10px; font-family: inherit; font-size: 12px; border-radius: 3px; width: 200px;
+    background: var(--bg-elevated); border: 1px solid var(--border); color: var(--text);
+    padding: 5px 10px; font-family: var(--font-mono); font-size: 12px; border-radius: var(--radius); width: 200px;
+    transition: border-color 140ms ease;
   }
-  input:focus, select:focus { outline: none; border-color: var(--green); }
+  input::placeholder { color: var(--text-faint); }
+  input:hover, select:hover { border-color: var(--border-strong); }
+  input:focus, select:focus { outline: 1px solid #fff; outline-offset: 2px; border-color: var(--border-strong); }
 
-  /* ── Stats ──────────────────────────────────────────── */
+  /* Stats */
   #stats {
-    background: #0d0d0d; border-bottom: 1px solid #1a1a1a;
-    padding: 6px 20px; font-size: 11px; color: var(--dim);
+    background: var(--bg); border-bottom: 1px solid var(--border);
+    padding: 6px 16px; font-size: 11px; color: var(--text-faint);
     display: flex; gap: 20px; flex-wrap: wrap; align-items: center;
+    font-family: var(--font-mono);
   }
-  .val { color: var(--green); font-weight: bold; }
-  .val.red { color: var(--red); }
-  .val.yellow { color: var(--yellow); }
-  .val.blue { color: var(--blue); }
+  .val { color: var(--text); font-weight: 600; }
+  .val.red { color: var(--accent-sell); }
+  .val.green { color: var(--accent-buy); }
 
-  /* ── Main Grid ─────────────────────────────────────── */
+  /* Main grid */
   #main {
     display: grid; grid-template-columns: 1fr 320px;
     overflow: hidden;
   }
   @media (max-width: 900px) { #main { grid-template-columns: 1fr; } #sidebar { display: none; } }
 
-  /* ── Feed ───────────────────────────────────────────── */
+  /* Feed */
   #feed { overflow-y: auto; padding: 0; }
+  .feed-head {
+    display: grid; grid-template-columns: 70px 50px 1fr 110px 100px 100px;
+    gap: 8px; padding: 6px 16px; border-bottom: 1px solid var(--border-strong);
+    font-size: 11px; color: var(--text-faint); text-transform: uppercase; letter-spacing: 0.5px;
+    position: sticky; top: 0; background: var(--bg); z-index: 1;
+  }
+  .feed-head .num { text-align: right; }
+  .empty-state {
+    margin: 24px 16px;
+    border: 1px dashed var(--border-strong);
+    border-radius: var(--radius);
+    padding: 28px 20px;
+    text-align: center;
+    color: var(--text-dim);
+  }
+  .empty-state[hidden] { display: none; }
+  .empty-state .empty-title { color: var(--text); font-size: 13px; font-weight: 600; margin-bottom: 6px; }
+  .empty-state .empty-detail { font-size: 12px; max-width: 560px; margin: 0 auto; }
+  .empty-state .mono { color: var(--text-dim); font-size: 11px; }
   .trade {
     display: grid; grid-template-columns: 70px 50px 1fr 110px 100px 100px;
-    gap: 8px; padding: 6px 20px; border-bottom: 1px solid #111; align-items: center;
-    animation: fadeIn 0.2s ease; font-size: 12px;
+    gap: 8px; padding: 6px 16px; border-bottom: 1px solid var(--border); align-items: center;
+    animation: fadeIn 140ms ease; font-size: 12px;
+    transition: background 140ms ease;
   }
+  .trade:hover { background: var(--bg-elevated); }
   @keyframes fadeIn { from { opacity: 0; transform: translateY(-3px); } to { opacity: 1; } }
-  .trade.buy { border-left: 2px solid var(--green); }
-  .trade.sell { border-left: 2px solid var(--red); }
-  .trade.create { border-left: 2px solid var(--yellow); }
-  .trade.migrate { border-left: 2px solid var(--purple); }
-  .trade.whale { background: rgba(255, 204, 0, 0.05); }
-  .trade .time { color: #444; font-size: 11px; }
-  .trade .type { font-weight: bold; text-transform: uppercase; font-size: 11px; }
-  .trade .type.buy { color: var(--green); }
-  .trade .type.sell { color: var(--red); }
-  .trade .type.create { color: var(--yellow); }
-  .trade .type.migrate { color: var(--purple); }
-  .trade .token { color: var(--yellow); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .trade .amount { text-align: right; color: var(--text); }
-  .trade .sol { text-align: right; }
-  .trade .sol.pos { color: var(--green); }
-  .trade .sol.neg { color: var(--red); }
+  .trade.buy { border-left: 2px solid var(--accent-buy); }
+  .trade.sell { border-left: 2px solid var(--accent-sell); }
+  .trade.create { border-left: 2px solid var(--border-strong); }
+  .trade.migrate { border-left: 2px solid var(--text-dim); }
+  .trade.whale { background: var(--bg-elevated); }
+  .trade .time { color: var(--text-faint); font-size: 11px; font-family: var(--font-mono); }
+  .trade .type { font-weight: 600; text-transform: uppercase; font-size: 11px; }
+  .trade .type.buy { color: var(--accent-buy); }
+  .trade .type.sell { color: var(--accent-sell); }
+  .trade .type.create { color: var(--text-dim); }
+  .trade .type.migrate { color: var(--text-dim); }
+  .trade .token { color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .trade .amount { text-align: right; color: var(--text-dim); font-family: var(--font-mono); }
+  .trade .sol { text-align: right; font-family: var(--font-mono); }
+  .trade .sol.pos { color: var(--accent-buy); }
+  .trade .sol.neg { color: var(--accent-sell); }
   .trade .link { text-align: right; }
-  .trade a { color: var(--blue); text-decoration: none; font-size: 11px; }
-  .trade a:hover { text-decoration: underline; }
-  .whale-tag { color: var(--yellow); font-size: 10px; margin-left: 4px; }
+  .trade a { color: var(--text-dim); text-decoration: none; font-size: 11px; font-family: var(--font-mono); transition: color 140ms ease; }
+  .trade a:hover { color: var(--text); text-decoration: underline; }
+  .trade a:focus-visible { outline: 1px solid #fff; outline-offset: 2px; }
+  .whale-tag { color: var(--text-dim); font-size: 9px; margin-left: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
 
-  /* ── Sidebar ───────────────────────────────────────── */
+  /* Sidebar */
   #sidebar {
-    background: var(--bg2); border-left: 1px solid var(--border);
+    background: var(--bg-elevated); border-left: 1px solid var(--border);
     overflow-y: auto; padding: 12px;
   }
   .panel { margin-bottom: 16px; }
-  .panel h3 { font-size: 12px; color: var(--dim); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; border-bottom: 1px solid #222; padding-bottom: 4px; }
+  .panel h3 { font-size: 11px; color: var(--text-faint); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; border-bottom: 1px solid var(--border); padding-bottom: 4px; font-weight: 600; }
   .panel .row { display: flex; justify-content: space-between; padding: 3px 0; font-size: 12px; }
-  .panel .row .label { color: #888; }
+  .panel .row .label { color: var(--text-dim); }
+  .panel .row .value { font-family: var(--font-mono); }
 
-  /* ── Volume Chart ──────────────────────────────────── */
+  /* Volume chart */
   #chart-container { height: 100px; padding: 8px 0; }
   .bar-chart { display: flex; align-items: flex-end; gap: 2px; height: 80px; }
-  .bar-chart .bar { flex: 1; min-width: 4px; border-radius: 1px 1px 0 0; transition: height 0.3s ease; position: relative; }
-  .bar-chart .bar.buy { background: var(--green); }
-  .bar-chart .bar.sell { background: var(--red); }
+  .bar-chart .bar { flex: 1; min-width: 4px; border-radius: 1px 1px 0 0; transition: opacity 140ms ease; position: relative; }
+  .bar-chart .bar.buy { background: var(--accent-buy); }
+  .bar-chart .bar.sell { background: var(--accent-sell); }
   .bar-chart .bar:hover { opacity: 0.7; }
-  .chart-labels { display: flex; justify-content: space-between; font-size: 9px; color: #444; margin-top: 2px; }
+  .chart-labels { display: flex; justify-content: space-between; font-size: 9px; color: var(--text-faint); margin-top: 2px; font-family: var(--font-mono); }
 
-  /* ── Top Tokens ────────────────────────────────────── */
-  .top-token { display: flex; justify-content: space-between; padding: 4px 0; border-bottom: 1px solid #1a1a1a; font-size: 12px; }
-  .top-token .name { color: var(--yellow); max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .top-token .trades { color: var(--text); }
+  /* Top tokens */
+  .top-token { display: flex; justify-content: space-between; padding: 4px 0; border-bottom: 1px solid var(--border); font-size: 12px; gap: 8px; }
+  .top-token .name { color: var(--text); max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .top-token .trades { color: var(--text-dim); font-family: var(--font-mono); font-size: 11px; white-space: nowrap; }
 
-  /* ── Whale Alerts ──────────────────────────────────── */
+  /* Whale alerts */
   .whale-alert {
-    background: rgba(255, 204, 0, 0.08); border: 1px solid rgba(255, 204, 0, 0.2);
-    border-radius: 4px; padding: 6px 8px; margin-bottom: 6px; font-size: 11px;
-    animation: pulse 0.5s ease;
+    background: var(--bg); border: 1px solid var(--border-strong);
+    border-radius: var(--radius); padding: 6px 8px; margin-bottom: 6px; font-size: 11px;
+    font-family: var(--font-mono);
   }
-  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
-  .whale-alert .whale-sol { color: var(--yellow); font-weight: bold; }
+  .whale-alert .whale-sol { color: var(--text); font-weight: 600; }
+  .whale-alert .side-buy { color: var(--accent-buy); }
+  .whale-alert .side-sell { color: var(--accent-sell); }
 
-  /* ── System log line ───────────────────────────────── */
-  .sys { color: var(--dim); padding: 4px 20px; font-size: 11px; }
-  .sys.error { color: var(--red); }
-  .sys.warn { color: var(--yellow); }
+  /* System log line */
+  .sys { color: var(--text-faint); padding: 4px 16px; font-size: 11px; font-family: var(--font-mono); }
+  .sys.error { color: var(--accent-sell); }
+  .sys.warn { color: var(--text-dim); }
 
-  /* ── Scrollbar ─────────────────────────────────────── */
+  /* Scrollbar */
   ::-webkit-scrollbar { width: 5px; }
   ::-webkit-scrollbar-track { background: var(--bg); }
-  ::-webkit-scrollbar-thumb { background: #222; border-radius: 3px; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--border-strong); }
+
+  @media (max-width: 700px) {
+    .controls { margin-left: 0; width: 100%; }
+    input[type="text"] { width: 100%; }
+    .trade, .feed-head { grid-template-columns: 60px 44px 1fr 80px 80px; }
+    .trade .link, .feed-head .col-tx { display: none; }
+  }
 </style>
 </head>
 <body>
 
+<header class="site-header">
+  <a class="wordmark" href="/live/">pump sdk <span>/ live</span></a>
+  <nav class="site-nav" aria-label="Live dashboards">
+    <a href="/live/">Launches</a>
+    <a href="/live/trades" aria-current="page">Trades</a>
+    <a href="/live/dashboard">Dashboard</a>
+    <a href="/live/vanity">Vanity</a>
+    <a href="/live/sell-demo">Sell Demo</a>
+    <a href="/live/launchpad">Launchpad</a>
+    <a href="/">Docs</a>
+  </nav>
+</header>
+
 <div id="app">
-  <div id="header">
-    <h1>📊 PumpFun Live Trades</h1>
-    <a href="/" style="color:#4a9eff; text-decoration:none; font-size:12px; border:1px solid #333; padding:4px 10px; border-radius:3px;">⚡ Token Launches</a>
-    <a href="/vanity" style="color:#ffcc00; text-decoration:none; font-size:12px; border:1px solid #333; padding:4px 10px; border-radius:3px;">🔑 Vanity Generator</a>
-    <div class="status" id="status">● Disconnected</div>
+  <div class="toolbar">
+    <div class="page-title">Live trades</div>
+    <div class="status" id="status" role="status" aria-live="polite">● Disconnected</div>
     <div class="controls">
-      <select id="filter">
+      <select id="filter" aria-label="Event type filter">
         <option value="all">All Events</option>
         <option value="buy">Buys Only</option>
         <option value="sell">Sells Only</option>
         <option value="create">Creates Only</option>
-        <option value="whale">Whales Only (≥1 SOL)</option>
+        <option value="whale">Whales Only (1+ SOL)</option>
       </select>
-      <input type="text" id="search" placeholder="Filter by mint or token..." />
-      <input type="text" id="rpc" placeholder="wss:// custom RPC endpoint" title="Paste your Helius / Quicknode / Triton WebSocket URL here" />
+      <input type="text" id="search" placeholder="Filter by mint or token..." aria-label="Filter by mint or token" />
+      <input type="text" id="rpc" placeholder="wss:// custom RPC endpoint" title="Paste your Helius / Quicknode / Triton WebSocket URL here" aria-label="Custom RPC WebSocket URL" />
       <button id="btn-pause">Pause</button>
-      <button id="btn-sound">🔇</button>
+      <button id="btn-sound" aria-pressed="false">Sound off</button>
       <button id="btn-demo" title="Simulate live trades for testing">Demo</button>
       <button id="btn-clear" class="danger">Clear</button>
     </div>
@@ -165,12 +260,12 @@
 
   <div id="stats">
     <div>Events: <span class="val" id="s-total">0</span></div>
-    <div>Buys: <span class="val" id="s-buys">0</span></div>
+    <div>Buys: <span class="val green" id="s-buys">0</span></div>
     <div>Sells: <span class="val red" id="s-sells">0</span></div>
-    <div>Creates: <span class="val yellow" id="s-creates">0</span></div>
-    <div>Whales: <span class="val yellow" id="s-whales">0</span></div>
-    <div>Vol: <span class="val blue" id="s-volume">0</span> SOL</div>
-    <div>Viewers: <span class="val" id="s-viewers">—</span></div>
+    <div>Creates: <span class="val" id="s-creates">0</span></div>
+    <div>Whales: <span class="val" id="s-whales">0</span></div>
+    <div>Vol: <span class="val" id="s-volume">0</span> SOL</div>
+    <div>Viewers: <span class="val" id="s-viewers">-</span></div>
     <div>Events/s: <span class="val" id="s-rate">0</span></div>
     <div>Uptime: <span class="val" id="s-uptime">0s</span></div>
   </div>
@@ -178,15 +273,24 @@
   <div id="main">
     <div id="feed">
       <!-- Column headers -->
-      <div style="display:grid; grid-template-columns: 70px 50px 1fr 110px 100px 100px; gap:8px; padding:6px 20px; border-bottom:1px solid #333; font-size:11px; color:#555; text-transform:uppercase; letter-spacing:0.5px; position:sticky; top:0; background:var(--bg); z-index:1;">
-        <span>Time</span><span>Type</span><span>Token</span><span style="text-align:right">Amount</span><span style="text-align:right">SOL</span><span style="text-align:right">Tx</span>
+      <div class="feed-head">
+        <span>Time</span><span>Type</span><span>Token</span><span class="num">Amount</span><span class="num">SOL</span><span class="num col-tx">Tx</span>
+      </div>
+      <div id="empty" class="empty-state">
+        <div class="empty-title">Waiting for the first trade</div>
+        <div class="empty-detail">
+          Streaming every pump.fun buy, sell, create, and migration from
+          <span class="mono">wss://pumpportal.fun/api/data</span> with an automatic relay fallback.
+          If all endpoints are unreachable the page switches to Demo mode; you can also paste a paid
+          RPC URL above and press Enter.
+        </div>
       </div>
     </div>
 
     <div id="sidebar">
       <!-- Volume Chart -->
       <div class="panel">
-        <h3>📈 Volume (30s windows)</h3>
+        <h3>Volume (30s windows)</h3>
         <div id="chart-container">
           <div class="bar-chart" id="chart"></div>
           <div class="chart-labels"><span>-5m</span><span>now</span></div>
@@ -195,37 +299,44 @@
 
       <!-- Buy/Sell Ratio -->
       <div class="panel">
-        <h3>⚖️ Buy/Sell Ratio</h3>
+        <h3>Buy/Sell Ratio</h3>
         <div id="ratio-bar" style="display:flex; height:8px; border-radius:4px; overflow:hidden; margin-bottom:6px;">
-          <div id="ratio-buy" style="background:var(--green); width:50%; transition: width 0.5s;"></div>
-          <div id="ratio-sell" style="background:var(--red); width:50%; transition: width 0.5s;"></div>
+          <div id="ratio-buy" style="background:var(--accent-buy); width:50%; transition: width 0.5s;"></div>
+          <div id="ratio-sell" style="background:var(--accent-sell); width:50%; transition: width 0.5s;"></div>
         </div>
-        <div class="row"><span class="label">Buy %</span><span class="val" id="ratio-buy-pct">50%</span></div>
+        <div class="row"><span class="label">Buy %</span><span class="val green" id="ratio-buy-pct">50%</span></div>
         <div class="row"><span class="label">Sell %</span><span class="val red" id="ratio-sell-pct">50%</span></div>
       </div>
 
       <!-- Top Tokens -->
       <div class="panel">
-        <h3>🔥 Top Tokens (by trades)</h3>
+        <h3>Top Tokens (by trades)</h3>
         <div id="top-tokens"></div>
       </div>
 
       <!-- Whale Alerts -->
       <div class="panel">
-        <h3>🐋 Whale Alerts</h3>
-        <div id="whale-alerts"><div style="color:#444; font-size:11px;">Waiting for whales...</div></div>
+        <h3>Whale Alerts</h3>
+        <div id="whale-alerts"><div style="color:var(--text-faint); font-size:11px;">Waiting for trades of 1+ SOL...</div></div>
       </div>
 
       <!-- Connection Info -->
       <div class="panel">
-        <h3>🔗 Connection</h3>
-        <div class="row"><span class="label">Program</span><span style="color:var(--blue); font-size:10px;">6EF8...F6P</span></div>
-        <div class="row"><span class="label">Endpoint</span><span id="endpoint-display" style="color:var(--text); font-size:10px;">auto</span></div>
-        <div class="row"><span class="label">Protocol</span><span id="protocol-display" style="color:var(--text);">—</span></div>
-        <div class="row"><span class="label">Sub ID</span><span id="sub-id" style="color:var(--text);">—</span></div>
+        <h3>Connection</h3>
+        <div class="row"><span class="label">Program</span><span class="value" style="font-size:10px;">6EF8...F6P</span></div>
+        <div class="row"><span class="label">Endpoint</span><span class="value" id="endpoint-display" style="font-size:10px;">auto</span></div>
+        <div class="row"><span class="label">Protocol</span><span class="value" id="protocol-display">-</span></div>
+        <div class="row"><span class="label">Sub ID</span><span class="value" id="sub-id">-</span></div>
       </div>
     </div>
   </div>
+
+  <footer class="site-footer">
+    <span>pump sdk / live</span>
+    <span class="grow"></span>
+    <a href="https://github.com/nirholas/pump-fun-sdk" target="_blank" rel="noopener">GitHub</a>
+    <a href="/">Docs</a>
+  </footer>
 </div>
 
 <!-- Whale alert sound (web audio) -->
@@ -323,7 +434,9 @@ $btnPause.onclick = () => {
 };
 $btnSound.onclick = () => {
   soundEnabled = !soundEnabled;
-  $btnSound.textContent = soundEnabled ? '🔊' : '🔇';
+  $btnSound.textContent = soundEnabled ? 'Sound on' : 'Sound off';
+  $btnSound.setAttribute('aria-pressed', soundEnabled ? 'true' : 'false');
+  $btnSound.classList.toggle('active', soundEnabled);
   if (soundEnabled && !audioCtx) audioCtx = new AudioContext();
 };
 $btnClear.onclick = () => {
@@ -873,19 +986,21 @@ function addWhaleAlert(event) {
 function renderWhaleAlerts() {
   const $el = document.getElementById('whale-alerts');
   $el.innerHTML = whaleAlerts.map(a => {
-    const emoji = a.type === 'buy' ? '🟢' : a.type === 'sell' ? '🔴' : '🟡';
+    const sideClass = a.type === 'buy' ? 'side-buy' : a.type === 'sell' ? 'side-sell' : '';
     const display = a.name || (a.mint.slice(0, 6) + '...' + a.mint.slice(-4));
     return `<div class="whale-alert">
-      ${emoji} <span class="whale-sol">${a.sol} SOL</span> ${a.type.toUpperCase()}
-      <span style="color:#888">${display}</span>
-      <a href="https://solscan.io/tx/${a.sig}" target="_blank" style="color:var(--blue); text-decoration:none; font-size:10px; float:right;">view tx</a>
+      <span class="whale-sol">${a.sol} SOL</span> <span class="${sideClass}">${a.type.toUpperCase()}</span>
+      <span style="color:var(--text-dim)">${display}</span>
+      <a href="https://solscan.io/tx/${a.sig}" target="_blank" style="color:var(--text-dim); text-decoration:none; font-size:10px; float:right;">view tx</a>
     </div>`;
   }).join('');
 }
 
 // ── Render a trade row ──────────────────────────────────────────────
 function renderTrade(event, isWhale) {
-  const sol = event.solLamports > 0 ? (event.solLamports / 1e9).toFixed(4) : '—';
+  const $empty = document.getElementById('empty');
+  if ($empty) $empty.hidden = true;
+  const sol = event.solLamports > 0 ? (event.solLamports / 1e9).toFixed(4) : '-';
   const tokens = event.tokenAmount > 0 ? formatTokenAmount(event.tokenAmount) : '—';
   const shortSig = event.signature.slice(0, 6) + '…' + event.signature.slice(-4);
   const shortMint = event.mint !== 'unknown' ? event.mint.slice(0, 4) + '…' + event.mint.slice(-4) : '—';
@@ -910,7 +1025,7 @@ function renderTrade(event, isWhale) {
 
   div.innerHTML =
     `<span class="time">${event.time}</span>` +
-    `<span class="type ${event.type}">${event.type}${isWhale ? '<span class="whale-tag">🐋</span>' : ''}</span>` +
+    `<span class="type ${event.type}">${event.type}${isWhale ? '<span class="whale-tag">whale</span>' : ''}</span>` +
     `<span class="token">${mintLink}</span>` +
     `<span class="amount">${tokens}</span>` +
     `<span class="sol ${solClass}">${event.type === 'sell' ? '-' : ''}${sol}</span>` +
@@ -964,13 +1079,13 @@ function updateTopTokens() {
     .slice(0, 8);
 
   document.getElementById('top-tokens').innerHTML = sorted.length === 0
-    ? '<div style="color:#444; font-size:11px;">Waiting for trades...</div>'
+    ? '<div style="color:var(--text-faint); font-size:11px;">Waiting for trades...</div>'
     : sorted.map(t => {
         const shortMint = t.mint.slice(0, 4) + '…' + t.mint.slice(-4);
         const display = t.name && !t.name.endsWith('...') ? t.name + (t.symbol ? ' $' + t.symbol : '') : shortMint;
         const vol = (t.volume / 1e9).toFixed(2);
         return `<div class="top-token">
-          <a class="name" href="https://pump.fun/coin/${t.mint}" target="_blank" title="${t.mint}" style="color:#ffcc00;text-decoration:none;">${display}</a>
+          <a class="name" href="https://pump.fun/coin/${t.mint}" target="_blank" title="${t.mint}" style="text-decoration:none;color:var(--text);">${display}</a>
           <span class="trades">${t.total} trades · ${vol} SOL</span>
         </div>`;
       }).join('');

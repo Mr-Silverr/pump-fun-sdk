@@ -37,6 +37,65 @@ import {
 // Rate limiter
 // ============================================================================
 
+/**
+ * Anchor "Instruction:" log lines that mark a claim transaction. Used in
+ * WebSocket mode to decide which signatures are worth a getParsedTransaction.
+ * The social-fee entry is load-bearing: that instruction can emit no event at
+ * all (fake claims), so the log line is the only signal it leaves behind.
+ *
+ * Cashback is deliberately absent. Those are user refunds rather than creator
+ * activity, they are by far the highest-volume claim on chain, and fetching them
+ * only to discard them downstream saturates the RPC queue and starves real
+ * creator claims.
+ */
+const CLAIM_INSTRUCTION_LOG_LINES = [
+    'Program log: Instruction: ClaimSocialFeePda',
+    'Program log: Instruction: CollectCreatorFee',
+    'Program log: Instruction: CollectCoinCreatorFee',
+    'Program log: Instruction: DistributeCreatorFees',
+    'Program log: Instruction: TransferCreatorFeesToPump',
+];
+
+/**
+ * Event discriminators for creator claims, derived from the same instruction
+ * table the decoder uses so a new layout (a V2 variant, say) is picked up by the
+ * WebSocket filter automatically instead of being silently dropped. Cashback is
+ * excluded here for the reason above: isCreatorClaim is false for it.
+ */
+const CREATOR_CLAIM_EVENT_DISCS = new Set(
+    CLAIM_INSTRUCTIONS.filter((ix) => ix.isCreatorClaim).map((ix) => ix.discriminator),
+);
+
+/**
+ * Decide whether a transaction's logs are worth a getParsedTransaction.
+ *
+ * Two detection paths, and BOTH are required:
+ *
+ *  1. Anchor "Instruction:" log lines. claim_social_fee_pda does NOT emit a CPI
+ *     event (it returns a SocialFeePdaClaimed struct), so the only trace it
+ *     leaves -- including fake claims that emit nothing at all -- is its log line.
+ *  2. Claim event discriminators on "Program data:" lines. Creator fee claims DO
+ *     emit events and carry no social instruction log, so a filter keyed only on
+ *     ClaimSocialFeePda silently discards every pure creator-fee claim before it
+ *     is ever fetched.
+ */
+export function hasClaimSignal(logs: string[]): boolean {
+    for (const line of logs) {
+        if (CLAIM_INSTRUCTION_LOG_LINES.some((needle) => line.includes(needle))) return true;
+
+        if (!line.includes('Program data:')) continue;
+        const b64 = line.split('Program data: ')[1]?.trim();
+        if (!b64) continue;
+        try {
+            const bytes = Buffer.from(b64, 'base64');
+            if (bytes.length < 8) continue;
+            const disc = Buffer.from(bytes.subarray(0, 8)).toString('hex');
+            if (CREATOR_CLAIM_EVENT_DISCS.has(disc)) return true;
+        } catch { /* ignore unparseable */ }
+    }
+    return false;
+}
+
 const MAX_CONCURRENCY = 1;
 const MIN_REQUEST_INTERVAL_MS = 1_000;
 const MAX_QUEUE_SIZE = 50;
@@ -278,18 +337,8 @@ export class ClaimMonitor {
         this.processedSignatures.add(signature);
         this.trimProcessedCache();
 
-        // Scan all log lines for relevant events.
-        // NOTE: claim_social_fee_pda does NOT emit a CPI event — it returns a
-        // SocialFeePdaClaimed struct. Detect it via Anchor's instruction log line
-        // instead of a "Program data:" discriminator.
-        let hasClaimIx = false;
-
+        // Keep the social fee index current from the same log lines.
         for (const line of logs) {
-            // Detect claim_social_fee_pda via Anchor instruction log
-            if (!hasClaimIx && line.includes('Program log: Instruction: ClaimSocialFeePda')) {
-                hasClaimIx = true;
-            }
-
             if (!line.includes('Program data:')) continue;
             const b64 = line.split('Program data: ')[1]?.trim();
             if (!b64) continue;
@@ -306,7 +355,7 @@ export class ClaimMonitor {
             } catch { /* ignore unparseable */ }
         }
 
-        if (hasClaimIx) {
+        if (hasClaimSignal(logs)) {
             this.claimTxProcessed++;
             this.rpcQueue.enqueue(signature);
         }

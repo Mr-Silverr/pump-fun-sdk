@@ -15,6 +15,18 @@ export const PUMP_FEE_PROGRAM_ID = 'pfeeUxB6jkeY1Hxd7CsFCAjcbHA9rWtchMGdZ6VojVZ'
 export const MONITORED_PROGRAM_IDS = [PUMP_PROGRAM_ID, PUMP_AMM_PROGRAM_ID, PUMP_FEE_PROGRAM_ID] as const;
 
 export const PUMPFUN_FEE_ACCOUNT = 'CebN5WGQ4jvEPvsVU4EoHEpgzq1VV7AbCJ5GEFDM97zC';
+export const WSOL_MINT = 'So11111111111111111111111111111111111111112';
+export const USDC_MINT = 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v';
+
+/**
+ * Decimals and display ticker per quote mint. Claim events carry the amount in
+ * base units of the coin's quote mint, so a USDC-quoted claim divided by 1e9
+ * would be reported as a thousand times too little SOL.
+ */
+export const QUOTE_MINT_INFO: Record<string, { ticker: string; decimals: number; isStable: boolean }> = {
+    [WSOL_MINT]: { ticker: 'SOL', decimals: 9, isStable: false },
+    [USDC_MINT]: { ticker: 'USDC', decimals: 6, isStable: true },
+};
 
 // ============================================================================
 // Claim Instruction Discriminators
@@ -80,14 +92,27 @@ export interface FeeClaimEvent {
     recipientWallet?: string;
     /** Social fee PDA account for social claims */
     socialFeePda?: string;
+    /**
+     * True when claim_social_fee_pda ran but emitted no SocialFeePdaClaimed event,
+     * which means an empty PDA was "claimed" and nothing moved.
+     */
+    isFake?: boolean;
+    /** Quote mint the claim was paid in (defaults to wrapped SOL). */
+    quoteMint?: string;
+    /** Display ticker for the quote mint: SOL, USDC, and so on. */
+    quoteTicker?: string;
+    /** True when the quote mint is a stablecoin, so `amountSol` is meaningless. */
+    isStableQuote?: boolean;
+    /** Claim amount in whole units of the quote mint. */
+    amountQuote?: number;
 }
 
 // ============================================================================
 // Tracking Types
 // ============================================================================
 
-/** A tracked item — either a token CA or an X handle */
-export type TrackType = 'token' | 'xhandle';
+/** A tracked item: a token CA, an X handle, or a bare wallet address */
+export type TrackType = 'token' | 'xhandle' | 'wallet';
 
 export interface TrackedItem {
     /** Unique ID */
@@ -100,10 +125,60 @@ export interface TrackedItem {
     type: TrackType;
     /** The value: a mint address (token) or X handle (xhandle) */
     value: string;
+    /**
+     * Creator wallet of the tracked token, resolved from the PumpFun API when the
+     * item is added. Most fee claims (collect_creator_fee, collect_coin_creator_fee)
+     * are wallet-level and carry no mint, so this is the only field that can match
+     * them back to a tracked token.
+     */
+    creatorWallet?: string;
     /** Optional user-given label */
     label?: string;
     /** When added */
     createdAt: number;
+}
+
+// ============================================================================
+// Per-chat Settings
+// ============================================================================
+
+export interface ChatSettings {
+    chatId: number;
+    /** Claims below this value (in the claim's own quote currency) are not sent. */
+    minAmount: number;
+    /**
+     * Alert on ANY claim worth at least this many USD, tracked or not.
+     * 0 disables whale alerts, which is the default: it is an opt-in firehose.
+     */
+    whaleMinUsd: number;
+    /** Notifications paused without losing any tracked items. */
+    muted: boolean;
+    updatedAt: number;
+}
+
+export const DEFAULT_CHAT_SETTINGS: Omit<ChatSettings, 'chatId'> = {
+    minAmount: 0,
+    whaleMinUsd: 0,
+    muted: false,
+    updatedAt: 0,
+};
+
+// ============================================================================
+// Claim History
+// ============================================================================
+
+/** A claim as persisted for /history, /top, and the HTTP feed. */
+export interface ClaimRecord {
+    txSignature: string;
+    timestamp: number;
+    claimerWallet: string;
+    recipientWallet?: string;
+    tokenMint: string;
+    tokenSymbol?: string;
+    claimType: ClaimType;
+    amount: number;
+    ticker: string;
+    isStableQuote: boolean;
 }
 
 // ============================================================================
@@ -116,6 +191,8 @@ export interface BotConfig {
     relayWsUrl?: string;
     /** Solana RPC HTTP URL (for direct monitoring) */
     solanaRpcUrl?: string;
+    /** All Solana RPC HTTP URLs in rotation order (primary first, then backups) */
+    solanaRpcUrls: string[];
     /** Solana WebSocket URL (for direct monitoring) */
     solanaWsUrl?: string;
     /** Polling interval in seconds (default 15) */

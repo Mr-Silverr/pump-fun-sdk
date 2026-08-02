@@ -102,6 +102,13 @@ export interface FeeClaimEvent {
     slot: number;
     timestamp: number;
     claimerWallet: string;
+    /**
+     * The coin creator whose vault the fees came from, read from the claim event
+     * itself. Differs from `claimerWallet` when a bot signs on a creator's behalf.
+     * Creator-vault claims carry no mint, so this is the only handle on who
+     * earned the fees and which coins produced them.
+     */
+    creatorWallet?: string;
     tokenMint: string;
     tokenName?: string;
     tokenSymbol?: string;

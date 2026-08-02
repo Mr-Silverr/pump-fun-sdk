@@ -1,7 +1,7 @@
 {
   "name": "@nirholas/pump-sdk",
   "version": "1.32.0",
-  "description": "TypeScript SDK for the Pump protocol on Solana \u2014 token creation, bonding curves, AMM pools, fee sharing, and volume rewards",
+  "description": "TypeScript SDK for the Pump protocol on Solana — token creation, bonding curves, AMM pools, fee sharing, and volume rewards",
   "keywords": [
     "solana",
     "pump",
@@ -51,6 +51,10 @@
     "clean": "rm -rf dist",
     "test": "jest",
     "test:coverage": "jest --coverage",
+    "test:examples": "jest --config jest.examples.config.ts",
+    "example": "node scripts/run-example.mjs",
+    "build:bundle": "node scripts/build-browser-bundle.mjs",
+    "build:site": "node scripts/build-site.mjs",
     "lint": "eslint --cache --quiet \"${@:-.}\"",
     "lint:fix": "eslint --cache --fix --quiet \"${@:-.}\"",
     "typecheck": "tsc --noEmit",
@@ -92,12 +96,18 @@
     "ts-jest": "^29.3.2",
     "ts-node": "^10.9.2",
     "tsup": "^8.0.0",
+    "tsx": "^4.23.1",
     "typescript": "^5.0.0",
     "typescript-eslint": "^8.29.1",
     "undici-types": "^6.20.0"
   },
   "publishConfig": {
     "access": "public"
+  },
+  "overrides": {
+    "rpc-websockets": {
+      "uuid": "^9.0.1"
+    }
   },
   "config": {
     "commitizen": {

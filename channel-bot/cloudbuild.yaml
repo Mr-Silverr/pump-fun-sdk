@@ -8,10 +8,18 @@
 # (gcloud run services update ... --update-env-vars / --set-secrets); this
 # config only builds and releases the image.
 
+# serviceAccount is pinned because the project's default compute service
+# account was deleted; an unpinned build fails immediately.
+serviceAccount: 'projects/${PROJECT_ID}/serviceAccounts/three-ws-build@${PROJECT_ID}.iam.gserviceaccount.com'
+
+options:
+  logging: CLOUD_LOGGING_ONLY
+
 substitutions:
   _SERVICE: pumpfun-channel-bot
   _REGION: us-central1
   _REPO: gcr.io/$PROJECT_ID
+  _RUNTIME_SA: three-ws@$PROJECT_ID.iam.gserviceaccount.com
 
 steps:
   - name: gcr.io/cloud-builders/docker
@@ -27,8 +35,12 @@ steps:
       - '--image=${_REPO}/${_SERVICE}:$SHORT_SHA'
       - '--region=${_REGION}'
       - '--platform=managed'
+      - '--service-account=${_RUNTIME_SA}'
       - '--min-instances=1'
       - '--max-instances=1'
+      - '--no-cpu-throttling'
+      - '--memory=2Gi'
+      - '--port=3000'
       - '--no-allow-unauthenticated'
 
 images:

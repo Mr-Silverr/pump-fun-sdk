@@ -28,6 +28,10 @@ COPY --from=build /app/dist dist/
 RUN mkdir -p /app/data && chown bot:bot /app/data
 ENV DATA_DIR=/app/data
 
+# Health endpoint (/health, /stats). Cloud Run and Railway probe this port.
+ENV PORT=3000
+EXPOSE 3000
+
 USER bot
 
 CMD ["node", "dist/index.js"]

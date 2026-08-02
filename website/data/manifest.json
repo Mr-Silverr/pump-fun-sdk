@@ -636,9 +636,20 @@
       "number": 44
     }
   ],
+  "examples": [
+    {
+      "file": "01-create-token.ts",
+      "number": 1,
+      "title": "Create a Token",
+      "category": "Token Lifecycle",
+      "summary": "Builds the createV2 instruction that launches a new token on the Pump bonding curve, then inspects what the instruction contains. This is the first on-chain action of every token's life, and it costs nothing to build: no"
+    }
+  ],
+  "exampleTutorials": [],
   "stats": {
     "docs": 40,
     "tutorials": 44,
+    "examples": 1,
     "mcpTools": 67,
     "mcpResources": 4,
     "mcpPrompts": 5,

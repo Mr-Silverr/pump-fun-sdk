@@ -23,6 +23,7 @@ import {
   c,
   formatBps,
   formatImpact,
+  formatScaledPrice,
   formatSol,
   formatTokens,
   heading,
@@ -159,8 +160,8 @@ async function runBuyQuote(
         { label: "Effective price", value: formatSol(effectivePrice, 9), note: "per token" },
         { label: "Fees", value: formatSol(feesLamports), note: "included in the spend" },
         { label: "Price impact", value: formatImpact(impact.impactBps) },
-        { label: "Price before", value: formatSol(impact.priceBefore, 9) },
-        { label: "Price after", value: formatSol(impact.priceAfter, 9) },
+        { label: "Price before", value: formatScaledPrice(impact.priceBefore), note: "per token" },
+        { label: "Price after", value: formatScaledPrice(impact.priceAfter), note: "per token" },
       ]),
       ...(impact.impactBps >= 500
         ? ["", `  ${warn(`This trade moves the price by ${formatBps(impact.impactBps)}. Split it into smaller buys to pay less.`)}`]
@@ -263,8 +264,8 @@ async function runSellQuote(
         { label: "You receive", value: c.bold(formatSol(impact.outputAmount)) },
         { label: "Fees", value: formatSol(feesLamports), note: "deducted from proceeds" },
         { label: "Price impact", value: formatImpact(impact.impactBps) },
-        { label: "Price before", value: formatSol(impact.priceBefore, 9) },
-        { label: "Price after", value: formatSol(impact.priceAfter, 9) },
+        { label: "Price before", value: formatScaledPrice(impact.priceBefore), note: "per token" },
+        { label: "Price after", value: formatScaledPrice(impact.priceAfter), note: "per token" },
       ]),
       ...(willOverflow
         ? [

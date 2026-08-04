@@ -70,6 +70,23 @@ export function formatSol(lamports: BN | number, digits = 6): string {
   return `${trimZeros(sol.toFixed(digits))} SOL`;
 }
 
+/**
+ * Render one of the SDK's scaled spot prices as SOL per whole token.
+ *
+ * `PriceImpactResult.priceBefore` / `priceAfter` are lamports per *raw* token
+ * unit multiplied by 1e9 for integer precision. A whole token is 1e6 raw units,
+ * so SOL per token is `scaled * 1e6 / 1e9 / 1e9`, i.e. `scaled / 1e12`. Passing
+ * one of these straight to `formatSol` reports a price 1000x too high, which is
+ * exactly the kind of quiet unit bug that makes a quote untrustworthy.
+ */
+export function formatScaledPrice(scaled: BN, digits = 12): string {
+  const sol = Number(scaled.toString()) / 1e12;
+  if (sol !== 0 && Math.abs(sol) < 10 ** -digits) {
+    return `${sol.toExponential(2)} SOL`;
+  }
+  return `${trimZeros(sol.toFixed(digits))} SOL`;
+}
+
 /** `12.4M` style compact numbers for supply and token counts. */
 export function formatCompact(value: number): string {
   const abs = Math.abs(value);

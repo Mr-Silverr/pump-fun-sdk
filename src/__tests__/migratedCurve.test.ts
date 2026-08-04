@@ -87,7 +87,7 @@ describe("migrated bonding curves", () => {
         global,
         feeConfig,
         mintSupply,
-        bondingCurve: makeMigratedBondingCurve.length === 0 ? liveCurve() : liveCurve(),
+        bondingCurve: liveCurve(),
       });
 
       expect(summary.isGraduated).toBe(false);

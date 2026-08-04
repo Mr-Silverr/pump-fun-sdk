@@ -1,0 +1,1388 @@
+[
+  {
+    "name": "xactions",
+    "version": "3.4.8",
+    "modified": "2026-08-04",
+    "depCount": 35,
+    "vulnDeps": [
+      {
+        "dep": "axios",
+        "version": "1.15.2",
+        "vulns": [
+          "GHSA-35jp-ww65-95wh",
+          "GHSA-42h9-826w-cgv3",
+          "GHSA-654m-c8p4-x5fp",
+          "GHSA-777c-7fjr-54vf",
+          "GHSA-7q8q-rj6j-mhjq",
+          "GHSA-898c-q2cr-xwhg",
+          "GHSA-f4gw-2p7v-4548",
+          "GHSA-gcfj-64vw-6mp9",
+          "GHSA-hcpx-6fm6-wx23",
+          "GHSA-hfxv-24rg-xrqf",
+          "GHSA-j5f8-grm9-p9fc",
+          "GHSA-jqh4-m9w3-8hp9",
+          "GHSA-mmx7-hfxf-jppx",
+          "GHSA-mwf2-3pr3-8698",
+          "GHSA-p92q-9vqr-4j8v",
+          "GHSA-pjwm-pj3p-43mv",
+          "GHSA-pmv8-rq9r-6j72",
+          "GHSA-xj6q-8x83-jv6g"
+        ]
+      },
+      {
+        "dep": "morgan",
+        "version": "1.10.1",
+        "vulns": [
+          "GHSA-4vj7-5mj6-jm8m"
+        ]
+      }
+    ],
+    "downloads": 2008
+  },
+  {
+    "name": "@nirholas/pump-sdk",
+    "version": "1.35.0",
+    "modified": "2026-08-04",
+    "depCount": 5,
+    "vulnDeps": [
+      {
+        "dep": "bn.js",
+        "version": "5.2.2",
+        "vulns": [
+          "GHSA-378v-28hj-76wf"
+        ]
+      }
+    ],
+    "downloads": 1464
+  },
+  {
+    "name": "pumpfun-claims-bot",
+    "version": "1.0.3",
+    "modified": "2026-08-04",
+    "depCount": 6,
+    "vulnDeps": [],
+    "downloads": 378
+  },
+  {
+    "name": "pump-fun-mcp",
+    "version": "1.0.1",
+    "modified": "2026-08-02",
+    "depCount": 7,
+    "vulnDeps": [
+      {
+        "dep": "@modelcontextprotocol/sdk",
+        "version": "1.0.0",
+        "vulns": [
+          "GHSA-w48q-cv73-mx4w"
+        ]
+      },
+      {
+        "dep": "bn.js",
+        "version": "5.2.2",
+        "vulns": [
+          "GHSA-378v-28hj-76wf"
+        ]
+      },
+      {
+        "dep": "zod",
+        "version": "3.22.0",
+        "vulns": [
+          "GHSA-m95q-7qp3-xv42"
+        ]
+      }
+    ],
+    "downloads": 376
+  },
+  {
+    "name": "xactions-mcp",
+    "version": "3.4.7",
+    "modified": "2026-08-04",
+    "depCount": 1,
+    "vulnDeps": [],
+    "downloads": 324
+  },
+  {
+    "name": "data-workbench-mcp",
+    "version": "0.1.2",
+    "modified": "2026-08-04",
+    "depCount": 2,
+    "vulnDeps": [],
+    "downloads": 284
+  },
+  {
+    "name": "hood-tokenlist",
+    "version": "0.1.1",
+    "modified": "2026-08-02",
+    "depCount": 1,
+    "vulnDeps": [],
+    "downloads": 265
+  },
+  {
+    "name": "@nirholas/awesome-openrouter",
+    "version": "1.0.1",
+    "modified": "2026-08-02",
+    "depCount": 3,
+    "vulnDeps": [
+      {
+        "dep": "ajv",
+        "version": "8.12.0",
+        "vulns": [
+          "GHSA-2g4f-4pwh-qvx6"
+        ]
+      },
+      {
+        "dep": "js-yaml",
+        "version": "4.1.0",
+        "vulns": [
+          "GHSA-52cp-r559-cp3m",
+          "GHSA-h67p-54hq-rp68",
+          "GHSA-mh29-5h37-fv8m"
+        ]
+      }
+    ],
+    "downloads": 233
+  },
+  {
+    "name": "@nirholas/lyra-tool-discovery",
+    "version": "0.1.3",
+    "modified": "2026-08-04",
+    "depCount": 5,
+    "vulnDeps": [],
+    "downloads": 227
+  },
+  {
+    "name": "@nirholas/binance-us-mcp-server",
+    "version": "1.0.3",
+    "modified": "2026-08-02",
+    "depCount": 3,
+    "vulnDeps": [
+      {
+        "dep": "@modelcontextprotocol/sdk",
+        "version": "1.11.0",
+        "vulns": [
+          "GHSA-345p-7cg4-v4c7",
+          "GHSA-8r9q-7v3j-jr4g",
+          "GHSA-w48q-cv73-mx4w"
+        ]
+      }
+    ],
+    "downloads": 215
+  },
+  {
+    "name": "gitglow",
+    "version": "1.0.3",
+    "modified": "2026-08-02",
+    "depCount": 0,
+    "vulnDeps": [],
+    "downloads": 196
+  },
+  {
+    "name": "@nirholas/x402-deploy",
+    "version": "0.1.2",
+    "modified": "2026-08-04",
+    "depCount": 15,
+    "vulnDeps": [
+      {
+        "dep": "@modelcontextprotocol/sdk",
+        "version": "1.12.0",
+        "vulns": [
+          "GHSA-345p-7cg4-v4c7",
+          "GHSA-8r9q-7v3j-jr4g",
+          "GHSA-w48q-cv73-mx4w"
+        ]
+      },
+      {
+        "dep": "express",
+        "version": "4.18.0",
+        "vulns": [
+          "GHSA-qw6h-vgh9-j6wx",
+          "GHSA-rv95-896h-c2vc"
+        ]
+      },
+      {
+        "dep": "glob",
+        "version": "10.3.0",
+        "vulns": [
+          "GHSA-5j98-mcp5-4vw2"
+        ]
+      },
+      {
+        "dep": "zod",
+        "version": "3.22.0",
+        "vulns": [
+          "GHSA-m95q-7qp3-xv42"
+        ]
+      }
+    ],
+    "downloads": 193
+  },
+  {
+    "name": "@nirholas/free-crypto-news-mcp",
+    "version": "1.0.4",
+    "modified": "2026-08-02",
+    "depCount": 1,
+    "vulnDeps": [
+      {
+        "dep": "@modelcontextprotocol/sdk",
+        "version": "1.0.0",
+        "vulns": [
+          "GHSA-w48q-cv73-mx4w"
+        ]
+      }
+    ],
+    "downloads": 193
+  },
+  {
+    "name": "free-crypto-news",
+    "version": "1.0.7",
+    "modified": "2026-03-07",
+    "depCount": 59,
+    "vulnDeps": [
+      {
+        "dep": "@opentelemetry/sdk-node",
+        "version": "0.212.0",
+        "vulns": [
+          "GHSA-q7rr-3cgh-j5r3"
+        ]
+      },
+      {
+        "dep": "dompurify",
+        "version": "3.3.1",
+        "vulns": [
+          "GHSA-39q2-94rc-95cp",
+          "GHSA-76mc-f452-cxcm",
+          "GHSA-c2j3-45gr-mqc4",
+          "GHSA-cj63-jhhr-wcxv",
+          "GHSA-cjmm-f4jc-qw8r",
+          "GHSA-cmwh-pvxp-8882",
+          "GHSA-crv5-9vww-q3g8",
+          "GHSA-gvmj-g25r-r7wr",
+          "GHSA-h7mw-gpvr-xq4m",
+          "GHSA-h8r8-wccr-v5f2",
+          "GHSA-hpcv-96wg-7vj8",
+          "GHSA-r47g-fvhr-h676",
+          "GHSA-rp9w-3fw7-7cwq",
+          "GHSA-v2wj-7wpq-c8vv",
+          "GHSA-v9jr-rg53-9pgp",
+          "GHSA-vxr8-fq34-vvx9",
+          "GHSA-x4vx-rjvf-j5p4"
+        ]
+      },
+      {
+        "dep": "drizzle-orm",
+        "version": "0.45.1",
+        "vulns": [
+          "GHSA-gpj5-g38j-94v9"
+        ]
+      },
+      {
+        "dep": "inngest",
+        "version": "3.52.4",
+        "vulns": [
+          "GHSA-2jf5-6wwv-vhxx"
+        ]
+      },
+      {
+        "dep": "next",
+        "version": "16.1.6",
+        "vulns": [
+          "GHSA-267c-6grr-h53f",
+          "GHSA-26hh-7cqf-hhc6",
+          "GHSA-36qx-fr4f-26g5",
+          "GHSA-3g8h-86w9-wvmq",
+          "GHSA-3x4c-7xq6-9pq8",
+          "GHSA-4633-3j49-mh5q",
+          "GHSA-492v-c6pp-mqqv",
+          "GHSA-4c39-4ccg-62r3",
+          "GHSA-68g3-v927-f742",
+          "GHSA-6gpp-xcg3-4w24",
+          "GHSA-89xv-2m56-2m9x",
+          "GHSA-8h8q-6873-q5fj",
+          "GHSA-955p-x3mx-jcvp",
+          "GHSA-c4j6-fc7j-m34r",
+          "GHSA-ffhc-5mcf-pf4q",
+          "GHSA-ggv3-7p47-pfv8",
+          "GHSA-gx5p-jg67-6x7h",
+          "GHSA-h27x-g6w4-24gq",
+          "GHSA-h64f-5h5j-jqjh",
+          "GHSA-jcc7-9wpm-mj36",
+          "GHSA-m99w-x7hq-7vfj",
+          "GHSA-mg66-mrh9-m8jx",
+          "GHSA-mq59-m269-xvcx",
+          "GHSA-p9j2-gv94-2wf4",
+          "GHSA-q4gf-8mx6-v5v3",
+          "GHSA-q8wf-6r8g-63ch",
+          "GHSA-vfv6-92ff-j949",
+          "GHSA-wfc6-r584-vfw7"
+        ]
+      },
+      {
+        "dep": "next-intl",
+        "version": "4.8.3",
+        "vulns": [
+          "GHSA-4c35-wcg5-mm9h",
+          "GHSA-8f24-v5vv-gm5j"
+        ]
+      },
+      {
+        "dep": "sanitize-html",
+        "version": "2.17.1",
+        "vulns": [
+          "GHSA-vccv-cmxp-4j9h"
+        ]
+      },
+      {
+        "dep": "ws",
+        "version": "8.19.0",
+        "vulns": [
+          "GHSA-58qx-3vcg-4xpx",
+          "GHSA-96hv-2xvq-fx4p"
+        ]
+      }
+    ],
+    "downloads": 191
+  },
+  {
+    "name": "@nirholas/binance-mcp-server",
+    "version": "1.0.2",
+    "modified": "2026-03-07",
+    "depCount": 24,
+    "vulnDeps": [
+      {
+        "dep": "@modelcontextprotocol/sdk",
+        "version": "1.11.0",
+        "vulns": [
+          "GHSA-345p-7cg4-v4c7",
+          "GHSA-8r9q-7v3j-jr4g",
+          "GHSA-w48q-cv73-mx4w"
+        ]
+      },
+      {
+        "dep": "express",
+        "version": "4.18.2",
+        "vulns": [
+          "GHSA-qw6h-vgh9-j6wx",
+          "GHSA-rv95-896h-c2vc"
+        ]
+      }
+    ],
+    "downloads": 184
+  },
+  {
+    "name": "@nirholas/lyra-registry",
+    "version": "1.0.1",
+    "modified": "2026-08-02",
+    "depCount": 6,
+    "vulnDeps": [
+      {
+        "dep": "drizzle-orm",
+        "version": "0.34.1",
+        "vulns": [
+          "GHSA-gpj5-g38j-94v9"
+        ]
+      },
+      {
+        "dep": "next",
+        "version": "14.2.15",
+        "vulns": [
+          "GHSA-36qx-fr4f-26g5",
+          "GHSA-3g8h-86w9-wvmq",
+          "GHSA-3h52-269p-cp9r",
+          "GHSA-3x4c-7xq6-9pq8",
+          "GHSA-4342-x723-ch2f",
+          "GHSA-4633-3j49-mh5q",
+          "GHSA-4c39-4ccg-62r3",
+          "GHSA-5j59-xgg2-r9c4",
+          "GHSA-68g3-v927-f742",
+          "GHSA-7m27-7ghc-44w9",
+          "GHSA-89xv-2m56-2m9x",
+          "GHSA-8h8q-6873-q5fj",
+          "GHSA-955p-x3mx-jcvp",
+          "GHSA-9g9p-9gw9-jx7f",
+          "GHSA-c4j6-fc7j-m34r",
+          "GHSA-f82v-jwr5-mffw",
+          "GHSA-ffhc-5mcf-pf4q",
+          "GHSA-g5qg-72qw-gw5v",
+          "GHSA-ggv3-7p47-pfv8",
+          "GHSA-gx5p-jg67-6x7h",
+          "GHSA-h25m-26qc-wcjf",
+          "GHSA-h64f-5h5j-jqjh",
+          "GHSA-m99w-x7hq-7vfj",
+          "GHSA-mwv6-3258-q52c",
+          "GHSA-p9j2-gv94-2wf4",
+          "GHSA-q4gf-8mx6-v5v3",
+          "GHSA-qpjv-v59x-3qc4",
+          "GHSA-vfv6-92ff-j949",
+          "GHSA-wfc6-r584-vfw7",
+          "GHSA-xv57-4mr9-wg8v"
+        ]
+      }
+    ],
+    "downloads": 180
+  },
+  {
+    "name": "lyra-registry",
+    "version": "1.0.4",
+    "modified": "2026-08-04",
+    "depCount": 6,
+    "vulnDeps": [],
+    "downloads": 179
+  },
+  {
+    "name": "@nirholas/openbare",
+    "version": "1.0.1",
+    "modified": "2026-08-02",
+    "depCount": 0,
+    "vulnDeps": [],
+    "downloads": 177
+  },
+  {
+    "name": "@nirholas/solana-wallet-toolkit",
+    "version": "1.0.2",
+    "modified": "2026-08-04",
+    "depCount": 3,
+    "vulnDeps": [],
+    "downloads": 169
+  },
+  {
+    "name": "@nirholas/erc-8004-contracts",
+    "version": "1.0.2",
+    "modified": "2026-08-04",
+    "depCount": 3,
+    "vulnDeps": [],
+    "downloads": 159
+  },
+  {
+    "name": "@nirholas/extract-llms-docs",
+    "version": "1.0.2",
+    "modified": "2026-08-04",
+    "depCount": 17,
+    "vulnDeps": [
+      {
+        "dep": "js-yaml",
+        "version": "4.1.1",
+        "vulns": [
+          "GHSA-52cp-r559-cp3m",
+          "GHSA-h67p-54hq-rp68"
+        ]
+      },
+      {
+        "dep": "nanoid",
+        "version": "5.0.0",
+        "vulns": [
+          "GHSA-mwcw-c2x4-8c55"
+        ]
+      }
+    ],
+    "downloads": 156
+  },
+  {
+    "name": "@nirholas/registry",
+    "version": "0.0.2",
+    "modified": "2026-08-02",
+    "depCount": 3,
+    "vulnDeps": [],
+    "downloads": 155
+  },
+  {
+    "name": "t4g",
+    "version": "0.0.4",
+    "modified": "2026-08-02",
+    "depCount": 0,
+    "vulnDeps": [],
+    "downloads": 151
+  },
+  {
+    "name": "@nirholas/web3auth-examples",
+    "version": "1.0.2",
+    "modified": "2026-08-04",
+    "depCount": 0,
+    "vulnDeps": [],
+    "downloads": 148
+  },
+  {
+    "name": "@nirholas/g1t",
+    "version": "0.0.2",
+    "modified": "2026-08-02",
+    "depCount": 0,
+    "vulnDeps": [],
+    "downloads": 139
+  },
+  {
+    "name": "e7c",
+    "version": "0.0.4",
+    "modified": "2026-08-02",
+    "depCount": 0,
+    "vulnDeps": [],
+    "downloads": 136
+  },
+  {
+    "name": "g1t",
+    "version": "0.0.3",
+    "modified": "2026-08-02",
+    "depCount": 0,
+    "vulnDeps": [],
+    "downloads": 131
+  },
+  {
+    "name": "github-to-mcp-monorepo",
+    "version": "1.0.1",
+    "modified": "2026-03-07",
+    "depCount": 0,
+    "vulnDeps": [],
+    "downloads": 130
+  },
+  {
+    "name": "robinhood-volume-alerts",
+    "version": "0.2.1",
+    "modified": "2026-08-04",
+    "depCount": 6,
+    "vulnDeps": [],
+    "downloads": 111
+  },
+  {
+    "name": "llms-forge",
+    "version": "1.0.3",
+    "modified": "2026-08-04",
+    "depCount": 17,
+    "vulnDeps": [
+      {
+        "dep": "js-yaml",
+        "version": "4.1.1",
+        "vulns": [
+          "GHSA-52cp-r559-cp3m",
+          "GHSA-h67p-54hq-rp68"
+        ]
+      },
+      {
+        "dep": "nanoid",
+        "version": "5.0.0",
+        "vulns": [
+          "GHSA-mwcw-c2x4-8c55"
+        ]
+      }
+    ],
+    "downloads": 87
+  },
+  {
+    "name": "@nirholas/universal-crypto-mcp",
+    "version": "1.0.0",
+    "modified": "2026-03-08",
+    "depCount": 46,
+    "vulnDeps": [
+      {
+        "dep": "@modelcontextprotocol/sdk",
+        "version": "1.11.0",
+        "vulns": [
+          "GHSA-345p-7cg4-v4c7",
+          "GHSA-8r9q-7v3j-jr4g",
+          "GHSA-w48q-cv73-mx4w"
+        ]
+      },
+      {
+        "dep": "@solana/web3.js",
+        "version": "1.87.6",
+        "vulns": [
+          "GHSA-8m45-2rjm-j347"
+        ]
+      },
+      {
+        "dep": "@x402/svm",
+        "version": "2.2.0",
+        "vulns": [
+          "GHSA-qr2g-p6q7-w82m"
+        ]
+      },
+      {
+        "dep": "axios",
+        "version": "1.7.9",
+        "vulns": [
+          "GHSA-35jp-ww65-95wh",
+          "GHSA-3g43-6gmg-66jw",
+          "GHSA-3p68-rc4w-qgx5",
+          "GHSA-3w6x-2g7m-8v23",
+          "GHSA-42h9-826w-cgv3",
+          "GHSA-43fc-jf86-j433",
+          "GHSA-445q-vr5w-6q77",
+          "GHSA-4hjh-wcwx-xvwj",
+          "GHSA-5c9x-8gcm-mpgx",
+          "GHSA-62hf-57xw-28j9",
+          "GHSA-6chq-wfr3-2hj9",
+          "GHSA-777c-7fjr-54vf",
+          "GHSA-7q8q-rj6j-mhjq",
+          "GHSA-898c-q2cr-xwhg",
+          "GHSA-fvcv-3m26-pcqx",
+          "GHSA-hfxv-24rg-xrqf",
+          "GHSA-j5f8-grm9-p9fc",
+          "GHSA-jqh4-m9w3-8hp9",
+          "GHSA-jr5f-v2jv-69x6",
+          "GHSA-m7pr-hjqh-92cm",
+          "GHSA-mmx7-hfxf-jppx",
+          "GHSA-p92q-9vqr-4j8v",
+          "GHSA-pf86-5x62-jrwf",
+          "GHSA-pmv8-rq9r-6j72",
+          "GHSA-pmwg-cvhr-8vh7",
+          "GHSA-q8qp-cvcw-x6jj",
+          "GHSA-vf2m-468p-8v99",
+          "GHSA-w9j2-pvgh-6h63",
+          "GHSA-xhjh-pmcv-23jw",
+          "GHSA-xx6v-rp6x-q39c"
+        ]
+      },
+      {
+        "dep": "express",
+        "version": "4.18.2",
+        "vulns": [
+          "GHSA-qw6h-vgh9-j6wx",
+          "GHSA-rv95-896h-c2vc"
+        ]
+      },
+      {
+        "dep": "express-rate-limit",
+        "version": "8.2.1",
+        "vulns": [
+          "GHSA-46wh-pxpv-q5gq"
+        ]
+      },
+      {
+        "dep": "uuid",
+        "version": "9.0.1",
+        "vulns": [
+          "GHSA-w5hq-g745-h8pq"
+        ]
+      }
+    ],
+    "downloads": 64
+  },
+  {
+    "name": "@nirholas/bnbchain-mcp",
+    "version": "1.0.2",
+    "modified": "2026-08-04",
+    "depCount": 13,
+    "vulnDeps": [
+      {
+        "dep": "@modelcontextprotocol/sdk",
+        "version": "1.0.0",
+        "vulns": [
+          "GHSA-w48q-cv73-mx4w"
+        ]
+      },
+      {
+        "dep": "zod",
+        "version": "3.22.0",
+        "vulns": [
+          "GHSA-m95q-7qp3-xv42"
+        ]
+      }
+    ],
+    "downloads": 57
+  },
+  {
+    "name": "@nirholas/ai-agents-library",
+    "version": "1.42.2",
+    "modified": "2026-03-07",
+    "depCount": 0,
+    "vulnDeps": [],
+    "downloads": 49
+  },
+  {
+    "name": "@nirholas/binance-mcp",
+    "version": "1.0.0",
+    "modified": "2026-03-08",
+    "depCount": 24,
+    "vulnDeps": [
+      {
+        "dep": "@modelcontextprotocol/sdk",
+        "version": "1.11.0",
+        "vulns": [
+          "GHSA-345p-7cg4-v4c7",
+          "GHSA-8r9q-7v3j-jr4g",
+          "GHSA-w48q-cv73-mx4w"
+        ]
+      },
+      {
+        "dep": "express",
+        "version": "4.18.2",
+        "vulns": [
+          "GHSA-qw6h-vgh9-j6wx",
+          "GHSA-rv95-896h-c2vc"
+        ]
+      }
+    ],
+    "downloads": 37
+  },
+  {
+    "name": "@nirholas/servers",
+    "version": "0.6.2",
+    "modified": "2026-03-08",
+    "depCount": 4,
+    "vulnDeps": [],
+    "downloads": 29
+  },
+  {
+    "name": "@nirholas/look",
+    "version": "2.1.1",
+    "modified": "2026-08-04",
+    "depCount": 18,
+    "vulnDeps": [
+      {
+        "dep": "simple-git",
+        "version": "3.22.0",
+        "vulns": [
+          "GHSA-hffm-xvc3-vprc",
+          "GHSA-jcxm-m3jx-f287",
+          "GHSA-r275-fr43-pm7q"
+        ]
+      },
+      {
+        "dep": "ws",
+        "version": "8.19.0",
+        "vulns": [
+          "GHSA-58qx-3vcg-4xpx",
+          "GHSA-96hv-2xvq-fx4p"
+        ]
+      },
+      {
+        "dep": "yaml",
+        "version": "2.8.2",
+        "vulns": [
+          "GHSA-48c2-rrv3-qjmp"
+        ]
+      }
+    ],
+    "downloads": 26
+  },
+  {
+    "name": "@nirholas/crypto-data-aggregator",
+    "version": "1.0.0",
+    "modified": "2026-03-08",
+    "depCount": 24,
+    "vulnDeps": [
+      {
+        "dep": "@modelcontextprotocol/sdk",
+        "version": "1.25.3",
+        "vulns": [
+          "GHSA-345p-7cg4-v4c7"
+        ]
+      },
+      {
+        "dep": "next",
+        "version": "16.1.1",
+        "vulns": [
+          "GHSA-267c-6grr-h53f",
+          "GHSA-26hh-7cqf-hhc6",
+          "GHSA-36qx-fr4f-26g5",
+          "GHSA-3g8h-86w9-wvmq",
+          "GHSA-3x4c-7xq6-9pq8",
+          "GHSA-4633-3j49-mh5q",
+          "GHSA-492v-c6pp-mqqv",
+          "GHSA-4c39-4ccg-62r3",
+          "GHSA-5f7q-jpqc-wp7h",
+          "GHSA-68g3-v927-f742",
+          "GHSA-6gpp-xcg3-4w24",
+          "GHSA-89xv-2m56-2m9x",
+          "GHSA-8h8q-6873-q5fj",
+          "GHSA-955p-x3mx-jcvp",
+          "GHSA-9g9p-9gw9-jx7f",
+          "GHSA-c4j6-fc7j-m34r",
+          "GHSA-ffhc-5mcf-pf4q",
+          "GHSA-ggv3-7p47-pfv8",
+          "GHSA-gx5p-jg67-6x7h",
+          "GHSA-h25m-26qc-wcjf",
+          "GHSA-h27x-g6w4-24gq",
+          "GHSA-h64f-5h5j-jqjh",
+          "GHSA-jcc7-9wpm-mj36",
+          "GHSA-m99w-x7hq-7vfj",
+          "GHSA-mg66-mrh9-m8jx",
+          "GHSA-mq59-m269-xvcx",
+          "GHSA-p9j2-gv94-2wf4",
+          "GHSA-q4gf-8mx6-v5v3",
+          "GHSA-q8wf-6r8g-63ch",
+          "GHSA-vfv6-92ff-j949",
+          "GHSA-wfc6-r584-vfw7"
+        ]
+      },
+      {
+        "dep": "next-intl",
+        "version": "4.7.0",
+        "vulns": [
+          "GHSA-4c35-wcg5-mm9h",
+          "GHSA-8f24-v5vv-gm5j"
+        ]
+      },
+      {
+        "dep": "sanitize-html",
+        "version": "2.17.0",
+        "vulns": [
+          "GHSA-vccv-cmxp-4j9h"
+        ]
+      }
+    ],
+    "downloads": 22
+  },
+  {
+    "name": "@nirholas/crypto-market-data",
+    "version": "1.0.0",
+    "modified": "2026-03-08",
+    "depCount": 0,
+    "vulnDeps": [],
+    "downloads": 22
+  },
+  {
+    "name": "@nirholas/github-to-mcp",
+    "version": "1.0.0",
+    "modified": "2026-03-08",
+    "depCount": 0,
+    "vulnDeps": [],
+    "downloads": 22
+  },
+  {
+    "name": "@nirholas/binance-us-mcp",
+    "version": "1.0.0",
+    "modified": "2026-03-08",
+    "depCount": 3,
+    "vulnDeps": [
+      {
+        "dep": "@modelcontextprotocol/sdk",
+        "version": "1.11.0",
+        "vulns": [
+          "GHSA-345p-7cg4-v4c7",
+          "GHSA-8r9q-7v3j-jr4g",
+          "GHSA-w48q-cv73-mx4w"
+        ]
+      }
+    ],
+    "downloads": 21
+  },
+  {
+    "name": "@nirholas/agenti",
+    "version": "0.1.0",
+    "modified": "2026-03-08",
+    "depCount": 42,
+    "vulnDeps": [
+      {
+        "dep": "@solana/web3.js",
+        "version": "1.87.6",
+        "vulns": [
+          "GHSA-8m45-2rjm-j347"
+        ]
+      },
+      {
+        "dep": "@x402/svm",
+        "version": "2.2.0",
+        "vulns": [
+          "GHSA-qr2g-p6q7-w82m"
+        ]
+      },
+      {
+        "dep": "axios",
+        "version": "1.7.9",
+        "vulns": [
+          "GHSA-35jp-ww65-95wh",
+          "GHSA-3g43-6gmg-66jw",
+          "GHSA-3p68-rc4w-qgx5",
+          "GHSA-3w6x-2g7m-8v23",
+          "GHSA-42h9-826w-cgv3",
+          "GHSA-43fc-jf86-j433",
+          "GHSA-445q-vr5w-6q77",
+          "GHSA-4hjh-wcwx-xvwj",
+          "GHSA-5c9x-8gcm-mpgx",
+          "GHSA-62hf-57xw-28j9",
+          "GHSA-6chq-wfr3-2hj9",
+          "GHSA-777c-7fjr-54vf",
+          "GHSA-7q8q-rj6j-mhjq",
+          "GHSA-898c-q2cr-xwhg",
+          "GHSA-fvcv-3m26-pcqx",
+          "GHSA-hfxv-24rg-xrqf",
+          "GHSA-j5f8-grm9-p9fc",
+          "GHSA-jqh4-m9w3-8hp9",
+          "GHSA-jr5f-v2jv-69x6",
+          "GHSA-m7pr-hjqh-92cm",
+          "GHSA-mmx7-hfxf-jppx",
+          "GHSA-p92q-9vqr-4j8v",
+          "GHSA-pf86-5x62-jrwf",
+          "GHSA-pmv8-rq9r-6j72",
+          "GHSA-pmwg-cvhr-8vh7",
+          "GHSA-q8qp-cvcw-x6jj",
+          "GHSA-vf2m-468p-8v99",
+          "GHSA-w9j2-pvgh-6h63",
+          "GHSA-xhjh-pmcv-23jw",
+          "GHSA-xx6v-rp6x-q39c"
+        ]
+      }
+    ],
+    "downloads": 20
+  },
+  {
+    "name": "lyra-web3-playground",
+    "version": "0.1.2",
+    "modified": "2026-03-07",
+    "depCount": 14,
+    "vulnDeps": [
+      {
+        "dep": "@solana/web3.js",
+        "version": "1.87.0",
+        "vulns": [
+          "GHSA-8m45-2rjm-j347"
+        ]
+      }
+    ],
+    "downloads": 18
+  },
+  {
+    "name": "@nirholas/pump-swap-sdk",
+    "version": "1.14.0",
+    "modified": "2026-03-08",
+    "depCount": 5,
+    "vulnDeps": [
+      {
+        "dep": "bn.js",
+        "version": "5.2.2",
+        "vulns": [
+          "GHSA-378v-28hj-76wf"
+        ]
+      }
+    ],
+    "downloads": 18
+  },
+  {
+    "name": "@nirholas/crypto-vision",
+    "version": "0.1.0",
+    "modified": "2026-03-08",
+    "depCount": 22,
+    "vulnDeps": [
+      {
+        "dep": "@hono/node-server",
+        "version": "1.19.0",
+        "vulns": [
+          "GHSA-92pp-h63x-v22m",
+          "GHSA-frvp-7c67-39w9",
+          "GHSA-wc8c-qw6v-h7f6"
+        ]
+      },
+      {
+        "dep": "drizzle-orm",
+        "version": "0.45.1",
+        "vulns": [
+          "GHSA-gpj5-g38j-94v9"
+        ]
+      },
+      {
+        "dep": "hono",
+        "version": "4.12.0",
+        "vulns": [
+          "GHSA-26pp-8wgv-hjvm",
+          "GHSA-2gcr-mfcq-wcc3",
+          "GHSA-3hrh-pfw6-9m5x",
+          "GHSA-458j-xx4x-4375",
+          "GHSA-5pq2-9x2x-5p6w",
+          "GHSA-69xw-7hcm-h432",
+          "GHSA-88fw-hqm2-52qc",
+          "GHSA-8j4g-w8fx-2239",
+          "GHSA-9vqf-7f2p-gf9v",
+          "GHSA-f577-qrjj-4474",
+          "GHSA-hm8q-7f3q-5f36",
+          "GHSA-hvrm-45r6-mjfj",
+          "GHSA-j6c9-x7qj-28xf",
+          "GHSA-p6xx-57qc-3wxr",
+          "GHSA-p77w-8qqv-26rm",
+          "GHSA-q5qw-h33p-qvwr",
+          "GHSA-qp7p-654g-cw7p",
+          "GHSA-r5rp-j6wh-rvv4",
+          "GHSA-rv63-4mwf-qqc2",
+          "GHSA-v8w9-8mx6-g223",
+          "GHSA-w62v-xxxg-mg59",
+          "GHSA-wgpf-jwqj-8h8p",
+          "GHSA-wmmm-f939-6g9c",
+          "GHSA-wwfh-h76j-fc44",
+          "GHSA-xf4j-xp2r-rqqx",
+          "GHSA-xgm2-5f3f-mvvc",
+          "GHSA-xh87-mx6m-69f3",
+          "GHSA-xpcf-pg52-r92g",
+          "GHSA-xrhx-7g5j-rcj5"
+        ]
+      },
+      {
+        "dep": "sharp",
+        "version": "0.34.5",
+        "vulns": [
+          "GHSA-f88m-g3jw-g9cj"
+        ]
+      },
+      {
+        "dep": "undici",
+        "version": "7.22.0",
+        "vulns": [
+          "GHSA-2mjp-6q6p-2qxm",
+          "GHSA-35p6-xmwp-9g52",
+          "GHSA-4992-7rv2-5pvq",
+          "GHSA-4cwx-7wf7-3272",
+          "GHSA-8xcm-r25x-g524",
+          "GHSA-f269-vfmq-vjvj",
+          "GHSA-g8m3-5g58-fq7m",
+          "GHSA-jr45-8vmc-qm54",
+          "GHSA-m8rv-5g2x-5cg5",
+          "GHSA-p88m-4jfj-68fv",
+          "GHSA-phc3-fgpg-7m6h",
+          "GHSA-pr7r-676h-xcf6",
+          "GHSA-v3r7-h72x-cjcm",
+          "GHSA-v9p9-hfj2-hcw8",
+          "GHSA-vrm6-8vpv-qv8q",
+          "GHSA-vxpw-j846-p89q"
+        ]
+      },
+      {
+        "dep": "ws",
+        "version": "8.19.0",
+        "vulns": [
+          "GHSA-58qx-3vcg-4xpx",
+          "GHSA-96hv-2xvq-fx4p"
+        ]
+      }
+    ],
+    "downloads": 17
+  },
+  {
+    "name": "@nirholas/bnbchain-mcp-pr",
+    "version": "0.0.1",
+    "modified": "2026-03-08",
+    "depCount": 10,
+    "vulnDeps": [
+      {
+        "dep": "@modelcontextprotocol/sdk",
+        "version": "1.11.0",
+        "vulns": [
+          "GHSA-345p-7cg4-v4c7",
+          "GHSA-8r9q-7v3j-jr4g",
+          "GHSA-w48q-cv73-mx4w"
+        ]
+      },
+      {
+        "dep": "express",
+        "version": "4.18.2",
+        "vulns": [
+          "GHSA-qw6h-vgh9-j6wx",
+          "GHSA-rv95-896h-c2vc"
+        ]
+      }
+    ],
+    "downloads": 17
+  },
+  {
+    "name": "@nirholas/crypto-news",
+    "version": "1.0.1",
+    "modified": "2026-03-07",
+    "depCount": 0,
+    "vulnDeps": [],
+    "downloads": 15
+  },
+  {
+    "name": "@nirholas/subgraph",
+    "version": "1.0.0",
+    "modified": "2026-03-08",
+    "depCount": 3,
+    "vulnDeps": [],
+    "downloads": 15
+  },
+  {
+    "name": "@nirholas/auditkit",
+    "version": "0.1.0",
+    "modified": "2026-03-08",
+    "depCount": 0,
+    "vulnDeps": [],
+    "downloads": 15
+  },
+  {
+    "name": "@nirholas/lyra-web3-playground",
+    "version": "0.1.0",
+    "modified": "2026-03-08",
+    "depCount": 17,
+    "vulnDeps": [
+      {
+        "dep": "dompurify",
+        "version": "3.3.1",
+        "vulns": [
+          "GHSA-39q2-94rc-95cp",
+          "GHSA-76mc-f452-cxcm",
+          "GHSA-c2j3-45gr-mqc4",
+          "GHSA-cj63-jhhr-wcxv",
+          "GHSA-cjmm-f4jc-qw8r",
+          "GHSA-cmwh-pvxp-8882",
+          "GHSA-crv5-9vww-q3g8",
+          "GHSA-gvmj-g25r-r7wr",
+          "GHSA-h7mw-gpvr-xq4m",
+          "GHSA-h8r8-wccr-v5f2",
+          "GHSA-hpcv-96wg-7vj8",
+          "GHSA-r47g-fvhr-h676",
+          "GHSA-rp9w-3fw7-7cwq",
+          "GHSA-v2wj-7wpq-c8vv",
+          "GHSA-v9jr-rg53-9pgp",
+          "GHSA-vxr8-fq34-vvx9",
+          "GHSA-x4vx-rjvf-j5p4"
+        ]
+      }
+    ],
+    "downloads": 14
+  },
+  {
+    "name": "@nirholas/crypto-market-data-ts",
+    "version": "1.0.0",
+    "modified": "2026-03-08",
+    "depCount": 0,
+    "vulnDeps": [],
+    "downloads": 14
+  },
+  {
+    "name": "@nirholas/clawdbot",
+    "version": "2026.2.1",
+    "modified": "2026-03-08",
+    "depCount": 51,
+    "vulnDeps": [
+      {
+        "dep": "@mariozechner/pi-coding-agent",
+        "version": "0.51.0",
+        "vulns": [
+          "GHSA-7v5m-pr3q-6453",
+          "GHSA-jfgx-wxx8-mp94",
+          "GHSA-r95r-rj6r-c39x"
+        ]
+      },
+      {
+        "dep": "@whiskeysockets/baileys",
+        "version": "7.0.0-rc.9",
+        "vulns": [
+          "GHSA-qvv5-jq5g-4cgg"
+        ]
+      },
+      {
+        "dep": "ajv",
+        "version": "8.17.1",
+        "vulns": [
+          "GHSA-2g4f-4pwh-qvx6"
+        ]
+      },
+      {
+        "dep": "file-type",
+        "version": "21.3.0",
+        "vulns": [
+          "GHSA-5v7r-6r5c-r473",
+          "GHSA-j47w-4g3g-c36v"
+        ]
+      },
+      {
+        "dep": "hono",
+        "version": "4.11.7",
+        "vulns": [
+          "GHSA-26pp-8wgv-hjvm",
+          "GHSA-2gcr-mfcq-wcc3",
+          "GHSA-3hrh-pfw6-9m5x",
+          "GHSA-458j-xx4x-4375",
+          "GHSA-5pq2-9x2x-5p6w",
+          "GHSA-69xw-7hcm-h432",
+          "GHSA-88fw-hqm2-52qc",
+          "GHSA-8j4g-w8fx-2239",
+          "GHSA-9vqf-7f2p-gf9v",
+          "GHSA-f577-qrjj-4474",
+          "GHSA-gq3j-xvxp-8hrf",
+          "GHSA-hm8q-7f3q-5f36",
+          "GHSA-j6c9-x7qj-28xf",
+          "GHSA-p6xx-57qc-3wxr",
+          "GHSA-p77w-8qqv-26rm",
+          "GHSA-q5qw-h33p-qvwr",
+          "GHSA-qp7p-654g-cw7p",
+          "GHSA-r5rp-j6wh-rvv4",
+          "GHSA-rv63-4mwf-qqc2",
+          "GHSA-v8w9-8mx6-g223",
+          "GHSA-w62v-xxxg-mg59",
+          "GHSA-wgpf-jwqj-8h8p",
+          "GHSA-wmmm-f939-6g9c",
+          "GHSA-wwfh-h76j-fc44",
+          "GHSA-xf4j-xp2r-rqqx",
+          "GHSA-xgm2-5f3f-mvvc",
+          "GHSA-xpcf-pg52-r92g",
+          "GHSA-xrhx-7g5j-rcj5"
+        ]
+      },
+      {
+        "dep": "markdown-it",
+        "version": "14.1.0",
+        "vulns": [
+          "GHSA-38c4-r59v-3vqw",
+          "GHSA-6v5v-wf23-fmfq"
+        ]
+      },
+      {
+        "dep": "sharp",
+        "version": "0.34.5",
+        "vulns": [
+          "GHSA-f88m-g3jw-g9cj"
+        ]
+      },
+      {
+        "dep": "tar",
+        "version": "7.5.7",
+        "vulns": [
+          "GHSA-23hp-3jrh-7fpw",
+          "GHSA-83g3-92jg-28cx",
+          "GHSA-8x88-c5mf-7j5w",
+          "GHSA-9ppj-qmqm-q256",
+          "GHSA-gvwx-54wh-qm9j",
+          "GHSA-qffp-2rhf-9h96",
+          "GHSA-r292-9mhp-454m",
+          "GHSA-vmf3-w455-68vh",
+          "GHSA-w8wr-v893-vjvp"
+        ]
+      },
+      {
+        "dep": "undici",
+        "version": "7.20.0",
+        "vulns": [
+          "GHSA-2mjp-6q6p-2qxm",
+          "GHSA-35p6-xmwp-9g52",
+          "GHSA-4992-7rv2-5pvq",
+          "GHSA-4cwx-7wf7-3272",
+          "GHSA-8xcm-r25x-g524",
+          "GHSA-f269-vfmq-vjvj",
+          "GHSA-g8m3-5g58-fq7m",
+          "GHSA-jr45-8vmc-qm54",
+          "GHSA-m8rv-5g2x-5cg5",
+          "GHSA-p88m-4jfj-68fv",
+          "GHSA-phc3-fgpg-7m6h",
+          "GHSA-pr7r-676h-xcf6",
+          "GHSA-v3r7-h72x-cjcm",
+          "GHSA-v9p9-hfj2-hcw8",
+          "GHSA-vrm6-8vpv-qv8q",
+          "GHSA-vxpw-j846-p89q"
+        ]
+      },
+      {
+        "dep": "ws",
+        "version": "8.19.0",
+        "vulns": [
+          "GHSA-58qx-3vcg-4xpx",
+          "GHSA-96hv-2xvq-fx4p"
+        ]
+      },
+      {
+        "dep": "yaml",
+        "version": "2.8.2",
+        "vulns": [
+          "GHSA-48c2-rrv3-qjmp"
+        ]
+      }
+    ],
+    "downloads": 13
+  },
+  {
+    "name": "@nirholas/erc-8004-demo-agent",
+    "version": "1.0.0",
+    "modified": "2026-03-08",
+    "depCount": 6,
+    "vulnDeps": [
+      {
+        "dep": "express",
+        "version": "4.18.2",
+        "vulns": [
+          "GHSA-qw6h-vgh9-j6wx",
+          "GHSA-rv95-896h-c2vc"
+        ]
+      },
+      {
+        "dep": "uuid",
+        "version": "9.0.0",
+        "vulns": [
+          "GHSA-w5hq-g745-h8pq"
+        ]
+      },
+      {
+        "dep": "@modelcontextprotocol/sdk",
+        "version": "1.0.0",
+        "vulns": [
+          "GHSA-w48q-cv73-mx4w"
+        ]
+      }
+    ],
+    "downloads": 13
+  },
+  {
+    "name": "@nirholas/defi-agents",
+    "version": "1.42.3",
+    "modified": "2026-03-08",
+    "depCount": 0,
+    "vulnDeps": [],
+    "downloads": 13
+  },
+  {
+    "name": "@nirholas/bnb-chain-toolkit",
+    "version": "2.0.0",
+    "modified": "2026-03-08",
+    "depCount": 21,
+    "vulnDeps": [
+      {
+        "dep": "dompurify",
+        "version": "3.3.1",
+        "vulns": [
+          "GHSA-39q2-94rc-95cp",
+          "GHSA-76mc-f452-cxcm",
+          "GHSA-c2j3-45gr-mqc4",
+          "GHSA-cj63-jhhr-wcxv",
+          "GHSA-cjmm-f4jc-qw8r",
+          "GHSA-cmwh-pvxp-8882",
+          "GHSA-crv5-9vww-q3g8",
+          "GHSA-gvmj-g25r-r7wr",
+          "GHSA-h7mw-gpvr-xq4m",
+          "GHSA-h8r8-wccr-v5f2",
+          "GHSA-hpcv-96wg-7vj8",
+          "GHSA-r47g-fvhr-h676",
+          "GHSA-rp9w-3fw7-7cwq",
+          "GHSA-v2wj-7wpq-c8vv",
+          "GHSA-v9jr-rg53-9pgp",
+          "GHSA-vxr8-fq34-vvx9",
+          "GHSA-x4vx-rjvf-j5p4"
+        ]
+      }
+    ],
+    "downloads": 12
+  },
+  {
+    "name": "@nirholas/boosty",
+    "version": "1.0.1",
+    "modified": "2026-08-04",
+    "depCount": 0,
+    "vulnDeps": [],
+    "downloads": 12
+  },
+  {
+    "name": "@nirholas/plugin.delivery",
+    "version": "1.0.1",
+    "modified": "2026-08-04",
+    "depCount": 0,
+    "vulnDeps": [],
+    "downloads": 12
+  },
+  {
+    "name": "works-with-openrouter",
+    "version": "1.0.2",
+    "modified": "2026-08-04",
+    "depCount": 3,
+    "vulnDeps": [
+      {
+        "dep": "ajv",
+        "version": "8.12.0",
+        "vulns": [
+          "GHSA-2g4f-4pwh-qvx6"
+        ]
+      },
+      {
+        "dep": "js-yaml",
+        "version": "4.1.0",
+        "vulns": [
+          "GHSA-52cp-r559-cp3m",
+          "GHSA-h67p-54hq-rp68",
+          "GHSA-mh29-5h37-fv8m"
+        ]
+      }
+    ],
+    "downloads": 0
+  }
+]

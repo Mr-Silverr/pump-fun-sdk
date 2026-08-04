@@ -1,6 +1,6 @@
 {
   "name": "pump-fun-mcp",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "mcpName": "io.github.nirholas/pump-fun-sdk",
   "description": "Model Context Protocol server for the Pump SDK \u2014 53 tools for token creation, trading, fees, analytics, and wallet management on Solana",
   "type": "module",
@@ -47,5 +47,8 @@
     "type": "git",
     "url": "git+https://github.com/nirholas/pump-fun-sdk.git",
     "directory": "mcp-server"
+  },
+  "overrides": {
+    "uuid": "^11.1.1"
   }
 }

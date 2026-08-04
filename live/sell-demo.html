@@ -3,196 +3,301 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📉</text></svg>">
-<title>Pump SDK — Live Sell Demo</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><rect width='16' height='16' rx='3' fill='%23050505'/><circle cx='8' cy='8' r='3.5' fill='%23f5f5f5'/></svg>">
+<title>Sell Demo / pump sdk live</title>
 <meta name="description" content="Live sell quote demo for the Pump SDK. Fetch real bonding curve state, compute sell quotes with overflow analysis, and compare old vs fixed slippage formulas.">
 <style>
   :root {
-    --bg: #0a0a0a; --bg2: #111; --bg3: #1a1a1a; --border: #1e1e1e;
-    --green: #00ff41; --red: #ff4141; --yellow: #ffcc00; --blue: #4a9eff;
-    --orange: #ff9900; --purple: #b366ff; --cyan: #00e5ff; --dim: #555; --text: #aaa;
+    --bg: #050505;
+    --bg-elevated: #0e0e0e;
+    --bg-hover: #161616;
+    --border: #222;
+    --border-strong: #333;
+    --text: #f5f5f5;
+    --text-dim: #9a9a9a;
+    --text-faint: #555;
+    --accent-buy: #00e68a;
+    --accent-sell: #ff5c5c;
+    --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+    --radius: 6px;
   }
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { background: var(--bg); color: var(--green); font-family: 'Courier New', monospace; font-size: 13px; line-height: 1.6; }
-
-  /* ── Header ─────────────────────────────────────────── */
-  #header {
-    background: var(--bg2); border-bottom: 1px solid var(--border);
-    padding: 12px 20px; display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
-    position: sticky; top: 0; z-index: 10;
+  html { color-scheme: dark; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-sans);
+    font-size: 13px;
+    line-height: 1.55;
   }
-  #header h1 { font-size: 16px; white-space: nowrap; }
-  #header nav { display: flex; gap: 8px; }
-  #header nav a {
-    color: var(--blue); text-decoration: none; font-size: 12px;
-    border: 1px solid #333; padding: 4px 10px; border-radius: 3px;
+  .mono { font-family: var(--font-mono); }
+  [hidden] { display: none !important; }
+
+  /* Shared header */
+  .site-header {
+    display: flex; align-items: center; gap: 16px;
+    padding: 0 16px; height: 48px;
+    background: var(--bg); border-bottom: 1px solid var(--border);
+    position: sticky; top: 0; z-index: 50;
   }
-  #header nav a:hover { border-color: var(--blue); }
+  .site-header .wordmark {
+    font-family: var(--font-mono); font-size: 13px; font-weight: 600;
+    color: var(--text); text-decoration: none; white-space: nowrap;
+  }
+  .site-header .wordmark span { color: var(--text-faint); font-weight: 400; }
+  .site-nav { display: flex; gap: 2px; overflow-x: auto; scrollbar-width: none; }
+  .site-nav::-webkit-scrollbar { display: none; }
+  .site-nav a {
+    color: var(--text-dim); text-decoration: none; font-size: 12px;
+    padding: 5px 9px; border-radius: var(--radius); white-space: nowrap;
+    transition: color 140ms ease, background 140ms ease;
+  }
+  .site-nav a:hover { color: var(--text); background: var(--bg-hover); }
+  .site-nav a:active { background: var(--bg-elevated); }
+  .site-nav a:focus-visible { outline: 1px solid #fff; outline-offset: 2px; }
+  .site-nav a[aria-current="page"] { color: var(--text); background: var(--bg-elevated); }
 
-  /* ── Layout ─────────────────────────────────────────── */
-  #main { max-width: 900px; margin: 0 auto; padding: 24px 20px; }
+  /* Shared footer */
+  .site-footer {
+    border-top: 1px solid var(--border); padding: 14px 16px;
+    display: flex; gap: 16px; flex-wrap: wrap; align-items: center;
+    font-size: 12px; color: var(--text-faint); font-family: var(--font-mono);
+  }
+  .site-footer a { color: var(--text-dim); text-decoration: none; transition: color 140ms ease; }
+  .site-footer a:hover { color: var(--text); text-decoration: underline; }
+  .site-footer a:focus-visible { outline: 1px solid #fff; outline-offset: 2px; }
+  .site-footer .grow { flex: 1; }
 
-  /* ── Input card ─────────────────────────────────────── */
+  /* Page toolbar */
+  .toolbar {
+    background: var(--bg); border-bottom: 1px solid var(--border);
+    padding: 8px 16px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+    position: sticky; top: 48px; z-index: 40;
+  }
+  .toolbar .page-title { font-size: 13px; font-weight: 600; white-space: nowrap; }
+  .toolbar .page-sub { font-size: 12px; color: var(--text-faint); }
+
+  /* Layout */
+  #main { max-width: 900px; margin: 0 auto; padding: 24px 16px 0; }
+
+  /* Cards */
   .card {
-    background: var(--bg2); border: 1px solid var(--border);
-    border-radius: 6px; padding: 20px; margin-bottom: 20px;
+    background: var(--bg-elevated); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 20px; margin-bottom: 20px;
   }
-  .card h2 { font-size: 14px; color: var(--yellow); margin-bottom: 14px; letter-spacing: .05em; }
+  .card h2 {
+    font-size: 12px; font-weight: 600; color: var(--text-dim);
+    margin-bottom: 14px; text-transform: uppercase; letter-spacing: .08em;
+  }
+  .section-title {
+    font-size: 11px; text-transform: uppercase; letter-spacing: .08em;
+    color: var(--text-dim); margin-bottom: 10px;
+    border-bottom: 1px solid var(--border); padding-bottom: 6px;
+  }
 
+  /* Forms */
   .field { display: flex; flex-direction: column; gap: 4px; margin-bottom: 12px; }
-  .field label { font-size: 11px; color: var(--dim); text-transform: uppercase; letter-spacing: .08em; }
+  .field label { font-size: 11px; color: var(--text-faint); text-transform: uppercase; letter-spacing: .06em; }
   input[type="text"], input[type="number"], select {
-    background: var(--bg3); border: 1px solid #2a2a2a; color: var(--text);
-    padding: 8px 12px; font-family: inherit; font-size: 13px; border-radius: 4px; width: 100%;
+    background: var(--bg); border: 1px solid var(--border); color: var(--text);
+    padding: 8px 12px; font-family: var(--font-mono); font-size: 13px;
+    border-radius: var(--radius); width: 100%;
+    transition: border-color 140ms ease, background 140ms ease;
   }
-  input:focus, select:focus { outline: none; border-color: var(--green); color: #eee; }
-  input::placeholder { color: #333; }
+  input:hover, select:hover { border-color: var(--border-strong); }
+  input:focus, select:focus { outline: 1px solid #fff; outline-offset: 2px; border-color: var(--border-strong); background: var(--bg-hover); }
+  input::placeholder { color: var(--text-faint); }
 
   .row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
-  @media (max-width: 600px) { .row { grid-template-columns: 1fr; } }
+  @media (max-width: 620px) { .row { grid-template-columns: 1fr; } }
 
   button {
-    background: #003300; border: 1px solid var(--green); color: var(--green);
-    padding: 10px 24px; cursor: pointer; font-family: inherit; font-size: 13px;
-    border-radius: 4px; width: 100%; letter-spacing: .05em;
-    transition: background .15s;
+    background: var(--bg-elevated); border: 1px solid var(--border-strong); color: var(--text);
+    padding: 10px 24px; cursor: pointer; font-family: var(--font-sans); font-size: 13px;
+    border-radius: var(--radius); width: 100%;
+    transition: background 140ms ease, border-color 140ms ease, color 140ms ease, transform 120ms ease;
   }
-  button:hover { background: #004400; }
-  button:disabled { opacity: .4; cursor: not-allowed; }
+  button:hover:not(:disabled) { background: var(--bg-hover); border-color: var(--border-strong); }
+  button:active:not(:disabled) { transform: translateY(1px); }
+  button:focus-visible { outline: 1px solid #fff; outline-offset: 2px; }
+  button:disabled { opacity: .45; cursor: not-allowed; }
+  #btn-quote { background: #fff; border-color: #fff; color: #000; font-weight: 600; }
+  #btn-quote:hover:not(:disabled) { background: #ddd; border-color: #ddd; }
 
-  /* ── Status / Error ─────────────────────────────────── */
+  /* Status bar */
   #status-bar {
-    padding: 8px 12px; border-radius: 4px; font-size: 12px;
-    display: none; margin-bottom: 16px;
+    padding: 10px 12px; border-radius: var(--radius); font-size: 12px;
+    display: none; margin-bottom: 16px; border: 1px solid var(--border);
+    color: var(--text-dim); font-family: var(--font-mono);
   }
-  #status-bar.loading { background: #1a1a00; border: 1px solid #444400; color: var(--yellow); display: block; }
-  #status-bar.error   { background: #1a0000; border: 1px solid #440000; color: var(--red); display: block; }
-  #status-bar.ok      { background: #001a00; border: 1px solid #004400; color: var(--green); display: block; }
+  #status-bar::before {
+    content: ""; display: inline-block; width: 7px; height: 7px; border-radius: 50%;
+    background: var(--text-faint); margin-right: 8px; vertical-align: middle;
+  }
+  #status-bar.loading { display: block; }
+  #status-bar.error { display: block; border-color: var(--accent-sell); color: var(--accent-sell); }
+  #status-bar.error::before { background: var(--accent-sell); }
+  #status-bar.ok { display: block; border-color: var(--accent-buy); color: var(--accent-buy); }
+  #status-bar.ok::before { background: var(--accent-buy); }
 
-  /* ── Results ─────────────────────────────────────────── */
+  /* Empty state */
+  .empty-state {
+    margin-bottom: 20px;
+    border: 1px dashed var(--border-strong);
+    border-radius: var(--radius);
+    padding: 28px 20px;
+    text-align: center;
+    color: var(--text-dim);
+  }
+  .empty-state .empty-title { color: var(--text); font-size: 13px; font-weight: 600; margin-bottom: 6px; }
+  .empty-state .empty-detail { font-size: 12px; max-width: 560px; margin: 0 auto; }
+
+  /* Results */
   .section { display: none; }
   .section.visible { display: block; }
 
-  /* ── Table ───────────────────────────────────────────── */
+  /* Tables */
+  .table-scroll { overflow-x: auto; }
   table { width: 100%; border-collapse: collapse; font-size: 12px; }
-  td { padding: 6px 0; border-bottom: 1px solid #151515; }
-  td:first-child { color: var(--dim); width: 52%; }
-  td:last-child { color: #eee; text-align: right; font-variant-numeric: tabular-nums; }
+  td { padding: 6px 0; border-bottom: 1px solid var(--border); }
+  td:first-child { color: var(--text-dim); width: 52%; }
+  td:last-child {
+    color: var(--text); text-align: right;
+    font-family: var(--font-mono); font-variant-numeric: tabular-nums;
+  }
+  td a { color: var(--text-dim); text-decoration: none; transition: color 140ms ease; }
+  td a:hover { color: var(--text); text-decoration: underline; }
+  td a:focus-visible { outline: 1px solid #fff; outline-offset: 2px; }
   td .tag {
     display: inline-block; font-size: 10px; padding: 1px 6px; border-radius: 3px;
-    vertical-align: middle; margin-left: 6px;
+    vertical-align: middle; margin-left: 6px; font-family: var(--font-mono);
+    border: 1px solid var(--border-strong); color: var(--text-dim);
   }
-  td .tag.green { background: #003300; color: var(--green); border: 1px solid #004400; }
-  td .tag.red   { background: #330000; color: var(--red);   border: 1px solid #440000; }
-  td .tag.yellow{ background: #2a2000; color: var(--yellow); border: 1px solid #443300; }
+  td .tag.green { border-color: var(--accent-buy); color: var(--accent-buy); }
+  td .tag.red { border-color: var(--accent-sell); color: var(--accent-sell); }
+  td .tag.yellow { border-color: var(--border-strong); color: var(--text); }
 
-  /* ── Quote display ───────────────────────────────────── */
+  /* Quote display */
   .quote-box {
-    background: var(--bg3); border: 1px solid #1a3a1a; border-radius: 6px;
-    padding: 16px; margin: 16px 0;
+    background: var(--bg); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 16px; margin: 16px 0;
   }
   .quote-box .amount {
-    font-size: 22px; color: var(--green); font-weight: bold; letter-spacing: .03em;
+    font-size: 22px; color: var(--text); font-weight: 600;
+    font-family: var(--font-mono); font-variant-numeric: tabular-nums;
   }
-  .quote-box .label { font-size: 11px; color: var(--dim); text-transform: uppercase; margin-bottom: 4px; }
-  .quote-box .sub { font-size: 11px; color: var(--dim); margin-top: 6px; }
+  .quote-box .label { font-size: 11px; color: var(--text-faint); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 4px; }
+  .quote-box .sub { font-size: 11px; color: var(--text-dim); margin-top: 6px; font-family: var(--font-mono); }
 
-  /* ── Overflow gauge ──────────────────────────────────── */
+  /* Overflow gauge */
   .gauge { margin: 12px 0; }
-  .gauge-label { font-size: 11px; color: var(--dim); text-transform: uppercase; margin-bottom: 6px; }
-  .gauge-bar { height: 8px; background: #1a1a1a; border-radius: 4px; overflow: hidden; position: relative; }
-  .gauge-fill { height: 100%; border-radius: 4px; transition: width .4s ease; }
-  .gauge-fill.safe { background: linear-gradient(90deg, #004400, var(--green)); }
-  .gauge-fill.warn { background: linear-gradient(90deg, #443300, var(--yellow)); }
-  .gauge-fill.crit { background: linear-gradient(90deg, #440000, var(--red)); }
-  .gauge-value { font-size: 11px; color: var(--text); margin-top: 4px; }
+  .gauge-label { font-size: 11px; color: var(--text-faint); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 6px; }
+  .gauge-bar { height: 8px; background: var(--bg); border: 1px solid var(--border); border-radius: 4px; overflow: hidden; }
+  .gauge-fill { height: 100%; transition: width 300ms ease; background: var(--text-faint); }
+  .gauge-fill.safe { background: var(--accent-buy); }
+  .gauge-fill.warn { background: var(--text); }
+  .gauge-fill.crit { background: var(--accent-sell); }
+  .gauge-value { font-size: 11px; color: var(--text-dim); margin-top: 6px; font-family: var(--font-mono); }
 
-  /* ── Slippage compare ────────────────────────────────── */
-  .slip-compare {
-    display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 12px;
+  /* Slippage compare */
+  .slip-compare { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 12px; }
+  @media (max-width: 620px) { .slip-compare { grid-template-columns: 1fr; } }
+  .slip-box { background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px; }
+  .slip-box h4 { font-size: 11px; color: var(--text-faint); margin-bottom: 8px; text-transform: uppercase; letter-spacing: .06em; }
+  .slip-box .val { font-size: 14px; font-weight: 600; margin-bottom: 4px; font-family: var(--font-mono); }
+  .slip-box .note { font-size: 10px; color: var(--text-faint); }
+  .slip-box.old .val { color: var(--text-dim); }
+  .slip-box.new .val { color: var(--text); }
+  .slip-note {
+    grid-column: 1 / -1; font-size: 11px; color: var(--text-dim);
+    padding: 8px 10px; border: 1px solid var(--border-strong);
+    border-radius: var(--radius); margin-top: 8px;
   }
-  .slip-box {
-    background: var(--bg3); border: 1px solid #1e1e1e; border-radius: 4px; padding: 12px;
-  }
-  .slip-box h4 { font-size: 11px; color: var(--dim); margin-bottom: 8px; text-transform: uppercase; }
-  .slip-box .val { font-size: 14px; font-weight: bold; margin-bottom: 4px; }
-  .slip-box .note { font-size: 10px; color: var(--dim); }
-  .slip-box.old .val { color: var(--orange); }
-  .slip-box.new .val { color: var(--green); }
 
-  /* ── Deep analysis ────────────────────────────────────── */
-  .analysis-item {
-    padding: 10px 0; border-bottom: 1px solid #151515;
-  }
+  /* Deep analysis */
+  .analysis-item { padding: 10px 0; border-bottom: 1px solid var(--border); }
   .analysis-item:last-child { border-bottom: none; }
-  .analysis-item h4 { font-size: 12px; color: var(--yellow); margin-bottom: 4px; }
-  .analysis-item p { font-size: 11px; color: var(--text); line-height: 1.7; }
+  .analysis-item h4 { font-size: 12px; color: var(--text); margin-bottom: 4px; }
+  .analysis-item p { font-size: 11px; color: var(--text-dim); line-height: 1.7; }
   .analysis-item code {
-    background: var(--bg3); color: var(--cyan); padding: 1px 5px; border-radius: 3px; font-family: inherit; font-size: 11px;
+    background: var(--bg); color: var(--text); padding: 1px 5px;
+    border-radius: 3px; font-family: var(--font-mono); font-size: 11px;
+  }
+  .analysis-item pre {
+    background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 8px; margin: 6px 0; font-family: var(--font-mono);
+    font-size: 11px; overflow-x: auto; color: var(--text-dim);
   }
 
-  /* ── Known good tokens list ──────────────────────────── */
+  /* Quick example tokens */
   .token-btn {
-    background: var(--bg3); border: 1px solid #2a2a2a; color: var(--text);
-    padding: 4px 10px; cursor: pointer; font-family: inherit; font-size: 11px;
-    border-radius: 3px; width: auto; display: inline-block; margin: 2px;
+    background: var(--bg); border: 1px solid var(--border); color: var(--text-dim);
+    padding: 4px 10px; cursor: pointer; font-family: var(--font-mono); font-size: 11px;
+    border-radius: var(--radius); width: auto; display: inline-block; margin: 2px 4px 2px 0;
   }
-  .token-btn:hover { border-color: var(--green); color: var(--green); }
+  .token-btn:hover { border-color: var(--border-strong); color: var(--text); background: var(--bg-hover); }
 
-  /* ── Misc ─────────────────────────────────────────────── */
-  .mono { font-family: 'Courier New', monospace; }
-  .green { color: var(--green); }
-  .red   { color: var(--red); }
-  .yellow{ color: var(--yellow); }
-  .blue  { color: var(--blue); }
-  .dim   { color: var(--dim); }
-  .section-title {
-    font-size: 11px; text-transform: uppercase; letter-spacing: .1em;
-    color: var(--dim); margin-bottom: 10px; border-bottom: 1px solid #1a1a1a; padding-bottom: 6px;
-  }
-  ::-webkit-scrollbar { width: 6px; }
+  /* Semantic text colors */
+  .green { color: var(--accent-buy); }
+  .red   { color: var(--accent-sell); }
+  .yellow{ color: var(--text); }
+  .blue  { color: var(--text-dim); }
+  .dim   { color: var(--text-faint); }
+
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
   ::-webkit-scrollbar-track { background: var(--bg); }
-  ::-webkit-scrollbar-thumb { background: #222; border-radius: 3px; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--border-strong); }
 </style>
 </head>
 <body>
 
-<div id="header">
-  <h1>📉 Pump SDK — Sell Demo</h1>
-  <nav>
-    <a href="/">⚡ Live</a>
-    <a href="/trades">📊 Trades</a>
-    <a href="https://github.com/nirholas/pump-fun-sdk" target="_blank">GitHub</a>
+<header class="site-header">
+  <a class="wordmark" href="/live/">pump sdk <span>/ live</span></a>
+  <nav class="site-nav" aria-label="Live dashboards">
+    <a href="/live/">Launches</a>
+    <a href="/live/trades">Trades</a>
+    <a href="/live/dashboard">Dashboard</a>
+    <a href="/live/vanity">Vanity</a>
+    <a href="/live/sell-demo" aria-current="page">Sell Demo</a>
+    <a href="/live/launchpad">Launchpad</a>
+    <a href="/">Docs</a>
   </nav>
+</header>
+
+<div class="toolbar">
+  <div class="page-title">Sell quote</div>
+  <div class="page-sub">Live bonding curve state, fees, slippage and overflow analysis</div>
 </div>
 
 <div id="main">
 
   <!-- ── Input ──────────────────────────────────────────── -->
   <div class="card">
-    <h2>▸ SELL QUOTE</h2>
+    <h2>Sell quote</h2>
 
     <div class="field">
-      <label>Token Mint Address</label>
+      <label for="mint">Token mint address</label>
       <input type="text" id="mint" placeholder="e.g. 6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN" autocomplete="off" spellcheck="false" />
     </div>
 
     <div style="margin-bottom:12px;">
-      <div class="field" style="margin-bottom:4px;"><label>Quick Examples (active bonding curve tokens)</label></div>
+      <div class="field" style="margin-bottom:4px;"><label>Quick examples (active bonding curve tokens)</label></div>
       <div id="examples"></div>
     </div>
 
     <div class="row">
       <div class="field">
-        <label>Token Amount to Sell (whole tokens)</label>
+        <label for="amount">Token amount to sell (whole tokens)</label>
         <input type="number" id="amount" value="1000" min="0" step="1" />
       </div>
       <div class="field">
-        <label>Slippage %</label>
+        <label for="slippage">Slippage %</label>
         <input type="number" id="slippage" value="1" min="0" max="50" step="0.1" />
       </div>
       <div class="field">
-        <label>RPC Endpoint</label>
+        <label for="rpc">RPC endpoint</label>
         <select id="rpc">
           <option value="https://api.mainnet-beta.solana.com">Solana Mainnet (public)</option>
           <option value="https://solana-mainnet.g.alchemy.com/v2/demo">Alchemy (demo)</option>
@@ -202,57 +307,75 @@
     </div>
 
     <div id="custom-rpc-field" class="field" style="display:none;">
-      <label>Custom RPC URL</label>
-      <input type="text" id="custom-rpc" placeholder="https://…" />
+      <label for="custom-rpc">Custom RPC URL</label>
+      <input type="text" id="custom-rpc" placeholder="https://" />
     </div>
 
-    <button id="btn-quote">▸ Get Live Sell Quote</button>
+    <button id="btn-quote">Get live sell quote</button>
   </div>
 
   <!-- ── Status ─────────────────────────────────────────── -->
-  <div id="status-bar"></div>
+  <div id="status-bar" role="status" aria-live="polite"></div>
+
+  <!-- ── Empty state ────────────────────────────────────── -->
+  <div id="empty" class="empty-state">
+    <div class="empty-title">No quote yet</div>
+    <div class="empty-detail">
+      Paste a pump.fun mint (or pick a quick example above) and run the quote. Bonding curve
+      and global state are read live from the Solana RPC endpoint selected above, then the
+      sell math, fee breakdown, slippage comparison and u64 overflow check are computed in
+      your browser.
+    </div>
+  </div>
 
   <!-- ── Results ────────────────────────────────────────── -->
   <div id="results" class="section">
 
     <!-- Bonding Curve State -->
     <div class="card">
-      <div class="section-title">Bonding Curve State — Live On-Chain Data</div>
-      <table id="bc-table"></table>
+      <div class="section-title">Bonding curve state, live on-chain data</div>
+      <div class="table-scroll"><table id="bc-table"></table></div>
     </div>
 
     <!-- Sell Quote -->
     <div class="card">
-      <div class="section-title">Sell Quote Breakdown</div>
+      <div class="section-title">Sell quote breakdown</div>
       <div id="quote-display"></div>
-      <table id="quote-table" style="margin-top:12px;"></table>
+      <div class="table-scroll"><table id="quote-table" style="margin-top:12px;"></table></div>
     </div>
 
     <!-- Slippage Formula Comparison -->
     <div class="card">
-      <div class="section-title">Slippage Formula — Old Bug vs Fix (Issue #6)</div>
-      <p style="font-size:11px; color:var(--dim); margin-bottom:10px;">
-        The old formula <code style="color:var(--cyan)">Math.floor(slippage * 10) / 1000</code> loses precision for
-        fractional slippage values. The fixed formula uses <code style="color:var(--cyan)">Math.round(slippage * 100) / 10000</code>.
+      <div class="section-title">Slippage formula, old bug vs fix (issue #6)</div>
+      <p style="font-size:11px; color:var(--text-dim); margin-bottom:10px;">
+        The old formula <code class="mono">Math.floor(slippage * 10) / 1000</code> loses precision for
+        fractional slippage values. The fixed formula uses <code class="mono">Math.round(slippage * 100) / 10000</code>.
       </p>
       <div class="slip-compare" id="slip-compare"></div>
     </div>
 
     <!-- Overflow Risk -->
     <div class="card">
-      <div class="section-title">Overflow Risk Analysis</div>
+      <div class="section-title">Overflow risk analysis</div>
       <div id="overflow-display"></div>
     </div>
 
     <!-- Deep Analysis -->
     <div class="card">
-      <div class="section-title">Deep Dive — Why error 6024 (Overflow) Occurs</div>
+      <div class="section-title">Deep dive, why error 6024 (overflow) occurs</div>
       <div id="deep-analysis"></div>
     </div>
 
   </div><!-- /results -->
 
 </div><!-- /main -->
+
+<footer class="site-footer">
+  <span>pump sdk / live</span>
+  <span class="grow"></span>
+  <a href="https://github.com/nirholas/pump-fun-sdk" target="_blank" rel="noopener">GitHub</a>
+  <a href="/">Docs</a>
+</footer>
 
 <script>
 // ════════════════════════════════════════════════════════════════
@@ -667,11 +790,11 @@ function renderBcState(bc, g, bcPda, mint) {
     : 0;
 
   const rows = [
-    ['Mint',                    `<a href="https://pump.fun/coin/${esc(mint)}" target="_blank" style="color:var(--blue)">${esc(short(mint))}</a>`],
-    ['Bonding Curve PDA',       `<a href="https://solscan.io/account/${esc(bcPda)}" target="_blank" style="color:var(--blue)">${esc(short(bcPda))}</a>`],
+    ['Mint',                    `<a href="https://pump.fun/coin/${esc(mint)}" target="_blank" rel="noopener">${esc(short(mint))}</a>`],
+    ['Bonding Curve PDA',       `<a href="https://solscan.io/account/${esc(bcPda)}" target="_blank" rel="noopener">${esc(short(bcPda))}</a>`],
     ['Status',                  bc.complete
-      ? `<span class="tag yellow">⚠ GRADUATED — use AMM</span>`
-      : `<span class="tag green">● Active</span>`],
+      ? `<span class="tag yellow">Graduated, use AMM</span>`
+      : `<span class="tag green">Active</span>`],
     ['virtualSolReserves',      fmtSol(bc.virtualSolReserves)],
     ['virtualTokenReserves',    fmtTok(bc.virtualTokenReserves) + ' tokens'],
     ['realSolReserves',         fmtSol(bc.realSolReserves)],
@@ -679,7 +802,7 @@ function renderBcState(bc, g, bcPda, mint) {
     ['tokenTotalSupply',        fmtTok(bc.tokenTotalSupply) + ' tokens'],
     ['Market Cap (implied)',     fmtSol(marketCap)],
     ['Creator',                 bc.creator ? esc(short(bc.creator)) : '<span class="dim">none (zero address)</span>'],
-    ['isMayhemMode',            bc.isMayhemMode ? '<span class="yellow">YES</span>' : 'no'],
+    ['isMayhemMode',            bc.isMayhemMode ? '<span class="yellow">yes</span>' : 'no'],
     ['Protocol Fee',            fmtBps(g.feeBasisPoints)],
     ['Creator Fee',             fmtBps(g.creatorFeeBasisPoints)],
     ['Graduation Progress',     graduationProgress.toFixed(2) + '%'],
@@ -717,7 +840,7 @@ function renderQuote(quote, amountRaw, amountWhole, g) {
     ['Gross SOL from AMM',      fmtSol(quote.grossSol)],
     ['Protocol fee (ceil)',     fmtSol(quote.feeProtocol) + ` (${fmtBps(g.feeBasisPoints)})`],
     ['Creator fee (ceil)',      fmtSol(quote.feeCreator) + ` (${fmtBps(g.creatorFeeBasisPoints)})`],
-    ['Net SOL (before slippage)', fmtSol(quote.netSol) + (isDustRisk ? ' <span class="tag red">DUST — clamped to 0</span>' : '')],
+    ['Net SOL (before slippage)', fmtSol(quote.netSol) + (isDustRisk ? ' <span class="tag red">dust, clamped to 0</span>' : '')],
   ];
 
   document.getElementById('quote-table').innerHTML = rows.map(([k, v]) =>
@@ -734,20 +857,20 @@ function renderSlippageCompare(minOld, minNew, slippage, errBps) {
       <h4>Old formula (buggy)</h4>
       <div class="val">${fmtSol(minOld)}</div>
       <div class="note"><code>Math.floor(slippage * 10) / 1000</code></div>
-      ${hasDiff ? '<div class="note" style="color:var(--red);margin-top:4px;">⚠ Imprecise result</div>' : ''}
+      ${hasDiff ? '<div class="note red" style="margin-top:4px;">Imprecise result</div>' : ''}
     </div>
     <div class="slip-box new">
-      <h4>Fixed formula ✓</h4>
+      <h4>Fixed formula</h4>
       <div class="val">${fmtSol(minNew)}</div>
       <div class="note"><code>Math.round(slippage * 100) / 10000</code></div>
-      ${hasDiff ? `<div class="note" style="color:var(--green);margin-top:4px;">Δ = ${fmtLam(minNew > minOld ? minNew - minOld : minOld - minNew)}</div>` : '<div class="note" style="color:var(--dim);margin-top:4px;">No difference at this slippage value</div>'}
+      ${hasDiff ? `<div class="note green" style="margin-top:4px;">Delta = ${fmtLam(minNew > minOld ? minNew - minOld : minOld - minNew)}</div>` : '<div class="note dim" style="margin-top:4px;">No difference at this slippage value</div>'}
     </div>
   `;
 
   if (errBps > 0.001) {
     document.getElementById('slip-compare').insertAdjacentHTML('beforeend', `
-      <div style="grid-column:1/-1; font-size:11px; color:var(--orange); padding:8px; background:#1a0f00; border:1px solid #332200; border-radius:4px; margin-top:8px;">
-        ⚠ Formula precision error at slippage=${slippage}%: <strong>${fmtPct(errBps / 100)}</strong> drift.
+      <div class="slip-note">
+        Formula precision error at slippage=${slippage}%: <strong>${fmtPct(errBps / 100)}</strong> drift.
         Try slippage=0.3 to see a clear bug: <code>Math.floor(0.3*10)=2</code> (should be 3),
         yielding 0.2% effective slippage instead of 0.3%.
       </div>
@@ -762,35 +885,35 @@ function renderOverflow(ov, amountRaw, bc, amountWhole) {
 
   document.getElementById('overflow-display').innerHTML = `
     <div class="gauge">
-      <div class="gauge-label">u64 product utilization: amount × virtualSolReserves / 2⁶⁴</div>
+      <div class="gauge-label">u64 product utilization: amount x virtualSolReserves / 2^64</div>
       <div class="gauge-bar">
         <div class="gauge-fill ${cls}" style="width:${Math.min(pct, 100)}%"></div>
       </div>
       <div class="gauge-value">
         ${ov.overflows
-          ? `<span class="red">✗ OVERFLOW — product ${ov.product.toLocaleString()} > u64::MAX (${U64_MAX.toLocaleString()})</span>`
-          : `<span class="green">✓ Safe — ${pct.toFixed(1)}% of u64 range used</span>`
+          ? `<span class="red">Overflow: product ${ov.product.toLocaleString()} &gt; u64::MAX (${U64_MAX.toLocaleString()})</span>`
+          : `<span class="green">Safe: ${pct.toFixed(1)}% of u64 range used</span>`
         }
       </div>
     </div>
 
-    <table style="margin-top:12px;">
+    <div class="table-scroll"><table style="margin-top:12px;">
       <tr><td>Amount (raw)</td><td>${amountRaw.toLocaleString()} (${amountWhole} tokens)</td></tr>
       <tr><td>virtualSolReserves</td><td>${fmtSol(bc.virtualSolReserves)} (${bc.virtualSolReserves.toLocaleString()} lamports)</td></tr>
-      <tr><td>Product (amount × vSol)</td><td style="color:${ov.overflows ? 'var(--red)' : 'var(--green)'};">${ov.product.toLocaleString()}</td></tr>
+      <tr><td>Product (amount x vSol)</td><td class="${ov.overflows ? 'red' : 'green'}">${ov.product.toLocaleString()}</td></tr>
       <tr><td>u64::MAX</td><td>${U64_MAX.toLocaleString()}</td></tr>
-      <tr><td>Max safe vSol for this amount</td><td>${threshold > 0n ? fmtSol(threshold) + ' (' + threshold.toLocaleString() + ' lamports)' : '—'}</td></tr>
+      <tr><td>Max safe vSol for this amount</td><td>${threshold > 0n ? fmtSol(threshold) + ' (' + threshold.toLocaleString() + ' lamports)' : 'n/a'}</td></tr>
       <tr>
         <td>Risk at current vSol</td>
         <td>${ov.overflows
-          ? '<span class="tag red">OVERFLOW if pump.fun uses u64 (not u128)</span>'
-          : '<span class="tag green">SAFE in u64 range</span>'
+          ? '<span class="tag red">Overflow if pump.fun uses u64 (not u128)</span>'
+          : '<span class="tag green">Safe in u64 range</span>'
         }</td>
       </tr>
-    </table>
+    </table></div>
 
-    <p style="margin-top:12px; font-size:11px; color:var(--dim);">
-      Pump.fun's on-chain program almost certainly uses u128 for <code>amount × vSol</code>,
+    <p style="margin-top:12px; font-size:11px; color:var(--text-faint);">
+      Pump.fun's on-chain program almost certainly uses u128 for <code>amount x vSol</code>,
       so this overflow is unlikely to be the direct cause of error 6024. However, if any secondary
       calculation uses u64, it would fail for amounts beyond the threshold above.
     </p>

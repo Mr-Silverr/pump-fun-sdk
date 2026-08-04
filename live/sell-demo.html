@@ -377,6 +377,16 @@
   <a href="/">Docs</a>
 </footer>
 
+<script type="module">
+// The hand-rolled PDA derivation this page used could not tell an on-curve
+// hash from an off-curve one (its isOnEd25519Curve returned false always), so
+// it took the nonce-255 hash unconditionally and produced a wrong address for
+// every mint whose real bump is not 255. The SDK bundle is already vendored
+// here and derives PDAs correctly, so the page uses it.
+import { PublicKey, bondingCurvePda, GLOBAL_PDA } from "./vendor/pump-sdk.browser.mjs";
+window.__pumpSdk = { PublicKey, bondingCurvePda, GLOBAL_PDA };
+window.dispatchEvent(new Event("pump-sdk-ready"));
+</script>
 <script>
 // ════════════════════════════════════════════════════════════════
 // Constants
@@ -565,6 +575,14 @@ function decodeGlobal(data) {
 }
 
 // ════════════════════════════════════════════════════════════════
+// Resolves once the vendored SDK module has published its primitives.
+function sdkReady() {
+  if (window.__pumpSdk) return Promise.resolve(window.__pumpSdk);
+  return new Promise((resolve) => {
+    window.addEventListener("pump-sdk-ready", () => resolve(window.__pumpSdk), { once: true });
+  });
+}
+
 // Bonding curve math (mirrors bondingCurve.ts, using BigInt)
 // ════════════════════════════════════════════════════════════════
 function ceilDiv(a, b) {
@@ -677,19 +695,17 @@ async function getQuote() {
       ? document.getElementById('custom-rpc').value.trim()
       : rpcSel;
 
-    // Derive PDAs
-    const mintBytes = base58Decode(mintStr);
-    const [bcPda, globalPda] = await Promise.all([
-      derivePda([BC_SEED, mintBytes], PUMP_PROGRAM),
-      derivePda([GLOBAL_SEED], PUMP_PROGRAM),
-    ]);
+    // Derive PDAs with the SDK, which does a real off-curve check.
+    const sdk = await sdkReady();
+    const bcPda = sdk.bondingCurvePda(new sdk.PublicKey(mintStr)).toBase58();
+    const globalPdaAddr = sdk.GLOBAL_PDA.toBase58();
 
-    setStatus('loading', `Fetching accounts: BC=${short(bcPda)}, Global=${short(globalPda)}…`);
+    setStatus('loading', `Fetching accounts: BC=${short(bcPda)}, Global=${short(globalPdaAddr)}…`);
 
     // Fetch accounts in parallel
     const [bcData, globalData] = await Promise.all([
       getAccountData(bcPda),
-      getAccountData(globalPda),
+      getAccountData(globalPdaAddr),
     ]);
 
     if (!bcData) throw new Error(`Bonding curve account not found for mint ${short(mintStr)}. Token may not exist on pump.fun, or may have already migrated to AMM.`);

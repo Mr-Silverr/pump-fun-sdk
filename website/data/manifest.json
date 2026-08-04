@@ -79,6 +79,13 @@
       "minutes": 8
     },
     {
+      "file": "cli.md",
+      "title": "The pump CLI",
+      "summary": "Inspect, trade, and launch Pump tokens from your terminal. Ships with @nirholas/pump-sdk, needs no wallet for reads, and every command speaks --json.",
+      "words": 2298,
+      "minutes": 10
+    },
+    {
       "file": "defi-agents.md",
       "title": "DeFi Agents Catalog",
       "summary": "Comprehensive reference for all 43 production-ready AI agent definitions in the Pump SDK ecosystem.",
@@ -752,7 +759,7 @@
   ],
   "exampleTutorials": [],
   "stats": {
-    "docs": 41,
+    "docs": 42,
     "tutorials": 44,
     "examples": 15,
     "mcpTools": 67,

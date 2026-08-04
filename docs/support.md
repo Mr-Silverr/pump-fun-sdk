@@ -12,6 +12,7 @@ Before asking for help, check the docs — your answer might already be there:
 |----------|----------------|
 | [README](../README.md) | Quick start, installation, usage examples |
 | [Getting Started](./getting-started.md) | First-time setup walkthrough |
+| [The `pump` CLI](./cli.md) | Every command, flag, and JSON field of the CLI |
 | [Architecture](./architecture.md) | SDK design, lifecycle, program IDs |
 | [API Reference](./api-reference.md) | Every class, function, and type |
 | [Examples](./examples.md) | Practical code snippets |

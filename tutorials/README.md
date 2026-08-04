@@ -1,6 +1,6 @@
 # Pump SDK Tutorials
 
-> Hands-on tutorials for building on the Pump protocol with `@nirholas/pump-sdk`: 44 integration-scale tutorials here, plus one focused tutorial for each of the 50 runnable examples in [`examples/`](examples/).
+> Hands-on tutorials for building on the Pump protocol with `@nirholas/pump-sdk`: 45 integration-scale tutorials here, plus one focused tutorial for each of the 50 runnable examples in [`examples/`](examples/).
 
 Looking for the example walkthroughs? Each runnable example in the repo's top-level [`examples/`](../examples/) directory has a matching tutorial in [`examples/`](examples/) here (same number, same name), covering one SDK capability each. The numbered tutorials below are broader: full applications, bots, dashboards, and integrations.
 
@@ -81,6 +81,7 @@ npm install @nirholas/pump-sdk @solana/web3.js @coral-xyz/anchor bn.js
 | Create plugin API handlers | [Tutorial 41](./41-plugin-gateway-api-handlers.md) |
 | Define custom AI agents | [Tutorial 42](./42-custom-defi-agents-i18n.md) |
 | Build interactive chat UIs | [Tutorial 43](./43-standalone-plugin-artifacts.md) |
+| Work from the terminal instead of code | [Tutorial 45](./45-cli-quickstart.md) |
 
 ## Tutorials
 
@@ -211,6 +212,8 @@ npm install @nirholas/pump-sdk @solana/web3.js @coral-xyz/anchor bn.js
 | 41 | [Plugin Gateway API Handlers](./41-plugin-gateway-api-handlers.md) | 17 serverless handlers, edge functions, Plugin SDK, schema validation, deployment | Advanced |
 | 42 | [Custom DeFi Agents & i18n](./42-custom-defi-agents-i18n.md) | Agent JSON schema, 18 languages, manifest registry, OpenAI/Claude integration | Beginner |
 | 43 | [Standalone Plugin Artifacts](./43-standalone-plugin-artifacts.md) | Interactive iframe UIs, host-plugin messaging, embedded dashboards, trading forms | Advanced |
+| 44 | [Complete Swap Build](./44-complete-swap-build.md) | End-to-end swap construction across the bonding curve and PumpAMM | Advanced |
+| 45 | [The `pump` CLI in Ten Minutes](./45-cli-quickstart.md) | Reading state, quoting, trading, launching with a vanity mint, and scripting with `--json` | Beginner |
 
 ## Prerequisites
 

@@ -26,6 +26,7 @@ The SDK never sends transactions itself. It returns `TransactionInstruction[]` t
 ## 📋 Table of Contents
 
 - [Quick Start](#-quick-start)
+- [The `pump` CLI](#-the-pump-cli)
 - [50 Runnable Examples](#-50-runnable-examples)
 - [Usage Examples](#-usage-examples)
   - [Create a Token](#create-a-token)
@@ -133,6 +134,64 @@ console.log("Market Cap:", summary.marketCap.toString(), "lamports");
 console.log("Graduated:", summary.isGraduated);
 console.log("Progress:", summary.progressBps / 100, "%");
 ```
+
+---
+
+## 💻 The `pump` CLI
+
+The SDK ships with a binary. No wallet, no API key, and no configuration are needed for anything that reads the chain.
+
+```bash
+npm install -g @nirholas/pump-sdk
+
+pump curve <mint>                  # price, market cap, graduation meter, fee tier
+pump quote buy <mint> --sol 1      # what 1 SOL really buys, after fees and impact
+pump watch <mint>                  # live dashboard
+pump doctor                        # check your RPC, wallet, and balance in one shot
+```
+
+Or without installing anything: `npx -p @nirholas/pump-sdk pump curve <mint>`.
+
+```
+FeMbDoX7R1Psc4GEcvJdsbNbZA3bfztcyDCatJVJpump live on the bonding curve
+────────────────────────────────────────────────────────────
+
+  Market cap   93.705347 SOL
+  Buy price    0.000000096 SOL per token
+  Sell price   0.000000091 SOL per token
+  Trading fee  1.25% 0.95% protocol + 0.3% creator
+
+  Graduation  ███████████████░░░░░░░░░ 61.39%
+
+  SOL to graduate   60.684661 SOL
+  SOL in curve      24.921536 SOL
+  Tokens left       306.21M of 793.1M
+```
+
+| Command | What it does |
+|---|---|
+| `pump curve` / `price` / `pool` / `global` | Read curve, price, AMM pool, and protocol state |
+| `pump quote buy\|sell` | Price a trade offline: output, fees, effective price, impact |
+| `pump buy` / `sell` | Trade, auto-routing between the bonding curve and PumpAMM |
+| `pump create` | Launch a token, optionally with an atomic first buy |
+| `pump vanity` | Grind a `...pump` mint address |
+| `pump fees` / `incentives` | Check and claim creator fees and volume rewards |
+| `pump watch` | Live-refreshing dashboard, or a JSON price feed |
+| `pump events` | Decode the Pump events in any transaction |
+| `pump pda` | Derive any Pump program address |
+| `pump doctor` / `config` | Diagnose and configure |
+
+**Safe by construction.** Reads never load a keypair. Every trade is simulated before anything is sent, prints exactly what is about to happen, and waits for an explicit yes. `--simulate` sends nothing; `--yes` is the scripting escape hatch; a piped command with neither refuses rather than spending funds unattended.
+
+**Scriptable.** Every command takes `--json` and writes nothing else to stdout in that mode:
+
+```bash
+pump curve <mint> --json | jq .marketCapSol
+pump watch <mint> --json --interval 10 | jq -r '"\(.at)  \(.marketCapSol) SOL"'
+pump events <sig> --json | jq '.events[] | select(.type=="trade")'
+```
+
+Full reference: **[docs/cli.md](docs/cli.md)**. Ten-minute walkthrough: **[tutorial 45](tutorials/45-cli-quickstart.md)**.
 
 ---
 

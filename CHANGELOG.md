@@ -5,6 +5,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.36.0] - 2026-08-04
+
+Ships a command-line interface, and fixes three bugs it surfaced along the way.
+
+### Added
+
+- **The `pump` CLI.** `npm install -g @nirholas/pump-sdk` now puts a `pump` binary on your PATH, built on the same instruction builders the SDK exports. Full reference: [docs/cli.md](docs/cli.md). Walkthrough: [tutorial 45](tutorials/45-cli-quickstart.md).
+  - **Read** (no wallet, no configuration): `curve`, `price`, `pool`, `global`, `quote buy|sell`, `watch`, `events`, `pda`.
+  - **Trade**: `buy`, `sell`, `create`, routing automatically between the bonding curve and PumpAMM.
+  - **Earn**: `fees`, `fees claim`, `incentives`, `incentives claim`, each covering both programs in one transaction.
+  - **Operate**: `vanity`, `doctor`, `config`.
+  - Every command supports `--json` and writes nothing else to stdout in that mode, so pipes into `jq` are always safe.
+  - Every write path simulates first, prints the exact terms, and requires an explicit confirmation. `--simulate` sends nothing, `--yes` skips the prompt for scripts, and a non-interactive invocation with neither refuses rather than spending funds unattended.
+- **`formatScaledPrice`, `normalizeForJson`** and the rest of the CLI rendering layer, exported from `@nirholas/pump-sdk/cli` for anyone building on top of it.
+
+### Fixed
+
+- **Reading a graduated token no longer throws `Division by zero`.** Migration zeroes every reserve field on the bonding curve account, so `getTokenPrice`, `getBondingCurveSummary`, and by extension `OnlinePumpSdk.fetchTokenPrice` and `fetchBondingCurveSummary` failed for the entire population of migrated tokens. They now report a graduated curve (zero prices, `isGraduated: true`) and callers can branch on that. `pump curve` goes further and prices those tokens from their AMM pool.
+- **`computeFeesBps` no longer throws on a zeroed curve.** A migrated token's market cap is undefined rather than invalid, so it now selects the base fee tier instead of dividing by zero. This affected every fee lookup for a migrated token.
+- **Price impact results are no longer misread as SOL.** `PriceImpactResult.priceBefore` and `priceAfter` are lamports per raw token unit scaled by 1e9, which is 1000x a SOL-per-token figure. The new `formatScaledPrice` helper converts them correctly, and the CLI's quote output uses it.
+
+### Changed
+
+- `commander`, `picocolors`, and `bs58` moved into runtime dependencies (the CLI needs them). `bs58` was previously a dev dependency.
+
 ## [1.32.0] - 2026-04-23
 
 Prepares the SDK for the **2026-04-28, 16:00 UTC** breaking on-chain program upgrade to the Pump bonding curve and PumpSwap AMM programs. See [docs/pump-public-docs/BREAKING_FEE_RECIPIENT.md](docs/pump-public-docs/BREAKING_FEE_RECIPIENT.md) for the protocol spec and [docs/MIGRATION.md](docs/MIGRATION.md#upgrading-to-v1320-latest) for call-site guidance.

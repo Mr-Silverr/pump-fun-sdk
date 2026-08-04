@@ -112,7 +112,7 @@ At any realistic reserve level the u128 bound is astronomically larger than `u64
 
 **No ordinary position comes close.** This bound was previously derived from `u64::MAX` applied to the product rather than the amount, and that version rejected the great majority of real sells: sampling live mainnet trade events, 344 of 417 landed sells (83 percent) exceeded the old limit, some by more than two thousand times. Every one of those was a transaction the chain would have accepted. If you carry the old model in your head, you will chunk exits for no reason and pay extra fees for the privilege.
 
-Note that the example's `main()` prints a shorthand version of this rationale that predates the correction. The formula above and the JSDoc on `computeSellAllPlan` are the accurate statement, and they match [`../../docs/errors.md`](../../docs/errors.md) and [`../../docs/TROUBLESHOOTING.md`](../../docs/TROUBLESHOOTING.md).
+The example's `main()` prints the same rationale, and it matches [`../../docs/errors.md`](../../docs/errors.md) and [`../../docs/TROUBLESHOOTING.md`](../../docs/TROUBLESHOOTING.md).
 
 ### Step 4: The failure this bound does not explain
 
@@ -230,10 +230,10 @@ Max safe single sell         18,446,744,073,709.55 tokens
 Needs chunking               false
 Balance (large holder)       55,340,232,221,128.65 tokens
 Needs chunking               true
-Why the limit exists: the on-chain sell computes
-amount * virtualSolReserves as a u64. Past u64::MAX it aborts with
-AnchorError 6024, so the SDK refuses those sells up front and
-sellChunked splits them across transactions instead.
+Why the limit exists: a token amount is a u64 on-chain, so a
+balance wider than that cannot be carried by one instruction and
+sellChunked splits it across transactions. The sell multiply
+itself is widened to u128, so ordinary positions never hit it.
 
 sellAllInstructions (the one-call online flow)
 ----------------------------------------------
@@ -253,7 +253,7 @@ Reading it:
 
 **The large-holder row** is `maxSafe * 3`, constructed to make the flag flip. Treat it as a unit test in printed form, not as a position anyone holds.
 
-**The paragraph starting "Why the limit exists"** is printed by the example's `main()` and describes the pre-correction model. The accurate statement is in step 3 above and in [`../../docs/errors.md`](../../docs/errors.md): the on-chain multiply is widened to u128, and the binding limit for realistic reserves is the token amount's own u64 field width.
+**The paragraph starting "Why the limit exists"** restates step 3: the on-chain multiply is widened to u128, so the binding limit at realistic reserves is the token amount's own u64 field width.
 
 **The empty-array outcome** is what an ephemeral wallet always produces. Set `PUMP_WALLET` to a wallet holding the discovered mint and you get a sell followed by a `closeAccount`.
 

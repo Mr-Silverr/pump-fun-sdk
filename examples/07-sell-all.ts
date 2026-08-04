@@ -115,10 +115,10 @@ export async function main(): Promise<void> {
   });
   row("Balance (large holder)", formatTokens(wholeBag));
   row("Needs chunking", big.needsChunking);
-  console.log("Why the limit exists: the on-chain sell computes");
-  console.log("amount * virtualSolReserves as a u64. Past u64::MAX it aborts with");
-  console.log("AnchorError 6024, so the SDK refuses those sells up front and");
-  console.log("sellChunked splits them across transactions instead.");
+  console.log("Why the limit exists: a token amount is a u64 on-chain, so a");
+  console.log("balance wider than that cannot be carried by one instruction and");
+  console.log("sellChunked splits it across transactions. The sell multiply");
+  console.log("itself is widened to u128, so ordinary positions never hit it.");
 
   heading("sellAllInstructions (the one-call online flow)");
   try {

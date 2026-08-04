@@ -1,6 +1,6 @@
 {
   "name": "@nirholas/pump-sdk",
-  "version": "1.35.0",
+  "version": "1.35.1",
   "description": "TypeScript SDK for the Pump protocol on Solana: token creation, bonding curves, AMM pools, fee sharing, and volume rewards",
   "keywords": [
     "solana",
@@ -74,7 +74,7 @@
     "@pump-fun/pump-swap-sdk": "^1.19.0",
     "@solana/spl-token": "^0.4.15",
     "@solana/web3.js": "^1.98.4",
-    "bn.js": "^5.2.2",
+    "bn.js": "^5.2.3",
     "bs58": "^6.0.0",
     "commander": "^12.1.0",
     "picocolors": "^1.1.1"
@@ -142,4 +142,3 @@
     "pump": "./dist/cli/index.js"
   }
 }
-

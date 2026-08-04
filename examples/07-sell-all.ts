@@ -5,8 +5,8 @@
  *
  * The full exit: OnlinePumpSdk.sellAllInstructions sells the wallet's
  * entire balance and closes the token account to reclaim its rent. This
- * example also explains maxSafeSellAmount, the u64 overflow bound that
- * decides when a full exit needs to be split across transactions.
+ * example also explains maxSafeSellAmount, the bound that decides when a
+ * balance is too wide for one sell instruction to carry.
  *
  * Run: npm run example 07
  */

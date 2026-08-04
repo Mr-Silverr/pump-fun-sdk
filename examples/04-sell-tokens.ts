@@ -5,8 +5,8 @@
  *
  * The canonical bonding curve sell flow: quote the SOL a token amount
  * returns after fees, then build slippage-protected sell instructions
- * from explicit state. Includes the u64 overflow pre-flight that refuses
- * a sell the on-chain program would abort anyway.
+ * from explicit state. Includes the pre-flight check that refuses an
+ * amount the on-chain token field cannot represent.
  *
  * Run: npm run example 04
  */

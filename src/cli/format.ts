@@ -161,27 +161,39 @@ export function info(message: string): string {
 /**
  * Serialize for `--json`.
  *
- * BN and PublicKey both stringify to something useless by default (`{negative:
- * 0, words: [...]}` and `{_bn: ...}`), which is exactly the kind of output that
- * makes a CLI unusable from a script. Convert them to decimal and base58
- * strings so `jq` sees real values.
+ * BN and PublicKey both serialize to something useless by default, which is
+ * exactly the kind of output that makes a CLI unusable from a script. Worse, a
+ * `JSON.stringify` replacer cannot fix it: `BN.prototype.toJSON` runs first and
+ * hands the replacer a zero-padded *hexadecimal* string, so `new BN(0)` arrives
+ * as `"00"` and a market cap comes out in base 16. The values must therefore be
+ * converted by walking the structure before stringify ever sees it.
  */
 export function toJson(value: unknown): string {
-  return JSON.stringify(value, jsonReplacer, 2);
+  return JSON.stringify(normalizeForJson(value), null, 2);
 }
 
-function jsonReplacer(_key: string, value: unknown): unknown {
-  if (BN.isBN(value)) return value.toString();
+/** Recursively replace BN, PublicKey, bigint, and Buffer with plain values. */
+export function normalizeForJson(value: unknown): unknown {
+  if (value === null || value === undefined) return null;
+  if (BN.isBN(value)) return value.toString(10);
   if (typeof value === "bigint") return value.toString();
-  if (
-    typeof value === "object" &&
-    value !== null &&
-    "toBase58" in value &&
-    typeof (value as { toBase58: unknown }).toBase58 === "function"
-  ) {
-    return (value as { toBase58: () => string }).toBase58();
-  }
   if (Buffer.isBuffer(value)) return value.toString("base64");
+  if (value instanceof Date) return value.toISOString();
+  if (Array.isArray(value)) return value.map(normalizeForJson);
+  if (typeof value === "object") {
+    if (
+      "toBase58" in value &&
+      typeof (value as { toBase58: unknown }).toBase58 === "function"
+    ) {
+      return (value as { toBase58: () => string }).toBase58();
+    }
+    return Object.fromEntries(
+      Object.entries(value as Record<string, unknown>).map(([key, inner]) => [
+        key,
+        normalizeForJson(inner),
+      ]),
+    );
+  }
   return value;
 }
 

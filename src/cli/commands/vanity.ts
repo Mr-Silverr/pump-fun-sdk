@@ -106,7 +106,9 @@ async function runVanity(
       maxAttempts: options.maxAttempts,
       signal: controller.signal,
       onProgress: ({ attempts, attemptsPerSecond }) => {
-        if (ctx.json) return;
+        // Carriage-return progress only makes sense on a terminal. Piped to a
+        // file or a log it just concatenates every update into one long line.
+        if (ctx.json || process.stderr.isTTY !== true) return;
         const percent = Math.min(99, (attempts / expected) * 100);
         process.stderr.write(
           `\r  ${c.dim(`${attempts.toLocaleString()} attempts · ${Math.round(attemptsPerSecond).toLocaleString()}/s · ~${percent.toFixed(0)}% of expected`)}   `,

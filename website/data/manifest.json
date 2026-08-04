@@ -191,6 +191,13 @@
       "minutes": 6
     },
     {
+      "file": "npm-portfolio-audit.md",
+      "title": "npm Portfolio Audit",
+      "summary": "Every package published under the nirholas npm account, ranked by monthly",
+      "words": 897,
+      "minutes": 4
+    },
+    {
       "file": "performance.md",
       "title": "Performance & Benchmarks",
       "summary": "Performance characteristics, benchmarks, and optimization tips for the SDK and every companion component.",
@@ -745,7 +752,7 @@
   ],
   "exampleTutorials": [],
   "stats": {
-    "docs": 40,
+    "docs": 41,
     "tutorials": 44,
     "examples": 15,
     "mcpTools": 67,

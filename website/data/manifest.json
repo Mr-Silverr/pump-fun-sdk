@@ -685,7 +685,7 @@
       "number": 4,
       "title": "Sell Tokens",
       "category": "Token Lifecycle",
-      "summary": "The canonical bonding curve sell flow: quote the SOL a token amount returns after fees, then build slippage-protected sell instructions from explicit state. Includes the u64 overflow pre-flight that refuses a sell the on"
+      "summary": "The canonical bonding curve sell flow: quote the SOL a token amount returns after fees, then build slippage-protected sell instructions from explicit state. Includes the pre-flight check that refuses an amount the on-cha"
     },
     {
       "file": "05-buy-by-sol-amount.ts",
@@ -706,7 +706,7 @@
       "number": 7,
       "title": "Sell All",
       "category": "Token Lifecycle",
-      "summary": "The full exit: OnlinePumpSdk.sellAllInstructions sells the wallet's entire balance and closes the token account to reclaim its rent. This example also explains maxSafeSellAmount, the u64 overflow bound that decides when "
+      "summary": "The full exit: OnlinePumpSdk.sellAllInstructions sells the wallet's entire balance and closes the token account to reclaim its rent. This example also explains maxSafeSellAmount, the bound that decides when a balance is "
     },
     {
       "file": "08-sell-to-target-sol.ts",
@@ -721,6 +721,13 @@
       "title": "Mayhem Mode",
       "category": "Token Lifecycle",
       "summary": "Builds the same launch twice with createV2Instruction, once with mayhem mode off and once with it on, then diffs the two instructions byte for byte. Shows the four Mayhem program accounts every createv2 carries and exact"
+    },
+    {
+      "file": "10-cashback-token.ts",
+      "number": 10,
+      "title": "Cashback Tokens",
+      "category": "Token Lifecycle",
+      "summary": "Launches a token with cashback enabled, derives the two UserVolumeAccumulator PDAs that hold a trader's rebate (one per program), and decodes a ClaimCashbackEvent. Cashback redirects the creator fee back to the traders, "
     },
     {
       "file": "11-buy-quote-offline.ts",
@@ -748,7 +755,7 @@
       "number": 14,
       "title": "Sell Enough Tokens to Extract N SOL",
       "category": "Curve Math & Fees",
-      "summary": "Answers the exit-planning question \"how many tokens must I sell to take home N lamports after fees?\" using the SDK's binary search over the sell quote, offline. Also shows the hard ceiling every plan runs into: one sell "
+      "summary": "Answers the exit-planning question \"how many tokens must I sell to take home N lamports after fees?\" using the SDK's binary search over the sell quote, offline. Also shows the hard ceiling every plan runs into: a single "
     },
     {
       "file": "15-max-safe-sell.ts",
@@ -800,6 +807,34 @@
       "summary": "Reads the live GlobalVolumeAccumulator and a user's UserVolumeAccumulator, then reconstructs the day-window arithmetic behind token incentives: which day index the clock is in, how much supply that day carries, and why a"
     },
     {
+      "file": "29-sharing-config.ts",
+      "number": 29,
+      "title": "Fee Sharing Configs",
+      "category": "Accounts & Events",
+      "summary": "Scans live bonding curves for one whose creator address IS a fee sharing config PDA, decodes that config, and reports whether its split can still be edited. Also mirrors the SDK's shareholder rules exactly, including the"
+    },
+    {
+      "file": "30-event-catalog.ts",
+      "number": 30,
+      "title": "The Event Catalog",
+      "category": "Accounts & Events",
+      "summary": "A single table mapping every event decoder on PumpSdk to the IDL event it decodes, its program, and its typed union tag, plus decodeAny(): hand it a raw log buffer and it routes on the 8-byte discriminator instead of on "
+    },
+    {
+      "file": "31-fetch-global-state.ts",
+      "number": 31,
+      "title": "Fetch Global State",
+      "category": "Live Data",
+      "summary": "Reads the two accounts that price every Pump launch: the program's Global account and the tiered FeeConfig. Then it diffs the live launch parameters against the documented mainnet defaults, so a changed reserve or fee ra"
+    },
+    {
+      "file": "32-curve-summary.ts",
+      "number": 32,
+      "title": "Bonding Curve Summary",
+      "category": "Live Data",
+      "summary": "Pulls one live coin's full bonding curve summary (market cap, graduation progress, prices, fee tier) with a single SDK call, then derives what a trader actually asks: how far to graduation in SOL, what a round trip costs"
+    },
+    {
       "file": "33-graduation-progress.ts",
       "number": 33,
       "title": "Graduation Progress",
@@ -833,6 +868,48 @@
       "title": "AMM Buy",
       "category": "AMM & Advanced",
       "summary": "Quotes a buy on a graduated token's PumpAMM pool with ammQuoteBuy, then builds the swap instructions with ammBuyInstructions without sending anything. Shows how to read a quote: effective price, fee load, and how far the"
+    },
+    {
+      "file": "42-amm-sell.ts",
+      "number": 42,
+      "title": "AMM Sell",
+      "category": "AMM & Advanced",
+      "summary": "Quotes a sell on a graduated token's PumpAMM pool with ammQuoteSell, then builds the swap instructions with ammSellInstructions without sending anything. Sizes the position from a buy quote first, so the round-trip cost "
+    },
+    {
+      "file": "43-amm-deposit.ts",
+      "number": 43,
+      "title": "AMM Deposit",
+      "category": "AMM & Advanced",
+      "summary": "Quotes a two-sided liquidity deposit into a graduated token's PumpAMM pool from either side (quoteAmmDepositBaseIn / quoteAmmDepositQuoteIn), shows the autocomplete helpers a deposit form uses to fill the other field, an"
+    },
+    {
+      "file": "44-amm-withdraw.ts",
+      "number": 44,
+      "title": "AMM Withdraw",
+      "category": "AMM & Advanced",
+      "summary": "Reads an LP position with getLpTokenBalance, quotes burning it back into base and SOL with quoteAmmWithdraw and ammWithdrawAutocomplete, and builds the withdraw instructions without sending them. Checks the quote against"
+    },
+    {
+      "file": "45-canonical-pool.ts",
+      "number": 45,
+      "title": "The Canonical Pool",
+      "category": "AMM & Advanced",
+      "summary": "Derives a graduated token's canonical PumpAMM pool address from its mint alone, reads the pool with fetchPool, prices it from its reserves, and compares that price against what a bonding curve holding the same reserves w"
+    },
+    {
+      "file": "46-fee-sharing-create.ts",
+      "number": 46,
+      "title": "Fee Sharing, Creating the Split",
+      "category": "AMM & Advanced",
+      "summary": "Creates a fee sharing config for a token and sets a multi-way creator fee split with updateFeeShares, including a shareholder identified by a GitHub handle rather than a wallet. Every split the SDK would reject is built "
+    },
+    {
+      "file": "47-fee-sharing-distribute.ts",
+      "number": 47,
+      "title": "Fee Sharing, Paying It Out",
+      "category": "AMM & Advanced",
+      "summary": "Finds a live token that already uses a fee sharing config, simulates getMinimumDistributableFee to learn whether its vault has cleared the payout floor, and builds the distribute instructions. Works out each shareholder'"
     }
   ],
   "exampleTutorials": [
@@ -875,6 +952,30 @@
       "words": 1586,
       "minutes": 7,
       "number": 5
+    },
+    {
+      "file": "06-sell-by-percentage.md",
+      "title": "Example 06: Sell by Percentage",
+      "summary": "Turn \"sell half\" into an exact token amount with basis-point integer math, then exercise the one-call online flow.",
+      "words": 1583,
+      "minutes": 7,
+      "number": 6
+    },
+    {
+      "file": "07-sell-all.md",
+      "title": "Example 07: Sell All",
+      "summary": "Exit an entire position, close the token account to reclaim its rent, and learn what the single-transaction sell bound actually constrains.",
+      "words": 1959,
+      "minutes": 9,
+      "number": 7
+    },
+    {
+      "file": "08-sell-to-target-sol.md",
+      "title": "Example 08: Sell to a Target SOL Amount",
+      "summary": "Binary-search the bonding curve for the minimum tokens that raise a target amount of SOL, and see how sellChunked handles exits one transaction cannot carry.",
+      "words": 1968,
+      "minutes": 9,
+      "number": 8
     },
     {
       "file": "11-buy-quote-offline.md",
@@ -936,7 +1037,7 @@
   "stats": {
     "docs": 42,
     "tutorials": 45,
-    "examples": 25,
+    "examples": 36,
     "mcpTools": 67,
     "mcpResources": 4,
     "mcpPrompts": 5,

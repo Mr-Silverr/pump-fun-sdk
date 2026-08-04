@@ -1019,7 +1019,7 @@
 
 <script>
 // ═══════════════════════════════════════════════════════════════════════
-//  PumpFun Bot Dashboard — Client Application
+//  PumpFun Bot Dashboard, client application
 // ═══════════════════════════════════════════════════════════════════════
 
 // ── PumpFun Live Data Endpoints ──────────────────────────────────────
@@ -1245,10 +1245,10 @@ function connectPumpPortal() {
     pfReconnectDelay = 1000;
     pfConnectAttempts = 0;
     wsDot.className = 'dot connected';
-    wsLabel.textContent = 'WS: Live — ' + ep.label;
+    wsLabel.textContent = 'WS: Live, ' + ep.label;
     document.getElementById('stat-bot-status').textContent = 'Live';
     document.getElementById('stat-bot-status').className = 'value green';
-    toast('Connected to ' + ep.label + ' — streaming real PumpFun data', 'success');
+    toast('Connected to ' + ep.label + ', streaming real PumpFun data', 'success');
 
     if (pfProtocol === 'pumpportal') {
       // Subscribe to all new tokens + all trades
@@ -1522,22 +1522,22 @@ function addFeedItem(feedId, item) {
     detail = d.user ? shortAddr(d.user) : '';
     if (d.marketCapSol) detail += ` · MC: ${Number(d.marketCapSol).toFixed(2)} SOL`;
   } else if (item.type === 'whale' || item.type === 'whale_trade') {
-    title = `🐋 ${(d.solAmount || 0).toFixed(2)} SOL — ${d.tokenSymbol || '?'}`;
+    title = `${(d.solAmount || 0).toFixed(2)} SOL whale trade in ${d.tokenSymbol || '?'}`;
     detail = d.user ? shortAddr(d.user) : '';
     if (d.marketCapSol) detail += ` · MC: ${Number(d.marketCapSol).toFixed(2)} SOL`;
   } else if (item.type === 'graduation' || item.type === 'complete' || item.type === 'migrate') {
-    title = `🎓 ${d.tokenSymbol || d.name || '?'} graduated to AMM`;
+    title = `${d.tokenSymbol || d.name || '?'} graduated to AMM`;
     detail = d.mint ? shortAddr(d.mint) : '';
   } else if (item.type === 'cto') {
-    title = `👑 Creator sold ${d.tokenSymbol || '?'} — ${(d.solAmount || 0).toFixed(4)} SOL`;
+    title = `Creator sold ${d.tokenSymbol || '?'} for ${(d.solAmount || 0).toFixed(4)} SOL`;
     detail = d.user ? 'Creator: ' + shortAddr(d.user) : '';
     if (d.mint) detail += ' · ' + shortAddr(d.mint);
   } else if (item.type === 'claim' || item.type === 'fee_claim') {
-    title = `💰 ${(d.amountSol || 0).toFixed(4)} SOL claimed`;
-    detail = `${d.claimType || 'fee'} — ${d.claimerWallet ? shortAddr(d.claimerWallet) : ''}`;
+    title = `${(d.amountSol || 0).toFixed(4)} SOL claimed`;
+    detail = `${d.claimType || 'fee'} · ${d.claimerWallet ? shortAddr(d.claimerWallet) : ''}`;
   } else if (item.type === 'distribution' || item.type === 'fee_distribution') {
-    title = `💎 ${(d.amountSol || 0).toFixed(4)} SOL distributed`;
-    detail = `${d.claimType || 'distribution'} — ${d.claimerWallet ? shortAddr(d.claimerWallet) : ''}`;
+    title = `${(d.amountSol || 0).toFixed(4)} SOL distributed`;
+    detail = `${d.claimType || 'distribution'} · ${d.claimerWallet ? shortAddr(d.claimerWallet) : ''}`;
   } else {
     title = JSON.stringify(d).slice(0, 80);
   }
@@ -1586,7 +1586,12 @@ function applyFeedFilter() {
 
 function clearFeed(feedId) {
   const feed = document.getElementById(feedId);
-  if (feed) feed.innerHTML = '<div class="empty"><div class="icon">📡</div>Cleared</div>';
+  if (!feed) return;
+  feed.innerHTML = `
+    <div class="empty">
+      <div class="empty-title">Feed cleared</div>
+      <div class="empty-detail">The live stream is still connected. New events appear here as they arrive.</div>
+    </div>`;
 }
 
 // ── Alerts ────────────────────────────────────────────────────────────
@@ -1597,32 +1602,32 @@ function checkAlerts(item) {
 
   if (type === 'graduation' || type === 'complete') {
     if (ac.graduation !== false) {
-      addAlertItem(item, '🎓 Token Graduated');
+      addAlertItem(item, 'Token graduated');
     }
   }
   if (type === 'whale' || type === 'whale_trade') {
     if (ac.whale !== false) {
-      addAlertItem(item, '🐋 Whale Trade Detected');
+      addAlertItem(item, 'Whale trade detected');
     }
   }
   if (type === 'claim' || type === 'fee_claim') {
     if (ac.fees) {
-      addAlertItem(item, '💰 Fee Claimed');
+      addAlertItem(item, 'Fee claimed');
     }
   }
   if (type === 'launch' || type === 'create') {
     if (ac.launch) {
-      addAlertItem(item, '🚀 New Token Launched');
+      addAlertItem(item, 'New token launched');
     }
   }
   if (type === 'cto') {
     if (ac.cto !== false) {
-      addAlertItem(item, '👑 Creator Sold — CTO Opportunity');
+      addAlertItem(item, 'Creator sold, CTO opportunity');
     }
   }
   if (type === 'distribution' || type === 'fee_distribution') {
     if (ac.distribution) {
-      addAlertItem(item, '💎 Fee Distribution');
+      addAlertItem(item, 'Fee distribution');
     }
   }
 }
@@ -1638,12 +1643,12 @@ function addAlertItem(item, label) {
   const timeStr = item.time.toLocaleTimeString('en-US', { hour12: false });
   const d = item.data;
   let detail = d.tokenSymbol || d.name || d.mint || '';
-  if (d.solAmount) detail += ` — ${d.solAmount.toFixed(4)} SOL`;
+  if (d.solAmount) detail += ` · ${d.solAmount.toFixed(4)} SOL`;
 
   div.innerHTML = `
     <div class="time">${timeStr}</div>
     <div class="body">
-      <div class="title" style="color:var(--yellow)">${escapeHtml(label)}</div>
+      <div class="title">${escapeHtml(label)}</div>
       <div class="detail">${escapeHtml(detail)}</div>
     </div>
   `;
@@ -1682,19 +1687,19 @@ async function refreshWatches() {
     const tbody = document.getElementById('watches-table');
 
     if (watches.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="6" class="empty">No watches configured. Click "Add Watch" to create one.</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="6" class="empty">No watches configured. Use "Add watch" above to track a wallet.</td></tr>';
       return;
     }
 
     tbody.innerHTML = watches.map(w => `
       <tr>
-        <td><a class="addr" href="https://solscan.io/account/${escapeHtml(w.wallet)}" target="_blank">${shortAddr(w.wallet)}</a></td>
-        <td>${escapeHtml(w.label || '—')}</td>
+        <td><a class="addr" href="https://solscan.io/account/${escapeHtml(w.wallet)}" target="_blank" rel="noopener">${shortAddr(w.wallet)}</a></td>
+        <td>${escapeHtml(w.label || 'none')}</td>
         <td>${w.tokenFilter ? w.tokenFilter.map(shortAddr).join(', ') : 'All'}</td>
-        <td>${w.webhookUrl ? '✅' : '—'}</td>
-        <td>${w.createdAt ? new Date(w.createdAt).toLocaleDateString() : '—'}</td>
+        <td>${w.webhookUrl ? 'yes' : 'no'}</td>
+        <td>${w.createdAt ? new Date(w.createdAt).toLocaleDateString() : 'unknown'}</td>
         <td>
-          <button class="btn btn-sm btn-danger" onclick="deleteWatch('${escapeHtml(w.id)}')">✕</button>
+          <button class="btn btn-sm btn-danger" onclick="deleteWatch('${escapeHtml(w.id)}')" aria-label="Delete watch">Delete</button>
         </td>
       </tr>
     `).join('');
@@ -1777,7 +1782,7 @@ async function refreshClaims() {
     const tbody = document.getElementById('claims-table');
 
     if (claims.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="6" class="empty">No claims found for this filter</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="6" class="empty">No claims match this filter. Clear the wallet or type filter and search again.</td></tr>';
       return;
     }
 
@@ -1787,11 +1792,11 @@ async function refreshClaims() {
       return `
         <tr>
           <td>${new Date(c.timestamp).toLocaleString()}</td>
-          <td><a class="addr" href="https://solscan.io/account/${escapeHtml(c.claimerWallet)}" target="_blank">${shortAddr(c.claimerWallet)}</a></td>
+          <td><a class="addr" href="https://solscan.io/account/${escapeHtml(c.claimerWallet)}" target="_blank" rel="noopener">${shortAddr(c.claimerWallet)}</a></td>
           <td><span class="tag ${typeClass}">${escapeHtml(typeLabel)}</span></td>
           <td>${escapeHtml(c.tokenSymbol || c.tokenName || shortAddr(c.tokenMint || ''))}</td>
-          <td style="color:var(--accent)">${(c.amountSol || 0).toFixed(4)} SOL</td>
-          <td><a class="addr" href="https://solscan.io/tx/${escapeHtml(c.txSignature)}" target="_blank">${shortAddr(c.txSignature || '')}</a></td>
+          <td style="color:var(--accent-buy)">${(c.amountSol || 0).toFixed(4)} SOL</td>
+          <td><a class="addr" href="https://solscan.io/tx/${escapeHtml(c.txSignature)}" target="_blank" rel="noopener">${shortAddr(c.txSignature || '')}</a></td>
         </tr>`;
     }).join('');
   } catch {
@@ -1827,6 +1832,7 @@ async function scanToken() {
   if (!mint) { toast('Enter a token mint address', 'error'); return; }
 
   document.getElementById('scanner-results').style.display = 'none';
+  document.getElementById('scanner-empty').style.display = '';
 
   try {
     // Call scan-token and check-honeypot APIs in parallel
@@ -1914,7 +1920,7 @@ async function scanToken() {
     } catch { /* skip */ }
 
     if (isPump) {
-      checks.pumpfun = { status: 'pass', detail: 'Bonding curve active — sells guaranteed by AMM' };
+      checks.pumpfun = { status: 'pass', detail: 'Bonding curve active, sells guaranteed by AMM' };
       score = Math.min(score + 10, 100);
     } else {
       checks.pumpfun = { status: 'info', detail: 'Not a PumpFun token' };
@@ -1928,25 +1934,26 @@ async function scanToken() {
     document.getElementById('scan-score').className = 'value ' + riskColor;
     document.getElementById('scan-level').textContent = riskLevel.toUpperCase();
     document.getElementById('scan-level').className = 'value ' + riskColor;
-    document.getElementById('scan-pump').textContent = isPump ? 'Yes ✅' : 'No';
+    document.getElementById('scan-pump').textContent = isPump ? 'Yes' : 'No';
     document.getElementById('scan-pump').className = 'value ' + (isPump ? 'green' : '');
-    document.getElementById('scan-honeypot').textContent = (info.freezeAuthority ? 'Risk ⚠️' : 'Safe') + (isPump ? ' (AMM backed)' : '');
+    document.getElementById('scan-honeypot').textContent = (info.freezeAuthority ? 'Risk' : 'Safe') + (isPump ? ' (AMM backed)' : '');
     document.getElementById('scan-honeypot').className = 'value ' + (info.freezeAuthority ? 'red' : 'green');
 
-    const statusIcons = { pass: '✅', warn: '⚠️', fail: '❌', info: 'ℹ️' };
+    const statusTagClass = { pass: 'tag-buy', warn: 'tag-launch', fail: 'tag-sell', info: 'tag-claim' };
     const tbody = document.getElementById('scan-checks');
     tbody.innerHTML = Object.entries(checks).map(([name, c]) => `
       <tr>
         <td>${escapeHtml(name)}</td>
-        <td>${statusIcons[c.status] || '?'} ${c.status.toUpperCase()}</td>
+        <td><span class="tag ${statusTagClass[c.status] || 'tag-claim'}">${c.status.toUpperCase()}</span></td>
         <td>${escapeHtml(c.detail)}</td>
       </tr>
     `).join('');
 
+    document.getElementById('scanner-empty').style.display = 'none';
     document.getElementById('scanner-results').style.display = '';
     toast('Scan complete: ' + riskLevel + ' risk', riskLevel === 'high' ? 'error' : 'success');
   } catch (e) {
-    toast('Scan failed: ' + (e.message || 'Network error'), 'error');
+    toast('Scan failed: ' + (e.message || 'Network error') + '. Check the RPC endpoint under Configuration, then scan again.', 'error');
   }
 }
 
@@ -1958,7 +1965,7 @@ async function getBuyQuote() {
   if (!mint) { toast('Enter token mint', 'error'); return; }
 
   const resultDiv = document.getElementById('quote-buy-result');
-  resultDiv.innerHTML = '<span style="color:#888">Calculating...</span>';
+  resultDiv.innerHTML = '<span style="color:var(--text-dim)">Calculating...</span>';
 
   try {
     // Fetch bonding curve state from RPC
@@ -1973,21 +1980,21 @@ async function getBuyQuote() {
     const bcData = await bcResp.json();
 
     if (!bcData.result || bcData.result.length === 0) {
-      resultDiv.innerHTML = '<span style="color:var(--red)">No bonding curve found — token may be graduated or invalid</span>';
+      resultDiv.innerHTML = '<span style="color:var(--accent-sell)">No bonding curve found. The token may have graduated to the AMM, or the mint is invalid.</span>';
       return;
     }
 
     const lamports = Math.floor(solAmount * 1e9);
     resultDiv.innerHTML = `
       <div style="padding:12px;background:var(--bg);border-radius:var(--radius);border:1px solid var(--border);">
-        <div style="color:#888;font-size:11px">Estimated Output</div>
-        <div style="color:var(--accent);font-size:18px;margin:4px 0">Bonding curve found ✅</div>
-        <div style="color:#888;font-size:11px">Input: ${solAmount} SOL (${lamports.toLocaleString()} lamports)</div>
-        <div style="color:#888;font-size:11px">Use the SDK for precise quote calculation</div>
+        <div style="color:var(--text-faint);font-size:11px">Estimated output</div>
+        <div style="color:var(--accent-buy);font-size:16px;margin:4px 0">Bonding curve found</div>
+        <div class="mono" style="color:var(--text-dim);font-size:11px">Input: ${solAmount} SOL (${lamports.toLocaleString()} lamports)</div>
+        <div style="color:var(--text-faint);font-size:11px">Use the SDK for precise quote calculation</div>
       </div>
     `;
   } catch (e) {
-    resultDiv.innerHTML = `<span style="color:var(--red)">Error: ${escapeHtml(e.message || 'RPC failed')}</span>`;
+    resultDiv.innerHTML = `<span style="color:var(--accent-sell)">Quote failed: ${escapeHtml(e.message || 'RPC request failed')}. Check the RPC endpoint under Configuration and try again.</span>`;
   }
 }
 
@@ -1997,7 +2004,7 @@ async function getSellQuote() {
   if (!mint) { toast('Enter token mint', 'error'); return; }
 
   const resultDiv = document.getElementById('quote-sell-result');
-  resultDiv.innerHTML = '<span style="color:#888">Calculating...</span>';
+  resultDiv.innerHTML = '<span style="color:var(--text-dim)">Calculating...</span>';
 
   try {
     const bcResp = await fetch(state.rpcUrl, {
@@ -2011,20 +2018,20 @@ async function getSellQuote() {
     const bcData = await bcResp.json();
 
     if (!bcData.result || bcData.result.length === 0) {
-      resultDiv.innerHTML = '<span style="color:var(--red)">No bonding curve found</span>';
+      resultDiv.innerHTML = '<span style="color:var(--accent-sell)">No bonding curve found. The token may have graduated to the AMM, or the mint is invalid.</span>';
       return;
     }
 
     resultDiv.innerHTML = `
       <div style="padding:12px;background:var(--bg);border-radius:var(--radius);border:1px solid var(--border);">
-        <div style="color:#888;font-size:11px">Estimated Output</div>
-        <div style="color:var(--accent);font-size:18px;margin:4px 0">Bonding curve found ✅</div>
-        <div style="color:#888;font-size:11px">Input: ${tokenAmount.toLocaleString()} tokens</div>
-        <div style="color:#888;font-size:11px">Use the SDK for precise quote calculation</div>
+        <div style="color:var(--text-faint);font-size:11px">Estimated output</div>
+        <div style="color:var(--accent-buy);font-size:16px;margin:4px 0">Bonding curve found</div>
+        <div class="mono" style="color:var(--text-dim);font-size:11px">Input: ${tokenAmount.toLocaleString()} tokens</div>
+        <div style="color:var(--text-faint);font-size:11px">Use the SDK for precise quote calculation</div>
       </div>
     `;
   } catch (e) {
-    resultDiv.innerHTML = `<span style="color:var(--red)">Error: ${escapeHtml(e.message || 'RPC failed')}</span>`;
+    resultDiv.innerHTML = `<span style="color:var(--accent-sell)">Quote failed: ${escapeHtml(e.message || 'RPC request failed')}. Check the RPC endpoint under Configuration and try again.</span>`;
   }
 }
 
@@ -2054,7 +2061,7 @@ function startVanity() {
   function generateBatch() {
     if (!vanityRunning) return;
 
-    // Generate random base58 addresses (simulation — real generation needs tweetnacl)
+    // Generate random base58 addresses (preview only; real generation needs a keypair library)
     for (let i = 0; i < 100; i++) {
       attempts++;
       let addr = '';
@@ -2071,10 +2078,10 @@ function startVanity() {
         document.getElementById('vanity-stop').style.display = 'none';
         document.getElementById('vanity-status').textContent = `Found after ${attempts.toLocaleString()} attempts`;
         document.getElementById('vanity-result').innerHTML = `
-          <div style="padding:12px;background:var(--bg);border-radius:var(--radius);border:1px solid var(--accent-dim);">
-            <div style="color:#888;font-size:11px">Generated Address (demo)</div>
-            <div style="color:var(--accent);font-size:14px;margin:4px 0;word-break:break-all">${addr}</div>
-            <div style="color:var(--red);font-size:10px;margin-top:8px">⚠ This is a demo. Use the Rust vanity generator for production keypairs.</div>
+          <div style="padding:12px;background:var(--bg);border-radius:var(--radius);border:1px solid var(--border-strong);">
+            <div style="color:var(--text-faint);font-size:11px">Generated address (preview)</div>
+            <div class="mono" style="color:var(--text);font-size:14px;margin:4px 0;word-break:break-all">${addr}</div>
+            <div style="color:var(--accent-sell);font-size:10px;margin-top:8px">Preview only, no keypair is derived. Use the Vanity page or the Rust generator for production keypairs.</div>
           </div>
         `;
         toast('Vanity address found!', 'success');

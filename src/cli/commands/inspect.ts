@@ -8,6 +8,7 @@
 
 import type { Command } from "commander";
 import BN from "bn.js";
+import type { PublicKey } from "@solana/web3.js";
 
 import { computeFeesBps } from "../../fees";
 import { bondingCurvePda, canonicalPumpPoolPda, creatorVaultPda } from "../../pda";
@@ -74,6 +75,11 @@ export async function runCurve(ctx: CliContext, mintArg: string): Promise<void> 
     ctx.sdk.fetchFeeConfig(),
   ]);
 
+  // Migration zeroes the curve's reserves, so a graduated token prices at zero
+  // here and only the AMM pool knows what it is worth. Showing "0 SOL" would be
+  // technically true and completely useless, so read the pool instead.
+  const live = curve.complete ? await fetchPoolPricing(ctx, mint) : undefined;
+
   const fees = computeFeesBps({
     global,
     feeConfig,
@@ -94,9 +100,18 @@ export async function runCurve(ctx: CliContext, mintArg: string): Promise<void> 
         mayhemMode: curve.isMayhemMode,
         cashbackCoin: curve.isCashbackCoin,
         marketCapLamports: summary.marketCap,
-        marketCapSol: lamportsToSol(summary.marketCap),
+        marketCapSol: live?.marketCapSol ?? lamportsToSol(summary.marketCap),
         buyPricePerTokenLamports: summary.buyPricePerToken,
         sellPricePerTokenLamports: summary.sellPricePerToken,
+        pool:
+          live === undefined
+            ? null
+            : {
+                address: live.pool,
+                liquiditySol: live.liquiditySol,
+                baseTokens: live.baseTokens,
+                pricePerTokenSol: live.pricePerTokenSol,
+              },
         graduation: {
           progressBps: progress.progressBps,
           isGraduated: progress.isGraduated,
@@ -126,35 +141,72 @@ export async function runCurve(ctx: CliContext, mintArg: string): Promise<void> 
     ? c.green("graduated to PumpAMM")
     : c.cyan("live on the bonding curve");
 
+  const priceRows =
+    live === undefined
+      ? [
+          { label: "Market cap", value: c.bold(formatSol(summary.marketCap)) },
+          { label: "Buy price", value: formatSol(summary.buyPricePerToken, 9), note: "per token" },
+          { label: "Sell price", value: formatSol(summary.sellPricePerToken, 9), note: "per token" },
+        ]
+      : [
+          {
+            label: "Market cap",
+            value: c.bold(`${formatCompact(live.marketCapSol)} SOL`),
+            note: "from the AMM pool",
+          },
+          {
+            label: "Price",
+            value: `${live.pricePerTokenSol.toPrecision(6)} SOL`,
+            note: "per token, pool spot",
+          },
+          {
+            label: "Pool liquidity",
+            value: `${formatCompact(live.liquiditySol)} SOL / ${formatCompact(live.baseTokens)} tokens`,
+          },
+        ];
+
   const lines = [
     heading(mintArg, status),
     "",
     keyValue([
-      { label: "Market cap", value: c.bold(formatSol(summary.marketCap)) },
-      { label: "Buy price", value: formatSol(summary.buyPricePerToken, 9), note: "per token" },
-      { label: "Sell price", value: formatSol(summary.sellPricePerToken, 9), note: "per token" },
+      ...priceRows,
       { label: "Trading fee", value: formatBps(totalFeeBps), note: `${formatBps(fees.protocolFeeBps.toNumber())} protocol + ${formatBps(fees.creatorFeeBps.toNumber())} creator` },
     ]),
     "",
-    `  ${c.dim("Graduation")}  ${meter(progress.progressBps / 10_000)}`,
-    "",
-    keyValue([
-      {
-        label: "SOL to graduate",
-        value: progress.isGraduated
-          ? c.green("already graduated")
-          : formatSol(progress.solNeededToGraduate),
-      },
-      { label: "SOL in curve", value: formatSol(progress.solAccumulated) },
-      {
-        label: "Tokens left",
-        value: formatTokens(progress.tokensRemaining),
-        note: `of ${formatTokens(progress.tokensTotal)}`,
-      },
-      { label: "Virtual reserves", value: `${formatSol(curve.virtualSolReserves)} / ${formatTokens(curve.virtualTokenReserves)} tokens` },
-      { label: "Real reserves", value: `${formatSol(curve.realSolReserves)} / ${formatTokens(curve.realTokenReserves)} tokens` },
-      { label: "Total supply", value: formatTokens(curve.tokenTotalSupply) },
-    ]),
+    ...(live === undefined
+      ? [
+          `  ${c.dim("Graduation")}  ${meter(progress.progressBps / 10_000)}`,
+          "",
+          keyValue([
+            {
+              label: "SOL to graduate",
+              value: formatSol(progress.solNeededToGraduate),
+            },
+            { label: "SOL in curve", value: formatSol(progress.solAccumulated) },
+            {
+              label: "Tokens left",
+              value: formatTokens(progress.tokensRemaining),
+              note: `of ${formatTokens(progress.tokensTotal)}`,
+            },
+            {
+              label: "Virtual reserves",
+              value: `${formatSol(curve.virtualSolReserves)} / ${formatTokens(curve.virtualTokenReserves)} tokens`,
+            },
+            {
+              label: "Real reserves",
+              value: `${formatSol(curve.realSolReserves)} / ${formatTokens(curve.realTokenReserves)} tokens`,
+            },
+            { label: "Total supply", value: formatTokens(curve.tokenTotalSupply) },
+          ]),
+        ]
+      : [
+          keyValue([
+            { label: "Total supply", value: formatTokens(curve.tokenTotalSupply) },
+            { label: "Pool", value: live.pool },
+          ]),
+          "",
+          `  ${c.dim(`The bonding curve is retired and reads zero on chain. Run \`pump pool ${mintArg}\` for the full pool state.`)}`,
+        ]),
     "",
     keyValue([
       { label: "Creator", value: curve.creator.toBase58() },
@@ -349,6 +401,58 @@ async function runGlobal(ctx: CliContext): Promise<void> {
       "",
     ].join("\n")}\n`,
   );
+}
+
+interface PoolPricing {
+  pool: string;
+  liquiditySol: number;
+  baseTokens: number;
+  pricePerTokenSol: number;
+  marketCapSol: number;
+}
+
+/**
+ * Spot-price a graduated token from its AMM pool reserves.
+ *
+ * Returns undefined rather than throwing when the pool is unreadable: a curve
+ * flagged complete whose pool has not been created yet is a real, transient
+ * state during migration, and it should degrade to the curve view rather than
+ * failing the whole command.
+ */
+async function fetchPoolPricing(
+  ctx: CliContext,
+  mint: PublicKey,
+): Promise<PoolPricing | undefined> {
+  try {
+    const pool = await ctx.sdk.fetchPool(mint);
+    const [baseBalance, quoteBalance] = await Promise.all([
+      ctx.connection.getTokenAccountBalance(pool.poolBaseTokenAccount),
+      ctx.connection.getTokenAccountBalance(pool.poolQuoteTokenAccount),
+    ]);
+
+    const baseTokens = Number(baseBalance.value.uiAmountString ?? 0);
+    const liquiditySol = Number(quoteBalance.value.uiAmountString ?? 0);
+    if (baseTokens <= 0) return undefined;
+
+    const pricePerTokenSol = liquiditySol / baseTokens;
+    // Pump mints a fixed one billion supply, so market cap is price * supply.
+    const supply = rawToTokens(await fetchMintSupply(ctx, mint));
+
+    return {
+      pool: canonicalPumpPoolPda(mint).toBase58(),
+      liquiditySol,
+      baseTokens,
+      pricePerTokenSol,
+      marketCapSol: pricePerTokenSol * supply,
+    };
+  } catch {
+    return undefined;
+  }
+}
+
+async function fetchMintSupply(ctx: CliContext, mint: PublicKey): Promise<BN> {
+  const supply = await ctx.connection.getTokenSupply(mint);
+  return new BN(supply.value.amount);
 }
 
 /** Turn the raw Anchor "account does not exist" into an actionable message. */

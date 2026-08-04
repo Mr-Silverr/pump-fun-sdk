@@ -779,6 +779,41 @@
       "summary": "Walks calculateFeeTier and computeFeesBps across market caps, rendering the tier table the fee program actually applies. Covers the two rules that surprise integrators: a below-first-threshold cap still selects the first"
     },
     {
+      "file": "18-fee-recipients.ts",
+      "number": 18,
+      "title": "Fee Recipients, Old and New",
+      "category": "Curve Math & Fees",
+      "summary": "Two different sets of fee accounts ride on every Pump trade: the long-standing protocol recipients that live in Global, and the 8 shared recipients the 2026-04-28 upgrade appended to every buy and sell. This example draw"
+    },
+    {
+      "file": "19-breaking-fee-validation.ts",
+      "number": 19,
+      "title": "Validating the Breaking Fee Accounts",
+      "category": "Curve Math & Fees",
+      "summary": "Builds real bonding curve and AMM instructions, strips the trailing accounts the 2026-04-28 upgrade requires to produce exactly what pre-upgrade code emits, then repairs them with patchBcInstruction and patchAmmInstructi"
+    },
+    {
+      "file": "20-price-impact-offline.ts",
+      "number": 20,
+      "title": "Price Impact in Basis Points",
+      "category": "Curve Math & Fees",
+      "summary": "Measures what a buy does to the price it pays, across sizes, entirely offline. Separates the two costs a trader actually pays: fees, which are a flat rate, and price impact, which grows with size. Every number is derived"
+    },
+    {
+      "file": "21-derive-pdas.ts",
+      "number": 21,
+      "title": "Every PDA the SDK Derives",
+      "category": "Accounts & Events",
+      "summary": "Derives every program address the SDK exports, grouped by the subsystem that owns it, with the seeds and owning program each one comes from. PDAs are pure functions of their seeds, so this whole example is offline and th"
+    },
+    {
+      "file": "22-decode-global.ts",
+      "number": 22,
+      "title": "Decoding the Global Account",
+      "category": "Accounts & Events",
+      "summary": "One account decides how every Pump token launches: reserves, supply, default fees, migration and mayhem switches, and the fee recipient pools. This example fetches it from mainnet, decodes it with decodeGlobal, and turns"
+    },
+    {
       "file": "25-decode-pool.ts",
       "number": 25,
       "title": "Decode an AMM Pool",
@@ -1086,7 +1121,7 @@
   "stats": {
     "docs": 42,
     "tutorials": 45,
-    "examples": 43,
+    "examples": 48,
     "mcpTools": 67,
     "mcpResources": 4,
     "mcpPrompts": 5,

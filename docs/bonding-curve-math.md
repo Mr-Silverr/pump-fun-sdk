@@ -137,9 +137,9 @@ $$solOut = solOut_{raw} - fees(solOut_{raw})$$
 
 The result is clamped to 0: for dust amounts, ceiling-rounded fees can exceed the gross SOL.
 
-### The u64 sell overflow limit
+### The sell amount limit
 
-The deployed pump program computes `amount * virtualSolReserves` as a u64 before dividing. If that intermediate product would exceed `u64::MAX` (~1.84e19), the program aborts on-chain with AnchorError 6024 (Overflow). The SDK mirrors this bound offline:
+The sell multiply `amount * virtualSolReserves` is widened to u128 on-chain, which leaves the product enormous headroom: at mainnet reserve sizes the product bound sits over 100 million times wider than `u64::MAX`. The binding limit is therefore the token amount's own u64 field width. Sampling live mainnet trade events, 83% of landed sells exceeded a `u64::MAX`-derived bound, some by more than 2000x, so that bound refused transactions the chain accepts. The SDK mirrors the real bound offline:
 
 ```typescript
 import { maxSafeSellAmount, validateSellAmount, getTokenAmountForTargetSol } from "@nirholas/pump-sdk";

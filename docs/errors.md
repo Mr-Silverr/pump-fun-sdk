@@ -92,13 +92,15 @@ Pool parameter is required for graduated coins (bondingCurve.complete = true)
 ### SellOverflowError
 
 ```
-Sell amount 99999999999999 would overflow the on-chain u64 multiply
-(amount * virtualSolReserves > u64::MAX) for virtualSolReserves=... .
-Max safe chunk is ... raw token units. Use OnlinePumpSdk.sellChunked() or
-split the sell into smaller chunks.
+Sell amount ... would overflow the on-chain arithmetic for
+virtualSolReserves=... . Max safe chunk is ... raw token units. Use
+OnlinePumpSdk.sellChunked() or split the sell into smaller chunks.
 ```
 
-**Cause:** The deployed pump program computes `amount * virtualSolReserves` as a u64 before dividing. When that product would exceed `u64::MAX` (~1.84e19), the program aborts on-chain with AnchorError 6024 (Overflow). The SDK throws `SellOverflowError` before the instruction is built so the transaction is never broadcast.
+**Cause:** The amount does not fit the arithmetic the program can represent. The sell multiply `amount * virtualSolReserves` is widened to u128 on-chain, so in practice the binding limit is the token amount's own u64 field width. This throws only for genuinely unrepresentable amounts.
+
+**This is not the cause of an intermittent 6024.** If your sells succeed most of the time and fail occasionally at similar sizes, the cause is slippage and state drift, not arithmetic width: a function of `(amount, reserves)` would fail every time. See [Sell fails intermittently](#sell-fails-intermittently-anchorerror-6024) below.
+
 **Fix:** Split the sell. Either call `OnlinePumpSdk.sellChunked()` (refetches state between chunks and sends each via your `sendTx` callback) or cap each sell at `maxSafeSellAmount(bondingCurve.virtualSolReserves)`. Properties: `amount`, `virtualSolReserves`, `maxSafeAmount`.
 
 Pre-flight check without triggering the throw:
@@ -170,7 +172,7 @@ The Anchor programs also return errors via transaction logs. Common on-chain err
 | `InsufficientFunds` | Pump | Not enough SOL for buy |
 | `SlippageExceeded` / `TooLittleSolReceived` | Pump/PumpAMM | Price moved beyond slippage tolerance |
 | `BondingCurveComplete` | Pump | Token already graduated; use AMM |
-| `Overflow` (6024) | Pump | Sell amount too large for u64 math; see `SellOverflowError` above |
+| `Overflow` (6024) | Pump | Intermittent: slippage and reserve drift between quote and landing. Consistent at one size: see `SellOverflowError` above |
 | `Unauthorized` | All | Wrong authority/signer |
 | `AccountNotFound` | All | PDA doesn't exist yet |
 

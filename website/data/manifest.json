@@ -33,7 +33,7 @@
       "file": "api-reference.md",
       "title": "API Reference",
       "summary": "Complete reference for the public classes, functions, types, and constants exported by @nirholas/pump-sdk, grouped by module.",
-      "words": 5030,
+      "words": 5047,
       "minutes": 23
     },
     {
@@ -54,7 +54,7 @@
       "file": "bonding-curve-math.md",
       "title": "Bonding Curve Math",
       "summary": "How the Pump protocol prices tokens with a constant-product bonding curve, and the SDK functions that mirror the on-chain math exactly.",
-      "words": 1114,
+      "words": 1155,
       "minutes": 5
     },
     {
@@ -110,15 +110,15 @@
       "file": "end-to-end-workflow.md",
       "title": "End-to-End Workflow",
       "summary": "A complete walkthrough of the full token lifecycle in code: create, buy, monitor, sell, graduate, migrate, trade on the AMM, share fees, and claim rewards.",
-      "words": 1397,
+      "words": 1399,
       "minutes": 6
     },
     {
       "file": "errors.md",
       "title": "Error Reference",
       "summary": "Every custom error class the SDK throws, what causes it, and how to recover, plus the common on-chain Anchor errors.",
-      "words": 735,
-      "minutes": 3
+      "words": 782,
+      "minutes": 4
     },
     {
       "file": "events-reference.md",
@@ -271,7 +271,7 @@
       "file": "TROUBLESHOOTING.md",
       "title": "Troubleshooting",
       "summary": "Common issues and their solutions. Can't find your answer? Open a discussion.",
-      "words": 1553,
+      "words": 1632,
       "minutes": 7
     },
     {
@@ -631,7 +631,7 @@
       "file": "44-complete-swap-build.md",
       "title": "Tutorial 44: Complete Swap Build — Buy & Sell from Scratch",
       "summary": "A single, working end-to-end script you can copy, fund, and run. Covers every step: fetching state, computing quotes with slippage, building instructions, sending the transaction, and — critically — handling the u64 sell",
-      "words": 1446,
+      "words": 1540,
       "minutes": 7,
       "number": 44
     }
@@ -724,9 +724,9 @@
     {
       "file": "15-max-safe-sell.ts",
       "number": 15,
-      "title": "The u64 Sell Overflow Guard",
+      "title": "The Sell Overflow Guard",
       "category": "Curve Math & Fees",
-      "summary": "Demonstrates maxSafeSellAmount and validateSellAmount, the pre-flight checks that keep a sell's amount virtualSolReserves multiply inside u64 so the on-chain program never aborts with AnchorError 6024 (Overflow). Shows t"
+      "summary": "Demonstrates maxSafeSellAmount and validateSellAmount, the pre-flight checks that keep a sell inside the arithmetic the on-chain program can represent, and shows how to tell a real width limit apart from the intermittent"
     },
     {
       "file": "16-launch-price-ladder.ts",

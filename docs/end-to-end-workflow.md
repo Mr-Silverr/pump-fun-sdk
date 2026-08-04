@@ -186,7 +186,7 @@ const sellTx = new Transaction().add(...sellIxs);
 await sendAndConfirmTransaction(connection, sellTx, [wallet]);
 ```
 
-Convenience alternatives: `sdk.sellByPercentage({ mint, user, percent: 50, slippage: 1 })`, `sdk.sellToTargetSol({ mint, user, targetSol, slippage: 1 })`, or `sdk.sellAllInstructions({ mint, user })` (which also closes the ATA to reclaim rent). For very large positions, `sdk.sellChunked` splits the sell to stay under the on-chain u64 overflow limit (see [Errors](./errors.md#selloverflowerror)).
+Convenience alternatives: `sdk.sellByPercentage({ mint, user, percent: 50, slippage: 1 })`, `sdk.sellToTargetSol({ mint, user, targetSol, slippage: 1 })`, or `sdk.sellAllInstructions({ mint, user })` (which also closes the ATA to reclaim rent). For positions wider than a single u64 token amount, `sdk.sellChunked` splits the sell and refetches state between chunks (see [Errors](./errors.md#selloverflowerror)).
 
 ---
 

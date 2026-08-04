@@ -617,7 +617,7 @@ const amount = getTokenAmountForTargetSol({
 
 #### `maxSafeSellAmount(virtualSolReserves)`
 
-Largest token amount sellable in one instruction without overflowing the program's u64 multiply: `floor(0.9 * u64::MAX / virtualSolReserves)`.
+Largest token amount sellable in one instruction: `min(u64::MAX, floor(0.9 * u128::MAX / virtualSolReserves))`. The program widens the multiply to u128, so the token amount's own u64 field width is what binds on any real curve.
 
 #### `validateSellAmount(amount, bondingCurve)`
 
@@ -1127,7 +1127,7 @@ All errors extend `Error` and are exported from the package root.
 | `DuplicateShareholderError` | Duplicate addresses in shareholders |
 | `ShareCalculationOverflowError` | Share amount calculation would overflow |
 | `PoolRequiredForGraduatedError` | Pool param missing for a graduated coin |
-| `SellOverflowError` | Sell amount would overflow the on-chain u64 multiply (AnchorError 6024); split with `sellChunked` |
+| `SellOverflowError` | Sell amount is wider than the on-chain u64 token field; split with `sellChunked` |
 | `VanityError` / `VanityMintPatternError` / `VanityMintMaxAttemptsError` | Invalid or exhausted vanity mint grind |
 
 See the [Error Reference](./errors.md) for causes and fixes.

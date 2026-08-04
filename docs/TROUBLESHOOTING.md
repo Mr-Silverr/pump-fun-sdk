@@ -116,9 +116,15 @@ const solAmount = new BN(100_000_000); // 0.1 SOL in lamports: correct
 const solAmount = 0.1;                 // WRONG: don't use raw decimals
 ```
 
-### Sell fails with `SellOverflowError` (or on-chain AnchorError 6024)
+### Sell fails intermittently with AnchorError 6024 (Overflow)
 
-The pump program computes `amount * virtualSolReserves` as a u64. For very large sells on curves with high SOL reserves, that product overflows and the program aborts with error 6024 (Overflow). The SDK detects this before broadcasting and throws `SellOverflowError` instead.
+If sells land most of the time and fail occasionally at similar sizes, the cause is slippage and reserve drift, not arithmetic. Between your quote and your landing slot, other trades move the curve; if it drains far enough, the sell can no longer produce your `minSolOutput` and the program aborts. A width limit would be a pure function of `(amount, reserves)` and would fail every time at that size, so intermittency rules it out.
+
+Fix: quote as close to send time as possible, raise slippage headroom, and add priority fee so the transaction lands in a nearer slot.
+
+### Sell rejected up front with `SellOverflowError`
+
+The amount is wider than the on-chain u64 token field. This is rare and deterministic.
 
 Fix: split the sell.
 

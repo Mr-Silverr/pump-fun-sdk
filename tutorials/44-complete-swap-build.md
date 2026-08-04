@@ -1,6 +1,6 @@
 # Tutorial 44: Complete Swap Build — Buy & Sell from Scratch
 
-> A single, working end-to-end script you can copy, fund, and run. Covers every step: fetching state, computing quotes with slippage, building instructions, sending the transaction, and — critically — handling the u64 sell overflow that bites popular tokens (see [issue #6](https://github.com/nirholas/pump-fun-sdk/issues/6)).
+> A single, working end-to-end script you can copy, fund, and run. Covers every step: fetching state, computing quotes with slippage, building instructions, sending the transaction, and, critically, handling the intermittent sell failures that bite popular tokens (see [issue #6](https://github.com/nirholas/pump-fun-sdk/issues/6)).
 
 **What you'll build:**
 
@@ -20,7 +20,7 @@ There are three places beginners get hurt:
 |---------|---------|----------------------|
 | Using `number` instead of `BN` | Silent precision loss on 64-bit amounts | All amounts are `BN` |
 | Missing slippage | "Slippage exceeded" or fills at unexpected price | Explicit `slippageBps` arg with a sane default |
-| u64 sell overflow | Sell fails ~25% of the time on popular tokens (error 6024) | `maxSafeSellAmount` + `sellChunked` |
+| Intermittent sell failures | Sell fails ~25% of the time on popular tokens (error 6024) | Slippage headroom and quoting near send time |
 
 The third one is subtle and will not show up in a devnet test where reserves are tiny. On mainnet, once `virtualSolReserves` grows past ~3e9 lamports and your wallet holds ~6e12+ raw token units, every sell is one coin-flip away from failure. The SDK now refuses these sells pre-flight with a `SellOverflowError` so your transaction never leaves the client.
 
@@ -162,9 +162,10 @@ export class Swap {
   }
 
   /**
-   * Sell `totalAmount` (or all held tokens) in chunks sized to stay under the
-   * u64 overflow limit. State is refetched between chunks so reserves stay
-   * current as earlier chunks land.
+   * Sell `totalAmount` (or all held tokens) in chunks sized to stay within
+   * a single on-chain sell. State is refetched between chunks so reserves
+   * stay current as earlier chunks land, which also keeps each chunk quoted
+   * against fresh state instead of a stale snapshot.
    *
    * Returns the signatures of every chunk in submission order.
    */
@@ -305,24 +306,26 @@ ts-node cli.ts sell-all <MINT> 6325344957752
 The on-chain pump program does (simplified):
 
 ```rust
-let sol_out = amount
-    .checked_mul(virtual_sol_reserves)?   // ← u64 * u64, u64 result
-    .checked_div(virtual_token_reserves.checked_add(amount)?)?;
+let sol_out = (amount as u128)
+    .checked_mul(virtual_sol_reserves as u128)?
+    .checked_div((virtual_token_reserves as u128).checked_add(amount as u128)?)?;
 ```
 
-When `amount * virtualSolReserves > u64::MAX` (about `1.84e19`), `checked_mul` returns `None` and the program aborts with AnchorError 6024 (`Overflow`) at `programs/pump/src/lib.rs:764`.
+The multiply is widened to u128, so the product has enormous headroom and is not what fails. An intermittent 6024 is a **slippage** signature: reserves move between your quote and your landing slot, the sell can no longer produce your `minSolOutput`, and the program aborts.
 
-The trap: this happens **after** `TransferChecked` has already moved your tokens out of your wallet. The tx reverts, your tokens come back, you pay the priority fee, and nothing tells you why until you dig into the logs.
+The tell is the intermittency itself. A width limit is a pure function of `(amount, reserves)`: it would fail every single time at that size, never one try in four.
 
-The SDK now catches this pre-flight:
+The trap: the abort happens **after** `TransferChecked` has already moved your tokens. The tx reverts, your tokens come back, you pay the priority fee, and nothing tells you why until you read the logs.
+
+Sampling live mainnet trade events, 83% of landed sells exceeded a `u64::MAX`-derived bound, some by more than 2000x, so that bound refused transactions the chain accepts. The SDK's pre-flight check now bounds only what the chain genuinely cannot represent:
 
 ```typescript
 // inside PUMP_SDK.sellInstructions
 validateSellAmount(amount, bondingCurve);
-// → throws SellOverflowError(amount, virtualSolReserves, maxSafeAmount)
+// → throws SellOverflowError only when amount exceeds the u64 token field
 ```
 
-And `maxSafeSellAmount(reserves) = floor(0.9 * u64::MAX / reserves)` — the 10% safety margin absorbs reserve drift between quoting and execution.
+`maxSafeSellAmount(reserves) = min(u64::MAX, floor(0.9 * u128::MAX / reserves))`. To cure intermittent failures, raise slippage and quote closer to send time.
 
 ---
 

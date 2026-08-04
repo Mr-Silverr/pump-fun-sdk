@@ -203,14 +203,17 @@ export async function findGraduatedMint(
     await pause(250);
   }
 
-  // Reliable path: any live AMM transaction names its Pool account. Grab a
-  // few signatures off the AMM log stream and decode the Pool out of them.
+  // Reliable path: any live AMM transaction names its Pool account. Only a
+  // fraction of live AMM traffic touches a canonical pool, so the sweep takes
+  // a wide batch of signatures rather than a handful; a narrow budget made
+  // this throw on perfectly healthy mainnet conditions.
   const signatures = await collectStreamSignatures(
     connection,
     PUMP_AMM_PROGRAM_ID,
-    4,
+    24,
   );
 
+  const seenBaseMints: PublicKey[] = [];
   for (const signature of signatures) {
     await pause(300);
     const tx = await connection
@@ -232,6 +235,7 @@ export async function findGraduatedMint(
       try {
         const state = PUMP_SDK.decodePool(info);
         if (state.lpSupply.isZero()) continue;
+        seenBaseMints.push(state.baseMint);
         // Every OnlinePumpSdk AMM helper derives canonicalPumpPoolPda(mint),
         // so a pool that is not at that address is unusable through them:
         // the helper would look up the canonical address, find nothing, and
@@ -246,8 +250,24 @@ export async function findGraduatedMint(
     }
   }
 
+  // Last pass: a transaction may reference a non-canonical pool while the
+  // base mint still has a canonical one. Check the canonical address for
+  // every base mint the sweep saw.
+  for (const mint of seenBaseMints) {
+    await pause(200);
+    const pool = canonicalPumpPoolPda(mint);
+    const info = await connection.getAccountInfo(pool).catch(() => null);
+    if (!info) continue;
+    try {
+      const state = PUMP_SDK.decodePool(info);
+      if (!state.lpSupply.isZero()) return { mint, pool, state };
+    } catch {
+      continue;
+    }
+  }
+
   throw new Error(
-    "No graduated token with a live pool found via streams. " +
+    "No graduated token with a live canonical pool found via streams. " +
       "Retry, set PUMP_RPC_URL, or pass GRADUATED_MINT=<address>.",
   );
 }

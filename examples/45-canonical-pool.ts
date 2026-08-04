@@ -22,7 +22,7 @@ import BN from "bn.js";
 import { getConnection } from "./_lib/connection";
 import { mainnetGlobal } from "./_lib/curveState";
 import { formatSol, formatTokens, heading, row } from "./_lib/format";
-import { findGraduatedMint, type PoolReference } from "./_lib/discovery";
+import { findGraduatedMint } from "./_lib/discovery";
 
 /** 1 whole Pump token = 1e6 raw units (6 decimals). */
 const TOKEN_UNITS = new BN(1_000_000);
@@ -96,27 +96,6 @@ export function compareVenuePrices({
   };
 }
 
-/**
- * Discovery surfaces any live PumpAMM pool, and the AMM hosts pools that are
- * not the canonical one for their base mint (the pump.fun listing pools among
- * them). This example is about the canonical address, so keep sampling until
- * the discovered pool is one.
- */
-export async function findCanonicalGraduatedMint(
-  connection: Connection,
-  attempts = 4,
-): Promise<PoolReference> {
-  for (let attempt = 0; attempt < attempts; attempt += 1) {
-    const reference = await findGraduatedMint(connection);
-    if (canonicalPumpPoolPda(reference.mint).equals(reference.pool)) {
-      return reference;
-    }
-  }
-  throw new Error(
-    `Sampled ${attempts} live pools without finding one at its canonical address. ` +
-      "Retry, or pass GRADUATED_MINT=<address> for a token you know graduated.",
-  );
-}
 
 /** Read both sides of a pool's reserves from its token accounts. */
 export async function readPoolReserves(
@@ -140,7 +119,7 @@ export async function main(): Promise<void> {
 
   heading("Finding a graduated token");
   const { mint, pool: discoveredPool } =
-    await findCanonicalGraduatedMint(connection);
+    await findGraduatedMint(connection);
   row("Mint", mint.toBase58());
 
   heading("Deriving the pool from the mint alone");

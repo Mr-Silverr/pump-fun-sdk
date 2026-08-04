@@ -264,7 +264,7 @@
       "file": "support.md",
       "title": "Getting Help",
       "summary": "Need help with pump-fun-sdk? Here's how to get support.",
-      "words": 312,
+      "words": 327,
       "minutes": 1
     },
     {
@@ -648,6 +648,14 @@
       "words": 1553,
       "minutes": 7,
       "number": 44
+    },
+    {
+      "file": "45-cli-quickstart.md",
+      "title": "Tutorial 45: The pump CLI in ten minutes",
+      "summary": "Go from npm install to reading live mainnet state, quoting a trade, launching a token with a vanity mint, and wiring the whole thing into a shell script. No wallet needed for the first half.",
+      "words": 1377,
+      "minutes": 6,
+      "number": 45
     }
   ],
   "examples": [
@@ -760,7 +768,7 @@
   "exampleTutorials": [],
   "stats": {
     "docs": 42,
-    "tutorials": 44,
+    "tutorials": 45,
     "examples": 15,
     "mcpTools": 67,
     "mcpResources": 4,

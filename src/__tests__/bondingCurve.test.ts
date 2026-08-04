@@ -281,22 +281,50 @@ describe("bondingCurve", () => {
   // ── maxSafeSellAmount / validateSellAmount ─────────────────────────
 
   describe("maxSafeSellAmount", () => {
-    it("returns 0 when virtualSolReserves is 0", () => {
-      expect(maxSafeSellAmount(new BN(0)).isZero()).toBe(true);
+    const U64_MAX = new BN("18446744073709551615");
+    const U128_MAX = new BN("340282366920938463463374607431768211455");
+
+    it("allows the full u64 range when virtualSolReserves is 0", () => {
+      // A migrated curve has no reserves and cannot be sold on, so no
+      // multiply happens and nothing can overflow.
+      expect(maxSafeSellAmount(new BN(0)).eq(U64_MAX)).toBe(true);
     });
 
-    it("returns ~553M for 30 SOL reserves (90% of u64::MAX / 30e9)", () => {
-      const limit = maxSafeSellAmount(new BN("30000000000"));
-      expect(limit.gt(new BN(500_000_000))).toBe(true);
-      expect(limit.lt(new BN(700_000_000))).toBe(true);
+    it("is bounded by u64::MAX at mainnet reserve sizes", () => {
+      // The u128 product bound sits far above u64::MAX for any real curve,
+      // so the token amount's own on-chain width is what binds.
+      expect(maxSafeSellAmount(new BN("30000000000")).eq(U64_MAX)).toBe(true);
+      expect(maxSafeSellAmount(new BN("500000000000")).eq(U64_MAX)).toBe(true);
     });
 
-    it("product stays under u64::MAX at the limit", () => {
-      const reserves = new BN("30000000000");
-      const limit = maxSafeSellAmount(reserves);
-      const product = limit.mul(reserves);
-      const U64_MAX = new BN("18446744073709551615");
-      expect(product.lte(U64_MAX)).toBe(true);
+    it("product stays under u128::MAX at the limit", () => {
+      for (const reserves of ["30000000000", "500000000000", "2511843874"]) {
+        const r = new BN(reserves);
+        expect(maxSafeSellAmount(r).mul(r).lte(U128_MAX)).toBe(true);
+      }
+    });
+
+    it("accepts sell sizes that real mainnet transactions land", () => {
+      // Regression: the bound was once derived from u64::MAX, which rejected
+      // 344 of 417 sampled landed sells (83%), some by over 2000x. These are
+      // (tokenAmount, virtualSolReserves) pairs captured from live trade
+      // events that the chain accepted.
+      const landed: Array<[string, string]> = [
+        ["1044997562075", "2511843874"],
+        ["1721442828023", "22125920559"],
+        ["177220782774", "30000000000"],
+      ];
+      for (const [amount, reserves] of landed) {
+        expect(new BN(amount).lte(maxSafeSellAmount(new BN(reserves)))).toBe(true);
+        expect(() =>
+          validateSellAmount(new BN(amount), makeBondingCurve({ virtualSolReserves: new BN(reserves) })),
+        ).not.toThrow();
+      }
+    });
+
+    it("still rejects an amount wider than the on-chain u64 token field", () => {
+      const bc = makeBondingCurve();
+      expect(() => validateSellAmount(U64_MAX.addn(1), bc)).toThrow();
     });
   });
 

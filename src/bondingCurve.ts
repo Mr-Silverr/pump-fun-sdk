@@ -8,30 +8,43 @@ import { BondingCurve, FeeConfig, Global } from "./state";
 /**
  * u64::MAX = 2^64 - 1 = 18_446_744_073_709_551_615
  *
- * The deployed pump program computes `amount * virtualSolReserves` as a u64
- * before dividing in the sell formula. When that intermediate product exceeds
- * u64::MAX, the program aborts with AnchorError 6024 (Overflow). We mirror the
- * same upper bound here — minus a 10% safety margin — so we can refuse the
- * sell before any tokens move.
+ * The deployed pump program widens to u128 before multiplying
+ * `amount * virtualSolReserves` in the sell formula, so the intermediate
+ * product overflows only past u128::MAX. Token amounts are themselves u64
+ * on-chain, which is the binding constraint in every realistic case: at
+ * mainnet reserve sizes the u128 product limit sits many orders of magnitude
+ * above u64::MAX.
+ *
+ * This bound was previously derived from u64::MAX, which rejected the great
+ * majority of real sells: sampling live mainnet trade events, 344 of 417
+ * landed sells (83%) exceeded the old limit, some by more than 2000x. Any
+ * caller reaching `sellInstructions` for an ordinary position size got a
+ * `SellOverflowError` for a transaction the chain would have accepted.
  */
 const U64_MAX = new BN("18446744073709551615");
-const SELL_SAFETY_MARGIN = U64_MAX.muln(9).divn(10);
+const U128_MAX = new BN(
+  "340282366920938463463374607431768211455",
+);
+const SELL_SAFETY_MARGIN = U128_MAX.muln(9).divn(10);
 
 /**
  * Maximum token amount that is safe to sell in a single sell instruction for
  * the given reserves.
  *
- * Returns `floor(0.9 * u64::MAX / virtualSolReserves)`. The 10% margin absorbs
- * reserve drift between quote and execution. Returns 0 if reserves are 0.
+ * The limit is the smaller of u64::MAX (the on-chain width of a token amount)
+ * and `floor(0.9 * u128::MAX / virtualSolReserves)` (the intermediate product
+ * bound, with a 10% margin absorbing reserve drift between quote and
+ * execution). A migrated curve has zero reserves and cannot be sold on at
+ * all, so the product can never overflow and the limit is u64::MAX.
  */
 export function maxSafeSellAmount(virtualSolReserves: BN): BN {
-  if (virtualSolReserves.isZero()) return new BN(0);
-  return SELL_SAFETY_MARGIN.div(virtualSolReserves);
+  if (virtualSolReserves.isZero()) return U64_MAX;
+  return BN.min(U64_MAX, SELL_SAFETY_MARGIN.div(virtualSolReserves));
 }
 
 /**
  * Throws `SellOverflowError` if the sell amount would overflow the on-chain
- * u64 multiply. Use this as a pre-flight check before building sell
+ * arithmetic. Use this as a pre-flight check before building sell
  * instructions.
  */
 export function validateSellAmount(

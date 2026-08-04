@@ -35,8 +35,14 @@ import { withRpcRetry } from "./25-decode-pool";
 /** Shareholder splits must total exactly this many basis points. */
 export const TOTAL_SHARE_BPS = 10_000;
 
-/** How many curve candidates to probe before giving up on finding a config. */
-const CANDIDATE_LIMIT = 8;
+/**
+ * How many curve candidates to probe before giving up on finding a config.
+ *
+ * Fee sharing is opt-in and most coins skip it, so a small sample usually
+ * comes up empty. One `getMultipleAccountsInfo` call carries up to 100
+ * accounts, so a wider sample costs nothing extra in RPC calls.
+ */
+const CANDIDATE_LIMIT = 40;
 
 export interface ShareholderValidation {
   valid: boolean;

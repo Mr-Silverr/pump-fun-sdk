@@ -60,6 +60,7 @@ import {
 import {
   currentDayShare,
   dayWindowAt,
+  isIncentiveProgramConfigured,
   totalStatsOf,
 } from "../28-volume-accumulators";
 import {
@@ -557,6 +558,24 @@ describe("example 28: volume accumulator day math", () => {
         new BN(START),
       ),
     ).toThrow(/not configured/);
+  });
+
+  it("recognises the no-season state mainnet sits in between seasons", () => {
+    const idle = makeGlobalVolumeAccumulator({
+      startTime: new BN(0),
+      endTime: new BN(0),
+      secondsInADay: new BN(0),
+    });
+    expect(isIncentiveProgramConfigured(idle)).toBe(false);
+    expect(isIncentiveProgramConfigured(accumulator)).toBe(true);
+
+    const user = makeUserVolumeAccumulator();
+    const share = currentDayShare(idle, user, new BN(START));
+    expect(share.tokens.isZero()).toBe(true);
+    expect(share.sameDay).toBe(false);
+    expect(share.window.dayIndex).toBe(-1);
+    // The SDK short-circuits the same way rather than throwing.
+    expect(currentDayTokens(idle, user, START).isZero()).toBe(true);
   });
 
   it("agrees with the SDK's currentDayTokens", () => {

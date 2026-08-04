@@ -392,15 +392,44 @@ describe("example 45: canonical pool", () => {
     expect(() => spotPriceLamports(new BN(0), SOL(1))).toThrow(/no price/);
   });
 
-  it("prices the AMM above the curve for identical reserves", () => {
+  it("prices the AMM above the curve above the crossover", () => {
     const comparison = compareVenuePrices({
       baseReserve: TOKENS(100_000_000),
       quoteReserve: SOL(100),
       virtualSolOffset: global.initialVirtualSolReserves,
       virtualTokenOffset,
     });
+    expect(
+      comparison.ammSpotLamports.gt(comparison.crossoverPriceLamports),
+    ).toBe(true);
     expect(comparison.ammSpotLamports.gt(comparison.curveSpotLamports)).toBe(true);
     expect(comparison.differenceBps.gtn(0)).toBe(true);
+  });
+
+  it("prices the AMM below the curve under the crossover", () => {
+    const comparison = compareVenuePrices({
+      baseReserve: TOKENS(100_000_000),
+      quoteReserve: SOL(1),
+      virtualSolOffset: global.initialVirtualSolReserves,
+      virtualTokenOffset,
+    });
+    expect(
+      comparison.ammSpotLamports.lt(comparison.crossoverPriceLamports),
+    ).toBe(true);
+    expect(comparison.differenceBps.ltn(0)).toBe(true);
+  });
+
+  it("agrees with itself at the crossover ratio", () => {
+    const comparison = compareVenuePrices({
+      baseReserve: virtualTokenOffset,
+      quoteReserve: global.initialVirtualSolReserves,
+      virtualSolOffset: global.initialVirtualSolReserves,
+      virtualTokenOffset,
+    });
+    expect(
+      comparison.ammSpotLamports.eq(comparison.curveSpotLamports),
+    ).toBe(true);
+    expect(comparison.differenceBps.isZero()).toBe(true);
   });
 
   it("narrows the gap as both reserves grow past the virtual offsets", () => {

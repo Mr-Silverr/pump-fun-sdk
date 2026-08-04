@@ -54,12 +54,29 @@ export interface DayWindow {
  * same window share a denominator, and the moment the quotient increments
  * the previous day's numbers stop moving.
  */
+/**
+ * True when the incentive program has a start, an end, and a day length.
+ *
+ * All three are zero while no incentive season is running, and every reward
+ * helper in the SDK short-circuits to zero in that state rather than
+ * dividing by a zero day length.
+ */
+export function isIncentiveProgramConfigured(
+  accumulator: GlobalVolumeAccumulator,
+): boolean {
+  return !(
+    accumulator.startTime.isZero() ||
+    accumulator.endTime.isZero() ||
+    accumulator.secondsInADay.isZero()
+  );
+}
+
 export function dayWindowAt(
   accumulator: GlobalVolumeAccumulator,
   timestampSeconds: BN,
 ): DayWindow {
   const { startTime, endTime, secondsInADay } = accumulator;
-  if (secondsInADay.isZero() || startTime.isZero() || endTime.isZero()) {
+  if (!isIncentiveProgramConfigured(accumulator)) {
     throw new Error(
       "The global volume accumulator is not configured (zero start, end, or day length)",
     );
@@ -122,6 +139,24 @@ export function currentDayShare(
   user: UserVolumeAccumulator,
   timestampSeconds: BN,
 ): CurrentDayShare {
+  if (!isIncentiveProgramConfigured(accumulator)) {
+    return {
+      window: {
+        dayIndex: -1,
+        dayStart: accumulator.startTime,
+        dayEnd: accumulator.startTime,
+        secondsIntoDay: new BN(0),
+        withinProgram: false,
+        endDayIndex: -1,
+      },
+      sameDay: false,
+      dayTokenSupply: new BN(0),
+      daySolVolume: new BN(0),
+      userSolVolume: user.currentSolVolume,
+      tokens: new BN(0),
+    };
+  }
+
   const window = dayWindowAt(accumulator, timestampSeconds);
   const userWindow = dayWindowAt(accumulator, user.lastUpdateTimestamp);
   const sameDay =
@@ -207,20 +242,38 @@ export async function main(): Promise<void> {
   row("Days tracked", accumulator.totalTokenSupply.length);
 
   const now = new BN(Math.floor(Date.now() / 1000));
-  const window = dayWindowAt(accumulator, now);
+  const configured = isIncentiveProgramConfigured(accumulator);
 
   heading("Day window right now");
-  row("Day index", window.dayIndex);
-  row("Final day index", window.endDayIndex);
-  row("Window opened", `${window.dayStart.toString()} (unix seconds)`);
-  row("Window closes", `${window.dayEnd.toString()} (unix seconds)`);
-  row("Seconds into the day", window.secondsIntoDay.toString());
-  row("Inside the program window", window.withinProgram);
-  if (window.dayIndex >= 0) {
-    const supply = accumulator.totalTokenSupply[window.dayIndex];
-    const volume = accumulator.solVolumes[window.dayIndex];
-    row("Day token supply", supply ? formatTokens(supply, 0) : "not allocated");
-    row("Day SOL volume", volume ? formatSol(volume, 2) : "not allocated");
+  if (!configured) {
+    row("Incentive season running", false);
+    console.log(
+      "Start time, end time and day length are all zero: no incentive season",
+    );
+    console.log(
+      "is configured on-chain right now. The account still exists with its",
+    );
+    console.log(
+      `${accumulator.totalTokenSupply.length}-day arrays allocated, and every reward helper returns zero`,
+    );
+    console.log(
+      "until an admin sets the window. That is the state the day math has to",
+    );
+    console.log("survive, not an error.");
+  } else {
+    const window = dayWindowAt(accumulator, now);
+    row("Day index", window.dayIndex);
+    row("Final day index", window.endDayIndex);
+    row("Window opened", `${window.dayStart.toString()} (unix seconds)`);
+    row("Window closes", `${window.dayEnd.toString()} (unix seconds)`);
+    row("Seconds into the day", window.secondsIntoDay.toString());
+    row("Inside the program window", window.withinProgram);
+    if (window.dayIndex >= 0) {
+      const supply = accumulator.totalTokenSupply[window.dayIndex];
+      const volume = accumulator.solVolumes[window.dayIndex];
+      row("Day token supply", supply ? formatTokens(supply, 0) : "not allocated");
+      row("Day SOL volume", volume ? formatSol(volume, 2) : "not allocated");
+    }
   }
 
   heading("decodeUserVolumeAccumulator");

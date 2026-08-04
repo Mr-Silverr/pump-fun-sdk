@@ -10,12 +10,13 @@
  *
  * Run: npm run example 43
  */
-import { OnlinePumpSdk } from "@nirholas/pump-sdk";
+import { OnlinePumpSdk, canonicalPumpPoolPda } from "@nirholas/pump-sdk";
+import { Connection } from "@solana/web3.js";
 import BN from "bn.js";
 
 import { getConnection } from "./_lib/connection";
 import { formatSol, formatTokens, heading, row } from "./_lib/format";
-import { findGraduatedMint } from "./_lib/discovery";
+import { findGraduatedMint, type PoolReference } from "./_lib/discovery";
 import { loadWallet } from "./_lib/wallet";
 
 /** 1 whole Pump token = 1e6 raw units (6 decimals). */
@@ -73,13 +74,35 @@ export function slippageHeadroomBps(amount: BN, maxAmount: BN): BN {
   return BN.max(new BN(0), maxAmount.sub(amount)).muln(10_000).div(amount);
 }
 
+/**
+ * Discovery surfaces any live PumpAMM pool, and the AMM hosts pools that are
+ * not the canonical one for their base mint. Every helper used below
+ * addresses a token by mint and derives the canonical pool from it, so keep
+ * sampling until the discovered pool is that pool.
+ */
+export async function findCanonicalGraduatedMint(
+  connection: Connection,
+  attempts = 4,
+): Promise<PoolReference> {
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
+    const reference = await findGraduatedMint(connection);
+    if (canonicalPumpPoolPda(reference.mint).equals(reference.pool)) {
+      return reference;
+    }
+  }
+  throw new Error(
+    `Sampled ${attempts} live pools without finding one at its canonical address. ` +
+      "Retry, or pass GRADUATED_MINT=<address> for a token you know graduated.",
+  );
+}
+
 export async function main(): Promise<void> {
   const connection = getConnection();
   const wallet = loadWallet();
   const sdk = new OnlinePumpSdk(connection);
 
   heading("Finding a graduated token");
-  const { mint } = await findGraduatedMint(connection);
+  const { mint } = await findCanonicalGraduatedMint(connection);
   const pool = await sdk.fetchPool(mint);
   row("Mint", mint.toBase58());
   row("Depositor", wallet.publicKey.toBase58());

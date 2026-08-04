@@ -22,7 +22,7 @@ import BN from "bn.js";
 import { getConnection } from "./_lib/connection";
 import { mainnetGlobal } from "./_lib/curveState";
 import { formatSol, formatTokens, heading, row } from "./_lib/format";
-import { findGraduatedMint } from "./_lib/discovery";
+import { findGraduatedMint, type PoolReference } from "./_lib/discovery";
 
 /** 1 whole Pump token = 1e6 raw units (6 decimals). */
 const TOKEN_UNITS = new BN(1_000_000);
@@ -41,7 +41,9 @@ export interface VenuePriceComparison {
   ammSpotLamports: BN;
   /** Bonding curve spot price for the same reserves, lamports per whole token. */
   curveSpotLamports: BN;
-  /** How far the AMM price sits above the curve price, in basis points. */
+  /** The price at which the two venues agree, lamports per whole token. */
+  crossoverPriceLamports: BN;
+  /** How far the AMM price sits above the curve price, in basis points. Negative below the crossover. */
   differenceBps: BN;
 }
 
@@ -51,10 +53,13 @@ export interface VenuePriceComparison {
  * A PumpAMM pool prices purely off what it holds: quote / base. A bonding
  * curve prices off virtual reserves, which are its real reserves plus fixed
  * offsets baked in at launch (30 SOL of virtual SOL, and the ~280M tokens of
- * virtual supply that never sit in the curve). Those offsets flatten the
- * curve, so for identical real reserves the curve always quotes cheaper. The
- * gap narrows as both reserves grow past the offsets, since a fixed offset
- * matters less against deeper liquidity.
+ * virtual supply that never sit in the curve).
+ *
+ * Adding a fixed amount to both sides of a ratio drags it toward that fixed
+ * ratio, so the two venues agree exactly when the pool price equals
+ * `virtualSolOffset / virtualTokenOffset`. Above that crossover the curve
+ * quotes cheaper than the pool, below it the curve quotes dearer, and either
+ * way the gap narrows as both reserves grow past the offsets.
  */
 export function compareVenuePrices({
   baseReserve,
@@ -80,11 +85,37 @@ export function compareVenuePrices({
   return {
     ammSpotLamports,
     curveSpotLamports,
+    crossoverPriceLamports: spotPriceLamports(
+      virtualTokenOffset,
+      virtualSolOffset,
+    ),
     differenceBps: ammSpotLamports
       .sub(curveSpotLamports)
       .muln(10_000)
       .div(curveSpotLamports),
   };
+}
+
+/**
+ * Discovery surfaces any live PumpAMM pool, and the AMM hosts pools that are
+ * not the canonical one for their base mint (the pump.fun listing pools among
+ * them). This example is about the canonical address, so keep sampling until
+ * the discovered pool is one.
+ */
+export async function findCanonicalGraduatedMint(
+  connection: Connection,
+  attempts = 4,
+): Promise<PoolReference> {
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
+    const reference = await findGraduatedMint(connection);
+    if (canonicalPumpPoolPda(reference.mint).equals(reference.pool)) {
+      return reference;
+    }
+  }
+  throw new Error(
+    `Sampled ${attempts} live pools without finding one at its canonical address. ` +
+      "Retry, or pass GRADUATED_MINT=<address> for a token you know graduated.",
+  );
 }
 
 /** Read both sides of a pool's reserves from its token accounts. */
@@ -108,7 +139,8 @@ export async function main(): Promise<void> {
   const sdk = new OnlinePumpSdk(connection);
 
   heading("Finding a graduated token");
-  const { mint, pool: discoveredPool } = await findGraduatedMint(connection);
+  const { mint, pool: discoveredPool } =
+    await findCanonicalGraduatedMint(connection);
   row("Mint", mint.toBase58());
 
   heading("Deriving the pool from the mint alone");
@@ -171,14 +203,24 @@ export async function main(): Promise<void> {
     "AMM spot",
     `${comparison.ammSpotLamports.toString()} lamports/token`,
   );
+  row(
+    "Crossover price",
+    `${comparison.crossoverPriceLamports.toString()} lamports/token`,
+  );
   row("AMM over curve", `${comparison.differenceBps.toString()} bps`);
   console.log(
-    "\nThe curve's virtual offsets act like phantom liquidity that nobody",
+    "\nThe curve's virtual offsets act like phantom liquidity nobody owns.",
   );
   console.log(
-    "owns, which is exactly why launches start cheap and why the same",
+    "They pull the curve's price toward the offsets' own ratio, the crossover",
   );
-  console.log("reserves are worth more once the pool is real.");
+  console.log(
+    "above, so a pool trading richer than the crossover would be cheaper on a",
+  );
+  console.log(
+    "curve, and a pool trading below it would be dearer. Graduation swaps a",
+  );
+  console.log("priced-with-phantom-liquidity venue for one priced on reality.");
 
   heading("The counterexample");
   const pumpCanonical = canonicalPumpPoolPda(PUMP_TOKEN_MINT);

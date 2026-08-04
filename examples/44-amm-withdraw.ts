@@ -10,12 +10,13 @@
  *
  * Run: npm run example 44
  */
-import { OnlinePumpSdk } from "@nirholas/pump-sdk";
+import { OnlinePumpSdk, canonicalPumpPoolPda } from "@nirholas/pump-sdk";
+import { Connection } from "@solana/web3.js";
 import BN from "bn.js";
 
 import { getConnection } from "./_lib/connection";
 import { formatSol, formatTokens, heading, row } from "./_lib/format";
-import { findGraduatedMint } from "./_lib/discovery";
+import { findGraduatedMint, type PoolReference } from "./_lib/discovery";
 import { loadWallet } from "./_lib/wallet";
 
 /** What a burn of `lpToken` is worth against the pool's current reserves. */
@@ -69,13 +70,35 @@ export function slippageFloorBps(amount: BN, minAmount: BN): BN {
   return BN.max(new BN(0), amount.sub(minAmount)).muln(10_000).div(amount);
 }
 
+/**
+ * Discovery surfaces any live PumpAMM pool, and the AMM hosts pools that are
+ * not the canonical one for their base mint. Every helper used below
+ * addresses a token by mint and derives the canonical pool from it, so keep
+ * sampling until the discovered pool is that pool.
+ */
+export async function findCanonicalGraduatedMint(
+  connection: Connection,
+  attempts = 4,
+): Promise<PoolReference> {
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
+    const reference = await findGraduatedMint(connection);
+    if (canonicalPumpPoolPda(reference.mint).equals(reference.pool)) {
+      return reference;
+    }
+  }
+  throw new Error(
+    `Sampled ${attempts} live pools without finding one at its canonical address. ` +
+      "Retry, or pass GRADUATED_MINT=<address> for a token you know graduated.",
+  );
+}
+
 export async function main(): Promise<void> {
   const connection = getConnection();
   const wallet = loadWallet();
   const sdk = new OnlinePumpSdk(connection);
 
   heading("Finding a graduated token");
-  const { mint } = await findGraduatedMint(connection);
+  const { mint } = await findCanonicalGraduatedMint(connection);
   const pool = await sdk.fetchPool(mint);
   row("Mint", mint.toBase58());
   row("Withdrawer", wallet.publicKey.toBase58());
@@ -86,12 +109,15 @@ export async function main(): Promise<void> {
   const lpBalance = await sdk.getLpTokenBalance(mint, wallet.publicKey);
   row("LP balance", lpBalance.toString());
   // Every quote below needs a position to price. A wallet that holds LP
-  // tokens prices its own; anything else prices one basis point of the pool,
+  // tokens prices its own; anything else prices one percent of the pool,
   // which is the same call with a different number.
   const lpToken = lpBalance.isZero()
-    ? BN.max(new BN(1), pool.lpSupply.divn(10_000))
+    ? BN.max(new BN(1), pool.lpSupply.divn(100))
     : lpBalance;
-  row("Sizing the quote from", lpBalance.isZero() ? "1 bps of the pool" : "the wallet balance");
+  row(
+    "Sizing the quote from",
+    lpBalance.isZero() ? "1% of the pool" : "the wallet balance",
+  );
   row("LP tokens to burn", lpToken.toString());
 
   const slippage = 0.01; // 1%

@@ -15,6 +15,8 @@ import BN from "bn.js";
 import {
   PUMP_PROGRAM_ID,
   PUMP_AMM_PROGRAM_ID,
+  bondingCurvePda,
+  canonicalPumpPoolPda,
   getBuyTokenAmountFromSolAmount,
   getTokenPrice,
 } from "../../src/index";
@@ -31,15 +33,10 @@ import {
 import { bpsToPercent, progressBar } from "../33-graduation-progress";
 import { priceFromReserves, spreadBps } from "../34-token-price";
 import { classifyImpact, MODERATE_MAX_BPS, NEGLIGIBLE_MAX_BPS } from "../35-price-impact";
-import {
-  compareBuyQuotes,
-  offlineBuyQuote,
-  tokenAccountAmount,
-  tokenAccountOwner,
-} from "../36-live-quotes";
+import { compareBuyQuotes, offlineBuyQuote, quoteSeller } from "../36-live-quotes";
 import { aggregateCurves } from "../37-batch-curves";
-import { aggregatePools } from "../38-batch-pools";
-import { routeFor, summariseInstructions } from "../39-routed-trading";
+import { aggregatePools, tokenAccountAmount } from "../38-batch-pools";
+import { routeFor, sellerFor, summariseInstructions } from "../39-routed-trading";
 import { extractTrades, summariseFeed } from "../40-websocket-trades";
 
 import type { BondingCurve } from "../../src/state";
@@ -219,11 +216,8 @@ describe("example 36: live quotes beside offline math", () => {
     expect(() => compareBuyQuotes(new BN(0), new BN(1))).toThrow(/zero/);
   });
 
-  it("reads owner and balance out of an SPL token account", () => {
-    const data = tokenAccountData(TEST_CREATOR, new BN("123456789"));
-    expect(tokenAccountOwner(data).equals(TEST_CREATOR)).toBe(true);
-    expect(tokenAccountAmount(data).toString()).toBe("123456789");
-    expect(() => tokenAccountAmount(Buffer.alloc(8))).toThrow(/token account/);
+  it("quotes the sell against the curve's own vault owner", () => {
+    expect(quoteSeller(MINT).equals(bondingCurvePda(MINT))).toBe(true);
   });
 });
 
@@ -296,6 +290,12 @@ describe("example 38: pool aggregation", () => {
     expect(summary.unpriced).toBe(0);
   });
 
+  it("reads a balance out of an SPL token account", () => {
+    const data = tokenAccountData(TEST_CREATOR, new BN("123456789"));
+    expect(tokenAccountAmount(data).toString()).toBe("123456789");
+    expect(() => tokenAccountAmount(Buffer.alloc(8))).toThrow(/token account/);
+  });
+
   it("skips a pool with an empty vault rather than dividing by zero", () => {
     const summary = aggregatePools([
       {
@@ -331,6 +331,12 @@ describe("example 39: routing rule", () => {
     expect(route.venue).toBe("none");
     expect(route.programId).toBeNull();
     expect(route.reason).toMatch(/never launched/);
+  });
+
+  it("picks a seller that exists on each venue and none off-venue", () => {
+    expect(sellerFor(MINT, "bonding-curve")!.equals(bondingCurvePda(MINT))).toBe(true);
+    expect(sellerFor(MINT, "amm")!.equals(canonicalPumpPoolPda(MINT))).toBe(true);
+    expect(sellerFor(MINT, "none")).toBeNull();
   });
 
   it("names the program behind each instruction", () => {

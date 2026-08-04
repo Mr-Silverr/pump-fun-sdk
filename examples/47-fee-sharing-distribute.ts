@@ -93,26 +93,34 @@ export interface SharedFeeToken {
  */
 export async function findSharedFeeToken(
   connection: Connection,
+  rounds = 4,
+  perRound = 16,
 ): Promise<SharedFeeToken> {
   const override = process.env.MINT;
-  const candidates = override
-    ? [new PublicKey(override)]
-    : (await collectStreamMints(connection, ["trade", "create"], 16)).map(
-        (streamed) => streamed.mint,
-      );
+  let sampled = 0;
 
-  const configs = candidates.map((mint) => feeSharingConfigPda(mint));
-  const infos = await connection.getMultipleAccountsInfo(configs);
-  for (let i = 0; i < candidates.length; i += 1) {
-    const info = infos[i];
-    const mint = candidates[i];
-    const config = configs[i];
-    if (!info || !mint || !config) continue;
-    return { mint, config, sharingConfig: PUMP_SDK.decodeSharingConfig(info) };
+  for (let round = 0; round < rounds; round += 1) {
+    const candidates = override
+      ? [new PublicKey(override)]
+      : (
+          await collectStreamMints(connection, ["trade", "create"], perRound)
+        ).map((streamed) => streamed.mint);
+    sampled += candidates.length;
+
+    const configs = candidates.map((mint) => feeSharingConfigPda(mint));
+    const infos = await connection.getMultipleAccountsInfo(configs);
+    for (let i = 0; i < candidates.length; i += 1) {
+      const info = infos[i];
+      const mint = candidates[i];
+      const config = configs[i];
+      if (!info || !mint || !config) continue;
+      return { mint, config, sharingConfig: PUMP_SDK.decodeSharingConfig(info) };
+    }
+    if (override) break;
   }
 
   throw new Error(
-    `None of the ${candidates.length} sampled mints use a fee sharing config. ` +
+    `None of the ${sampled} sampled mints use a fee sharing config. ` +
       "Retry, or pass MINT=<address> for a token you know splits its fees.",
   );
 }
@@ -219,7 +227,11 @@ export async function main(): Promise<void> {
       distributed,
     }),
   );
-  row("distributeCreatorFeesEvent", `${feesEvent.shareholders.length} shareholders`);
+  const holderCount = feesEvent.shareholders.length;
+  row(
+    "distributeCreatorFeesEvent",
+    `${holderCount} shareholder${holderCount === 1 ? "" : "s"}`,
+  );
   row("  distributed", formatSol(feesEvent.distributed, 6));
   const floorEvent = PUMP_SDK.decodeMinimumDistributableFee(
     encodeMinimumDistributableFeeEvent({

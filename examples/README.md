@@ -38,7 +38,8 @@ The example tests are fully offline and deterministic: they exercise the exporte
 | Env var | Purpose | Default |
 |---------|---------|---------|
 | `PUMP_RPC_URL` | RPC endpoint for live examples | public mainnet RPC |
-| `MINT` | Token mint for the live read examples | `PUMP_TOKEN_MINT` (the PUMP token) |
+| `MINT` | Token mint for the live read examples | a token discovered off the live Pump log stream |
+| `GRADUATED_MINT` | Graduated token for the AMM and routing examples | a pool discovered off the live AMM log stream |
 | `PUMP_WALLET` | Path to a solana-keygen JSON keypair | ephemeral keypair |
 | `PUMP_WALLET_SECRET` | base58 secret key | ephemeral keypair |
 

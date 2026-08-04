@@ -232,6 +232,13 @@ export async function findGraduatedMint(
       try {
         const state = PUMP_SDK.decodePool(info);
         if (state.lpSupply.isZero()) continue;
+        // Every OnlinePumpSdk AMM helper derives canonicalPumpPoolPda(mint),
+        // so a pool that is not at that address is unusable through them:
+        // the helper would look up the canonical address, find nothing, and
+        // fail with "Account does not exist". The AMM program hosts plenty
+        // of such pools (wSOL-base, index other than 0), so returning one
+        // made the AMM examples fail intermittently.
+        if (!canonicalPumpPoolPda(state.baseMint).equals(key)) continue;
         return { mint: state.baseMint, pool: key, state };
       } catch {
         continue;

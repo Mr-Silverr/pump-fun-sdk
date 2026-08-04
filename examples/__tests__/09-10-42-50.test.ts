@@ -39,43 +39,81 @@ import {
   buildMayhemPair,
   diffInstructions,
   mayhemAccounts,
+  main as example09,
 } from "../09-mayhem-mode";
 import {
   cashbackAccumulators,
   changedDataOffsets,
   encodeClaimCashbackEvent,
   readCashbackPosition,
+  main as example10,
 } from "../10-cashback-token";
-import { interpretAmmSellQuote, roundTripLossBps } from "../42-amm-sell";
-import { depositRatio, slippageHeadroomBps } from "../43-amm-deposit";
-import { slippageFloorBps, withdrawShare } from "../44-amm-withdraw";
-import { compareVenuePrices, spotPriceLamports } from "../45-canonical-pool";
+import {
+  interpretAmmSellQuote,
+  main as example42,
+  roundTripLossBps,
+} from "../42-amm-sell";
+import {
+  depositRatio,
+  main as example43,
+  slippageHeadroomBps,
+} from "../43-amm-deposit";
+import {
+  main as example44,
+  slippageFloorBps,
+  withdrawShare,
+} from "../44-amm-withdraw";
+import {
+  compareVenuePrices,
+  main as example45,
+  spotPriceLamports,
+} from "../45-canonical-pool";
 import {
   evenSplit,
   evenSplitUnchecked,
   invalidSplits,
   splitTotalBps,
+  main as example46,
 } from "../46-fee-sharing-create";
 import {
   encodeDistributeCreatorFeesEvent,
   encodeMinimumDistributableFeeEvent,
   payoutSplit,
+  main as example47,
 } from "../47-fee-sharing-distribute";
 import {
   CLAIM_WORTH_IT_LAMPORTS,
   splitVaultBalances,
   worthClaiming,
+  main as example48,
 } from "../48-creator-fees";
 import {
   incentiveWindow,
   projectedDayShare,
   remainingProgramSupply,
+  main as example49,
 } from "../49-token-incentives";
 import {
   estimateSeconds,
   matchesVanityPattern,
   unmatchableCharacters,
+  main as example50,
 } from "../50-vanity-mint";
+
+/** Every example's entry point, gathered so the walkthroughs stay runnable. */
+const exampleMains = {
+  example09,
+  example10,
+  example42,
+  example43,
+  example44,
+  example45,
+  example46,
+  example47,
+  example48,
+  example49,
+  example50,
+};
 
 const SOL = (n: number) => new BN(n).mul(new BN(1_000_000_000));
 const TOKENS = (n: number) => new BN(n).mul(new BN(1_000_000));
@@ -865,18 +903,18 @@ describe("example 50: vanity mints", () => {
 
 describe("every example exports a runnable main", () => {
   it.each([
-    ["09", require("../09-mayhem-mode")],
-    ["10", require("../10-cashback-token")],
-    ["42", require("../42-amm-sell")],
-    ["43", require("../43-amm-deposit")],
-    ["44", require("../44-amm-withdraw")],
-    ["45", require("../45-canonical-pool")],
-    ["46", require("../46-fee-sharing-create")],
-    ["47", require("../47-fee-sharing-distribute")],
-    ["48", require("../48-creator-fees")],
-    ["49", require("../49-token-incentives")],
-    ["50", require("../50-vanity-mint")],
-  ])("example %s", (_n, mod: { main?: unknown }) => {
-    expect(typeof mod.main).toBe("function");
+    ["09", exampleMains.example09],
+    ["10", exampleMains.example10],
+    ["42", exampleMains.example42],
+    ["43", exampleMains.example43],
+    ["44", exampleMains.example44],
+    ["45", exampleMains.example45],
+    ["46", exampleMains.example46],
+    ["47", exampleMains.example47],
+    ["48", exampleMains.example48],
+    ["49", exampleMains.example49],
+    ["50", exampleMains.example50],
+  ])("example %s", (_n, main: unknown) => {
+    expect(typeof main).toBe("function");
   });
 });

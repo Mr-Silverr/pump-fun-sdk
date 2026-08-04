@@ -814,6 +814,20 @@
       "summary": "One account decides how every Pump token launches: reserves, supply, default fees, migration and mayhem switches, and the fee recipient pools. This example fetches it from mainnet, decodes it with decodeGlobal, and turns"
     },
     {
+      "file": "23-decode-bonding-curve.ts",
+      "number": 23,
+      "title": "Decoding a Bonding Curve",
+      "category": "Accounts & Events",
+      "summary": "Reads a live curve account with decodeBondingCurve, contrasts it with decodeBondingCurveNullable on a short account, and classifies the result as fresh, active, or complete. The classifier is the part callers get wrong: "
+    },
+    {
+      "file": "24-decode-fee-config.ts",
+      "number": 24,
+      "title": "Decoding the Fee Config",
+      "category": "Accounts & Events",
+      "summary": "Fetches the fee program's config account, decodes it with decodeFeeConfig, and walks its FeeTier list into the ladder a trade is actually priced against. Also shows what the flat fees are for, and what happens to a quote"
+    },
+    {
       "file": "25-decode-pool.ts",
       "number": 25,
       "title": "Decode an AMM Pool",
@@ -1121,7 +1135,7 @@
   "stats": {
     "docs": 42,
     "tutorials": 45,
-    "examples": 48,
+    "examples": 50,
     "mcpTools": 67,
     "mcpResources": 4,
     "mcpPrompts": 5,

@@ -14,6 +14,7 @@ import bs58 from "bs58";
 import { createFallbackConnection } from "../fallback";
 import { OnlinePumpSdk } from "../onlineSdk";
 import {
+  DEFAULT_RPC_URL,
   resolveComputeUnitLimit,
   resolveKeypairPath,
   resolvePriorityFee,
@@ -47,6 +48,8 @@ export class CliError extends Error {
 
 export class CliContext {
   readonly endpoints: string[];
+  /** The endpoint every command reports as "the" RPC. Never undefined. */
+  readonly primaryEndpoint: string;
   readonly connection: Connection;
   readonly sdk: OnlinePumpSdk;
   readonly json: boolean;
@@ -61,10 +64,11 @@ export class CliContext {
 
   constructor(options: GlobalOptions) {
     this.endpoints = resolveRpcUrls(options.rpc);
+    this.primaryEndpoint = this.endpoints[0] ?? DEFAULT_RPC_URL;
     this.connection =
       this.endpoints.length > 1
         ? createFallbackConnection(this.endpoints, { commitment: "confirmed" })
-        : new Connection(this.endpoints[0], "confirmed");
+        : new Connection(this.primaryEndpoint, "confirmed");
     this.sdk = new OnlinePumpSdk(this.connection);
     this.json = options.json === true;
     this.assumeYes = options.yes === true;

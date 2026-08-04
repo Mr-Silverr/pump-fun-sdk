@@ -142,7 +142,7 @@ function describeEvent(event: PumpEvent): { label: string; value: string }[] {
       ];
     }
     default:
-      return genericRows(event.data as Record<string, unknown>);
+      return genericRows(event.data as unknown as Record<string, unknown>);
   }
 }
 

@@ -71,11 +71,17 @@ export function computeFeesBps({
   virtualTokenReserves: BN;
 }): CalculatedFeesBps {
   if (feeConfig != null) {
-    const marketCap = bondingCurveMarketCap({
-      mintSupply,
-      virtualSolReserves,
-      virtualTokenReserves,
-    });
+    // A graduated curve has zeroed reserves, so its market cap is undefined
+    // rather than invalid. Price it at zero, which selects the base fee tier,
+    // instead of letting `bondingCurveMarketCap` throw on the division. Without
+    // this, every fee lookup for a migrated token fails.
+    const marketCap = virtualTokenReserves.isZero()
+      ? new BN(0)
+      : bondingCurveMarketCap({
+          mintSupply,
+          virtualSolReserves,
+          virtualTokenReserves,
+        });
 
     return calculateFeeTier({
       feeTiers: feeConfig.feeTiers,

@@ -104,6 +104,23 @@ function spotPrice(bondingCurve: BondingCurve): BN {
     .div(bondingCurve.virtualTokenReserves);
 }
 
+/**
+ * True when the curve no longer prices the token.
+ *
+ * On migration to PumpAMM the program zeroes the bonding curve's reserves, so
+ * every constant-product formula over them divides by zero. That is the normal
+ * end state of a successful launch, not bad input, so the analytics helpers
+ * report it instead of throwing. Note that `complete` alone is not enough: a
+ * curve can be flagged complete in the same slot it is drained, and a curve
+ * with zeroed reserves is unpriceable whether or not the flag is set yet.
+ */
+function isCurveRetired(bondingCurve: BondingCurve): boolean {
+  return (
+    bondingCurve.virtualTokenReserves.isZero() ||
+    bondingCurve.virtualSolReserves.isZero()
+  );
+}
+
 // ── Price Impact ──────────────────────────────────────────────────────
 
 /**
@@ -324,6 +341,12 @@ export function getGraduationProgress(
 /**
  * Get the current price per whole token (10^6 raw units) from the bonding curve.
  *
+ * A graduated curve reports zero prices and a zero market cap rather than
+ * throwing: when a token migrates to PumpAMM the program zeroes every reserve
+ * field on the bonding curve account, so the curve genuinely no longer prices
+ * the token. Read the pool instead (`OnlinePumpSdk.fetchPool`). Callers can
+ * branch on the returned `isGraduated`.
+ *
  * @param global       - Pump global state
  * @param feeConfig    - Fee config (null for legacy)
  * @param mintSupply   - Current mint supply
@@ -341,6 +364,15 @@ export function getTokenPrice({
   mintSupply: BN;
   bondingCurve: BondingCurve;
 }): TokenPriceInfo {
+  if (isCurveRetired(bondingCurve)) {
+    return {
+      buyPricePerToken: new BN(0),
+      sellPricePerToken: new BN(0),
+      marketCap: new BN(0),
+      isGraduated: true,
+    };
+  }
+
   // Cost to buy 1 whole token (1e6 raw units)
   const buyPricePerToken = getBuySolAmountFromTokenAmount({
     global,

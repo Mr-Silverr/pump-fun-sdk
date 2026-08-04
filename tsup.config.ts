@@ -1,4 +1,10 @@
+import { readFileSync } from "node:fs";
+
 import { defineConfig } from "tsup";
+
+const { version } = JSON.parse(
+  readFileSync(new URL("./package.json", import.meta.url), "utf8"),
+) as { version: string };
 
 export default defineConfig([
   {
@@ -33,6 +39,11 @@ export default defineConfig([
     // No `banner` here: src/cli/index.ts already carries the shebang and tsup
     // preserves it. Adding one too emits a second `#!` on line 2, which Node
     // rejects outright as a syntax error.
+    //
+    // The version is inlined at build time rather than read from the manifest
+    // at runtime, so `pump --version` cannot drift from the published package
+    // and the binary never touches the filesystem to answer it.
+    define: { __PUMP_CLI_VERSION__: JSON.stringify(version) },
   },
 ]);
 

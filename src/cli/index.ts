@@ -91,17 +91,18 @@ registerPdaCommand(program, getContext);
 registerSetupCommands(program, getContext);
 
 /**
- * Read the package version from the manifest rather than hardcoding it, so a
- * release bump never leaves `pump --version` lying.
+ * The package version, injected by tsup at build time (see `tsup.config.ts`).
+ *
+ * Declared rather than imported so a release bump can never leave
+ * `pump --version` lying, and so the binary does not read a file to answer it.
+ * The fallback covers running the TypeScript source directly, e.g. under `tsx`.
  */
+declare const __PUMP_CLI_VERSION__: string | undefined;
+
 function readVersion(): string {
-  try {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const pkg = require("../../package.json") as { version?: string };
-    return pkg.version ?? "0.0.0";
-  } catch {
-    return "0.0.0";
-  }
+  return typeof __PUMP_CLI_VERSION__ === "string"
+    ? __PUMP_CLI_VERSION__
+    : "0.0.0-dev";
 }
 
 /**

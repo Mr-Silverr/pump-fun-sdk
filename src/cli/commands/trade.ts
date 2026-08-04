@@ -12,7 +12,7 @@
 
 import type { Command } from "commander";
 import BN from "bn.js";
-import { Keypair, PublicKey } from "@solana/web3.js";
+import { Keypair, type PublicKey } from "@solana/web3.js";
 
 import { calculateBuyPriceImpact, calculateSellPriceImpact } from "../../analytics";
 import { getBuyTokenAmountFromSolAmount, newBondingCurve } from "../../bondingCurve";

@@ -11,7 +11,7 @@
 import { chmodSync, mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { Command } from "commander";
-import { Keypair } from "@solana/web3.js";
+import type { Keypair } from "@solana/web3.js";
 
 import {
   estimateVanityMintAttempts,

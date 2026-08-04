@@ -10,10 +10,10 @@
 import { createInterface } from "node:readline/promises";
 import {
   ComputeBudgetProgram,
-  Keypair,
-  PublicKey,
+  type Keypair,
+  type PublicKey,
   Transaction,
-  TransactionInstruction,
+  type TransactionInstruction,
   VersionedTransaction,
   TransactionMessage,
 } from "@solana/web3.js";

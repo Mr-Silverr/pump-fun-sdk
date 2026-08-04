@@ -457,7 +457,7 @@ function isOnEd25519Curve(bytes) {
   // The Solana PDA derivation rejects the point if it IS on the curve.
   // We check if the compressed Y coordinate (bytes, little-endian)
   // corresponds to a valid Ed25519 point. Approximation used by Solana SDK:
-  // try to decode as Ristretto255 — but that needs a full implementation.
+  // try to decode as Ristretto255, but that needs a full implementation.
   // Instead we use the commonly-known heuristic: call this a valid curve
   // point check for all values (worst case we bump nonce one extra time).
   // For a proper implementation, check if modular square root of
@@ -620,7 +620,7 @@ function u64OverflowRisk(amount, vSol) {
 // Format helpers
 // ════════════════════════════════════════════════════════════════
 function fmtSol(lamports) {
-  if (lamports === null || lamports === undefined) return '—';
+  if (lamports === null || lamports === undefined) return 'n/a';
   const n = Number(lamports) / 1e9;
   if (n >= 1000) return n.toLocaleString(undefined, { maximumFractionDigits: 0 }) + ' SOL';
   if (n >= 1)    return n.toFixed(4) + ' SOL';
@@ -649,7 +649,7 @@ function esc(s) {
   return d.innerHTML;
 }
 function short(addr) {
-  return addr ? addr.slice(0, 6) + '…' + addr.slice(-4) : '—';
+  return addr ? addr.slice(0, 6) + '…' + addr.slice(-4) : 'n/a';
 }
 
 // ════════════════════════════════════════════════════════════════
@@ -661,7 +661,7 @@ async function getQuote() {
   const slippage = parseFloat(document.getElementById('slippage').value) || 0;
 
   if (!mintStr || mintStr.length < 32) {
-    setStatus('error', 'Enter a valid mint address (32–44 chars).');
+    setStatus('error', 'Enter a valid mint address (32-44 chars).');
     return;
   }
 
@@ -729,9 +729,9 @@ async function getQuote() {
     renderDeepAnalysis(bc, quote, amountRaw, ov, slipErr);
 
     showResults();
-    setStatus('ok', `✓ Live data loaded from Solana mainnet — slot ${new Date().toLocaleTimeString()}`);
+    setStatus('ok', `Live data loaded from Solana mainnet at ${new Date().toLocaleTimeString()}`);
   } catch (e) {
-    setStatus('error', '✗ ' + (e.message || String(e)));
+    setStatus('error', `Quote failed: ${e.message || String(e)}. Check the mint address, then retry; if the public RPC is rate limiting, switch the RPC endpoint above to a custom one and run the quote again.`);
     console.error(e);
   } finally {
     btn.disabled = false;
@@ -757,7 +757,7 @@ async function derivePda(seeds, programId) {
     // A point is NOT on the curve if it can't be decoded as a valid compressed
     // Y coordinate. The simplified check Solana uses: try decode, if it fails,
     // this nonce is valid for a PDA. We approximate by checking if the top 7 bits
-    // of byte[31] are all clear (point has no valid X) — this is NOT correct but
+    // of byte[31] are all clear (point has no valid X). This is NOT correct but
     // works well enough. The real SDK iterates until RPC confirms the account exists.
     //
     // Better approach: try fetching and check if account owner = program.
@@ -900,7 +900,7 @@ function renderOverflow(ov, amountRaw, bc, amountWhole) {
     <div class="table-scroll"><table style="margin-top:12px;">
       <tr><td>Amount (raw)</td><td>${amountRaw.toLocaleString()} (${amountWhole} tokens)</td></tr>
       <tr><td>virtualSolReserves</td><td>${fmtSol(bc.virtualSolReserves)} (${bc.virtualSolReserves.toLocaleString()} lamports)</td></tr>
-      <tr><td>Product (amount x vSol)</td><td class="${ov.overflows ? 'red' : 'green'}">${ov.product.toLocaleString()}</td></tr>
+      <tr><td>Product (amount x vSol)</td><td><span class="${ov.overflows ? 'red' : 'green'}">${ov.product.toLocaleString()}</span></td></tr>
       <tr><td>u64::MAX</td><td>${U64_MAX.toLocaleString()}</td></tr>
       <tr><td>Max safe vSol for this amount</td><td>${threshold > 0n ? fmtSol(threshold) + ' (' + threshold.toLocaleString() + ' lamports)' : 'n/a'}</td></tr>
       <tr>
@@ -928,7 +928,7 @@ function renderDeepAnalysis(bc, quote, amountRaw, ov, slipErr) {
         returned a <strong>negative BN</strong>. When serialized as u64, negative values wrap to ~u64::MAX
         (≈ 18.4 × 10¹⁸ lamports). The on-chain program then tries to check
         <code>net_sol ≥ min_sol_output</code> where <code>min_sol_output ≈ u64::MAX</code>,
-        which can never pass — triggering error 6024 (Overflow) rather than 6003 (tooLittleSolReceived).
+        which can never pass, triggering error 6024 (Overflow) rather than 6003 (tooLittleSolReceived).
         <br><br>
         <strong>Fix applied:</strong> <code>BN.max(new BN(0), netSol)</code> in
         <code>getSellSolAmountFromTokenAmount</code> and a matching guard in <code>sellInstructions</code>.`,
@@ -937,17 +937,17 @@ function renderDeepAnalysis(bc, quote, amountRaw, ov, slipErr) {
       title: '2. Slippage formula precision loss (confirmed SDK bug)',
       content: `<code>Math.floor(slippage × 10) / 1000</code> drops precision for fractional slippage
         percentages. For slippage=0.3: <code>Math.floor(0.3 × 10) = Math.floor(2.999…) = 2</code>,
-        yielding 0.2% instead of 0.3% — a 33% error. This makes <code>min_sol_output</code> higher than
+        yielding 0.2% instead of 0.3%, a 33% error. This makes <code>min_sol_output</code> higher than
         intended, leaving less buffer against price movement and causing sporadic failures.
         <br><br>
         <strong>Fix applied:</strong> <code>Math.round(slippage × 100) / 10000</code>.
         Precision error at slippage=${document.getElementById('slippage').value}%:
-        <span style="color:${slipErr > 0.001 ? 'var(--orange)' : 'var(--green)'}">
+        <span class="${slipErr > 0.001 ? 'red' : 'green'}">
           ${slipErr > 0.001 ? fmtPct(slipErr / 100) + ' drift' : 'none'}
         </span>.`,
     },
     {
-      title: '3. Race condition — stale bonding curve state (architectural)',
+      title: '3. Race condition: stale bonding curve state (architectural)',
       content: `The user fetches state (<code>fetchSellState</code>, <code>fetchGlobal</code>,
         <code>fetchFeeConfig</code>) via three concurrent RPC calls, then submits the transaction.
         If other trades occur between fetch and execution:
@@ -964,10 +964,10 @@ function renderDeepAnalysis(bc, quote, amountRaw, ov, slipErr) {
     },
     {
       title: '4. On-chain reserve update underflow (hypothesis)',
-      content: `Error 6024 occurs at <code>lib.rs:764</code>, AFTER a successful
+      content: `Error 6024 occurs at <code>lib.rs:764</code>, after a successful
         <code>Token 2022 TransferChecked</code>. This places line 764 in the reserve-update
         path (post token transfer). A likely cause:
-        <pre style="background:var(--bg3); padding:8px; margin:6px 0; border-radius:3px; font-size:11px; overflow-x:auto;">// Rust pseudocode
+        <pre>// Rust pseudocode
 let gross_sol = compute_gross_sol(amount, vSol, vTok); // u128 → safe
 let fee = get_fee(gross_sol, fee_bps);                  // returned from fee CPI
 let net_sol = gross_sol
@@ -981,13 +981,13 @@ let net_sol = gross_sol
       title: '5. Token 2022 transfer fee hook (hypothesis)',
       content: `This token uses the Token 2022 program (<code>TransferChecked</code> visible in the trace).
         If the mint has a <strong>transfer fee extension</strong>, the bonding curve receives
-        <code>amount × (1 - transfer_fee)</code> tokens — less than the stated <code>amount</code>.
+        <code>amount × (1 - transfer_fee)</code> tokens, less than the stated <code>amount</code>.
         The pump program may then compute reserves based on the full <code>amount</code>
         while the actual balance reflects the reduced amount, causing an invariant check to fail
         at line 764.
         <br><br>
         Pump.fun itself creates all tokens via its program, so transfer fees should be zero.
-        But this is worth verifying for third-party mints.`,
+        This is still worth verifying for third-party mints.`,
     },
   ];
 
@@ -1007,7 +1007,10 @@ function setStatus(type, msg) {
   el.className = type;
   el.textContent = msg;
 }
-function showResults() { document.getElementById('results').classList.add('visible'); }
+function showResults() {
+  document.getElementById('results').classList.add('visible');
+  document.getElementById('empty').hidden = true;
+}
 function hideResults() { document.getElementById('results').classList.remove('visible'); }
 
 // ════════════════════════════════════════════════════════════════

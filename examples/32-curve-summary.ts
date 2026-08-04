@@ -30,6 +30,8 @@ export interface CurveReading {
   solToGraduate: BN;
   /** Tokens left for sale on the curve. */
   tokensRemaining: BN;
+  /** The curve still quotes both sides, so a round trip has a price. */
+  quotable: boolean;
   /** Buy price minus sell price for one whole token, in lamports. */
   roundTripCost: BN;
   /** That cost as basis points of the buy price. */
@@ -46,21 +48,31 @@ export interface CurveReading {
  *
  * The round trip is the honest cost of a position: buy one token and sell it
  * back in the same slot and you lose the buy/sell spread. Fees explain most
- * of it, and the remainder is the curve moving under the trade itself. A
- * graduated curve has zeroed reserves and prices, so it reports zeros rather
- * than dividing by them.
+ * of it, and the remainder is the curve moving under the trade itself.
+ *
+ * A completed curve is not quotable and reports zeros instead of a bogus
+ * spread. Its buy side is closed (there are no real tokens left to sell to a
+ * buyer, so a buy quote comes back at zero) while the sell side still prices
+ * off the virtual reserves, and subtracting one from the other would produce
+ * a negative "cost" that means nothing. Read the AMM pool instead: see
+ * example 25.
  */
 export function summarizeCurve(summary: BondingCurveSummary): CurveReading {
-  const roundTripCost = summary.buyPricePerToken.sub(summary.sellPricePerToken);
-  const roundTripBps = summary.buyPricePerToken.isZero()
-    ? new BN(0)
-    : roundTripCost.muln(10_000).div(summary.buyPricePerToken);
+  const quotable =
+    !summary.isGraduated && !summary.buyPricePerToken.isZero();
+  const roundTripCost = quotable
+    ? summary.buyPricePerToken.sub(summary.sellPricePerToken)
+    : new BN(0);
+  const roundTripBps = quotable
+    ? roundTripCost.muln(10_000).div(summary.buyPricePerToken)
+    : new BN(0);
   const totalFeeBps = summary.protocolFeeBps.add(summary.creatorFeeBps);
   // A round trip pays the fee twice, once on each leg.
   const feeLegsBps = totalFeeBps.muln(2);
 
   return {
     status: summary.isGraduated ? "graduated" : "trading",
+    quotable,
     progressPercent: divToDecimalString(
       new BN(summary.progressBps),
       new BN(100),
@@ -106,6 +118,7 @@ export async function main(): Promise<void> {
   heading("Reading");
   const reading = summarizeCurve(summary);
   row("Status", reading.status);
+  row("Quotable on the curve", reading.quotable);
   row("Progress", `${reading.progressPercent}%`);
   row("SOL raised", formatSol(reading.solRaised, 4));
   row("SOL to graduation", formatSol(reading.solToGraduate, 4));
@@ -128,6 +141,17 @@ export async function main(): Promise<void> {
   console.log(
     "number, quoted through the same fee tier the curve is trading in now.",
   );
+  if (reading.quotable && summary.buyPricePerToken.lten(1_000)) {
+    console.log(
+      "\nThis coin prices at a handful of lamports per token, so the round trip",
+    );
+    console.log(
+      "above is dominated by integer rounding rather than by the spread. Quote",
+    );
+    console.log(
+      "a real position size (example 11) before drawing a conclusion from it.",
+    );
+  }
 }
 
 if (require.main === module) {

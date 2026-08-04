@@ -78,20 +78,18 @@ export function offlineBuyQuote({
   });
 }
 
-/** SPL token account layout: mint (32) owner (32) amount (8, little endian). */
-export function tokenAccountOwner(data: Buffer): PublicKey {
-  if (data.length < 72) {
-    throw new Error(`Not an SPL token account: ${data.length} bytes`);
-  }
-  return new PublicKey(data.subarray(32, 64));
-}
-
-/** Balance of an SPL token account, from the same fixed layout. */
-export function tokenAccountAmount(data: Buffer): BN {
-  if (data.length < 72) {
-    throw new Error(`Not an SPL token account: ${data.length} bytes`);
-  }
-  return new BN(data.subarray(64, 72), "le");
+/**
+ * An account that certainly holds the token, so a sell can be quoted.
+ *
+ * quoteSell reads the seller's associated token account and refuses to
+ * quote a position that does not exist. The bonding curve's own vault is
+ * the one account guaranteed to hold an unsold token, and it costs nothing
+ * to derive. The seller's identity never enters the pricing math: it only
+ * has to exist, so quoting against the vault gives the same numbers any
+ * holder would see.
+ */
+export function quoteSeller(mint: PublicKey): PublicKey {
+  return bondingCurvePda(mint);
 }
 
 /** One paced retry when the public RPC rate limits the run. */
@@ -107,31 +105,6 @@ async function rpc<T>(label: string, run: () => Promise<T>): Promise<T> {
     await new Promise((resolve) => setTimeout(resolve, 2_000));
     return await run();
   }
-}
-
-/**
- * A real holder of the token, needed because quoteSell reads the seller's
- * associated token account and refuses to quote a position that does not
- * exist. The curve's own vault is skipped: it holds the unsold supply and
- * is not a trader.
- */
-async function findHolder(
-  connection: ReturnType<typeof getConnection>,
-  mint: PublicKey,
-): Promise<{ owner: PublicKey; amount: BN } | null> {
-  const largest = await rpc("getTokenLargestAccounts", () =>
-    connection.getTokenLargestAccounts(mint),
-  );
-  const curveVault = bondingCurvePda(mint);
-  for (const account of largest.value.slice(0, 5)) {
-    const info = await connection.getAccountInfo(account.address);
-    if (!info) continue;
-    const owner = tokenAccountOwner(info.data);
-    const amount = tokenAccountAmount(info.data);
-    if (owner.equals(curveVault) || amount.isZero()) continue;
-    return { owner, amount };
-  }
-  return null;
 }
 
 export async function main(): Promise<void> {
@@ -181,22 +154,12 @@ export async function main(): Promise<void> {
   );
 
   heading("Online: quoteSell");
-  const holder = await findHolder(connection, mint);
-  if (!holder) {
-    console.log(
-      "No holder token account is readable for this mint right now, so there",
-    );
-    console.log(
-      "is no position to quote a sell against. quoteSell reads the seller's",
-    );
-    console.log("associated token account and needs it to exist.");
-    return;
-  }
-  const sellAmount = BN.min(holder.amount, buy.tokensOut);
+  const seller = quoteSeller(mint);
+  const sellAmount = buy.tokensOut;
   const sell = await rpc("quoteSell", () =>
-    online.quoteSell({ mint, user: holder.owner, amount: sellAmount }),
+    online.quoteSell({ mint, user: seller, amount: sellAmount }),
   );
-  row("Seller", holder.owner.toBase58());
+  row("Seller", `${seller.toBase58()} (curve vault)`);
   row("Tokens in", formatTokens(sellAmount));
   row("SOL out", formatSol(sell.solOut));
   row("Fees", formatSol(sell.feesLamports, 6));

@@ -18,6 +18,7 @@ import {
   computeFeesBps,
   getFee,
 } from "@nirholas/pump-sdk";
+import { PublicKey } from "@solana/web3.js";
 import BN from "bn.js";
 
 import type {
@@ -233,21 +234,23 @@ export async function main(): Promise<void> {
 
   heading("Fee on an actual trade");
   const amount = new BN(1_000_000_000); // 1 SOL of trade value
+  const midCurve = curveAtVirtualSol(global, new BN("60000000000"));
   const withCreator = tradeFee({
     global,
     feeConfig,
-    bondingCurve: curveAtVirtualSol(global, new BN("60000000000")),
+    bondingCurve: midCurve,
     mintSupply: global.tokenTotalSupply,
     amount,
   });
   const creatorless = tradeFee({
     global,
     feeConfig,
-    bondingCurve: launchBondingCurve(),
+    bondingCurve: { ...midCurve, creator: PublicKey.default },
     mintSupply: global.tokenTotalSupply,
     amount,
   });
   row("Trade value", formatSol(amount));
+  row("Curve", "60 SOL virtual, tier 2 (100 / 50 bps)");
   row("Fee, creator set", formatSol(withCreator, 6));
   row("Fee, no creator", formatSol(creatorless, 6));
   console.log("\ngetFee adds the creator component only when the curve carries a");

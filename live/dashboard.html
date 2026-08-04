@@ -1678,7 +1678,7 @@ async function refreshWatches() {
   try {
     const resp = await apiFetch('/api/v1/watches?limit=100');
     if (!resp.ok) {
-      toast('Failed to load watches: ' + resp.status, 'error');
+      toast('Could not load watches (HTTP ' + resp.status + '). Check the API URL and key under Configuration, then hit Refresh.', 'error');
       return;
     }
     const data = await resp.json();
@@ -1704,7 +1704,7 @@ async function refreshWatches() {
       </tr>
     `).join('');
   } catch (e) {
-    toast('Failed to load watches', 'error');
+    toast('Could not reach the watches API. Check the API URL under Configuration, then hit Refresh.', 'error');
   }
 }
 
@@ -1741,7 +1741,7 @@ async function createWatch() {
       toast(err.error || 'Failed to create watch', 'error');
     }
   } catch {
-    toast('Network error creating watch', 'error');
+    toast('Network error creating the watch. Check the API URL under Configuration and try again.', 'error');
   }
 }
 
@@ -1753,10 +1753,10 @@ async function deleteWatch(id) {
       toast('Watch deleted', 'success');
       refreshWatches();
     } else {
-      toast('Failed to delete watch', 'error');
+      toast('Could not delete that watch. The API rejected the request; check your API key under Configuration.', 'error');
     }
   } catch {
-    toast('Network error', 'error');
+    toast('Network error reaching the bot API. Check the API URL under Configuration.', 'error');
   }
 }
 
@@ -1773,7 +1773,7 @@ async function refreshClaims() {
   try {
     const resp = await apiFetch('/api/v1/claims?' + params);
     if (!resp.ok) {
-      toast('Failed to load claims: ' + resp.status, 'error');
+      toast('Could not load claims (HTTP ' + resp.status + '). Check the API URL and key under Configuration, then search again.', 'error');
       return;
     }
     const data = await resp.json();
@@ -1800,7 +1800,7 @@ async function refreshClaims() {
         </tr>`;
     }).join('');
   } catch {
-    toast('Failed to load claims', 'error');
+    toast('Could not reach the claims API. Check the API URL under Configuration, then search again.', 'error');
   }
 }
 

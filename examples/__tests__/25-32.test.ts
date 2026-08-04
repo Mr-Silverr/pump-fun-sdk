@@ -42,6 +42,7 @@ import {
   makeFeeConfig,
   makeGlobal,
   makeGraduatedBondingCurve,
+  makeMigratedBondingCurve,
   TEST_CREATOR,
   TEST_PUBKEY,
 } from "../../src/__tests__/fixtures";
@@ -863,6 +864,7 @@ describe("example 32: curve reading", () => {
   it("reads a fresh curve", () => {
     const reading = summarizeCurve(summaryFor());
     expect(reading.status).toBe("trading");
+    expect(reading.quotable).toBe(true);
     expect(reading.progressPercent).toBe("0.00");
     expect(reading.solRaised.isZero()).toBe(true);
     expect(reading.solToGraduate.gtn(0)).toBe(true);
@@ -890,12 +892,23 @@ describe("example 32: curve reading", () => {
     expect(reading.tokensRemaining.eq(new BN("396550000000000"))).toBe(true);
   });
 
-  it("reports a graduated curve without dividing by zero", () => {
+  it("refuses to quote a round trip on a completed curve", () => {
+    // The buy side is closed while the sell side still prices off the
+    // virtual reserves, which would otherwise produce a negative spread.
     const reading = summarizeCurve(summaryFor(makeGraduatedBondingCurve()));
     expect(reading.status).toBe("graduated");
+    expect(reading.quotable).toBe(false);
     expect(reading.progressPercent).toBe("100.00");
     expect(reading.solToGraduate.isZero()).toBe(true);
+    expect(reading.roundTripCost.isZero()).toBe(true);
     expect(reading.roundTripBps.isZero()).toBe(true);
     expect(reading.curveSpreadBps.isZero()).toBe(true);
+  });
+
+  it("reports a migrated curve without dividing by zeroed reserves", () => {
+    const reading = summarizeCurve(summaryFor(makeMigratedBondingCurve()));
+    expect(reading.status).toBe("graduated");
+    expect(reading.quotable).toBe(false);
+    expect(reading.roundTripBps.isZero()).toBe(true);
   });
 });

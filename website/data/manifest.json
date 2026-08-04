@@ -863,6 +863,34 @@
       "summary": "Runs quoteBuy and quoteSell against a live curve and puts the buy quote next to the same trade computed offline with getBuyTokenAmountFromSolAmount. Both print, and the drift between them is measured in basis points: the"
     },
     {
+      "file": "37-batch-curves.ts",
+      "number": 37,
+      "title": "Batched Bonding Curve Reads",
+      "category": "Live Data",
+      "summary": "Collects a basket of mints off the live Pump log stream and reads every bonding curve in a single fetchMultipleBondingCurves call, then aggregates the basket: how many are still trading, how many completed, and how much "
+    },
+    {
+      "file": "38-batch-pools.ts",
+      "number": 38,
+      "title": "Batched AMM Pool Reads",
+      "category": "Live Data",
+      "summary": "Asks fetchMultiplePools for a mixed basket of graduated and still-curving mints in one call, then reads each live pool's vaults in a second batched call and prices every pool from its own reserves. Missing entries are th"
+    },
+    {
+      "file": "39-routed-trading.ts",
+      "number": 39,
+      "title": "Routed Trading",
+      "category": "Live Data",
+      "summary": "routedBuyInstructions and routedSellInstructions pick the venue for you: bonding curve while the token is still curving, PumpAMM once it has graduated. This runs both against a live curve token and a live graduated token"
+    },
+    {
+      "file": "40-websocket-trades.ts",
+      "number": 40,
+      "title": "Live Trade Feed",
+      "category": "Live Data",
+      "summary": "Subscribes to the Pump program's log stream and decodes every trade as it lands with parsePumpEventsFromLogs, printing side, size, and the reserves the trade left behind. Runs for at most 15 seconds or 10 trades, then un"
+    },
+    {
       "file": "41-amm-buy.ts",
       "number": 41,
       "title": "AMM Buy",
@@ -910,6 +938,27 @@
       "title": "Fee Sharing, Paying It Out",
       "category": "AMM & Advanced",
       "summary": "Finds a live token that already uses a fee sharing config, simulates getMinimumDistributableFee to learn whether its vault has cleared the payout floor, and builds the distribute instructions. Works out each shareholder'"
+    },
+    {
+      "file": "48-creator-fees.ts",
+      "number": 48,
+      "title": "Creator Fees",
+      "category": "AMM & Advanced",
+      "summary": "Reads a live coin creator's unclaimed fee balance on both programs, splits it into its bonding curve and AMM halves, and builds the collect instructions for each without sending them. A creator who only claims one side l"
+    },
+    {
+      "file": "49-token-incentives.ts",
+      "number": 49,
+      "title": "Token Incentives",
+      "category": "AMM & Advanced",
+      "summary": "Reads the global volume accumulator that drives Pump's trade-to-earn rewards, works out which day of the program a timestamp falls in, and builds the whole user-side lifecycle: open an accumulator, sync it, claim rewards"
+    },
+    {
+      "file": "50-vanity-mint.ts",
+      "number": 50,
+      "title": "Vanity Mints",
+      "category": "AMM & Advanced",
+      "summary": "Grinds keypairs until one lands a chosen suffix, on a bounded attempt budget so the run finishes in seconds, then feeds the winner straight into createV2Instruction. Shows how the cost of a pattern scales, and how the SD"
     }
   ],
   "exampleTutorials": [
@@ -1037,7 +1086,7 @@
   "stats": {
     "docs": 42,
     "tutorials": 45,
-    "examples": 36,
+    "examples": 43,
     "mcpTools": 67,
     "mcpResources": 4,
     "mcpPrompts": 5,

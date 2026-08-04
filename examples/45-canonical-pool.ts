@@ -53,7 +53,8 @@ export interface VenuePriceComparison {
  * offsets baked in at launch (30 SOL of virtual SOL, and the ~280M tokens of
  * virtual supply that never sit in the curve). Those offsets flatten the
  * curve, so for identical real reserves the curve always quotes cheaper. The
- * gap closes as a pool grows past the offsets.
+ * gap narrows as both reserves grow past the offsets, since a fixed offset
+ * matters less against deeper liquidity.
  */
 export function compareVenuePrices({
   baseReserve,

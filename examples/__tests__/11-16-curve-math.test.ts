@@ -109,14 +109,21 @@ describe("example 14: target SOL extraction", () => {
 });
 
 describe("example 15: max safe sell", () => {
-  it("flags amounts beyond the u64 safety margin", () => {
-    const check = checkSellSafety(makeBondingCurve(), U64_MAX);
+  it("flags an amount wider than the on-chain u64 token field", () => {
+    const check = checkSellSafety(makeBondingCurve(), U64_MAX.addn(1));
     expect(check.safe).toBe(false);
-    expect(check.maxSafeAmount.lt(U64_MAX)).toBe(true);
+    expect(check.maxSafeAmount.lte(U64_MAX)).toBe(true);
     expect(check.error).toBeDefined();
   });
 
+  it("accepts the issue #6 amount that the old u64-derived bound refused", () => {
+    const curve = makeBondingCurve({ virtualSolReserves: new BN("60000000000") });
+    expect(checkSellSafety(curve, new BN("6325344957752")).safe).toBe(true);
+  });
+
   it("passes ordinary position sizes", () => {
+    // 1M tokens (6 decimals) against a fresh curve: an everyday exit, and
+    // the size class the old u64-derived bound used to refuse.
     const check = checkSellSafety(makeBondingCurve(), new BN("1000000000000"));
     expect(check.safe).toBe(true);
     expect(check.error).toBeUndefined();

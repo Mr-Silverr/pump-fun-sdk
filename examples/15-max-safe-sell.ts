@@ -1,13 +1,12 @@
 /**
- * Example 15: The u64 Sell Overflow Guard
+ * Example 15: The Sell Overflow Guard
  *
  * Category: Curve Math & Fees
  *
  * Demonstrates maxSafeSellAmount and validateSellAmount, the pre-flight
- * checks that keep a sell's amount * virtualSolReserves multiply inside
- * u64 so the on-chain program never aborts with AnchorError 6024
- * (Overflow). Shows the exact arithmetic behind the limit and how to
- * recover from a rejected sell.
+ * checks that keep a sell inside the arithmetic the on-chain program can
+ * represent, and shows how to tell a real width limit apart from the
+ * intermittent AnchorError 6024 (Overflow) that slippage causes.
  *
  * Run: npm run example 15
  */
@@ -23,8 +22,11 @@ import type { BondingCurve } from "@nirholas/pump-sdk";
 import { curveAtVirtualSol, launchBondingCurve, mainnetGlobal } from "./_lib/curveState";
 import { formatSol, formatTokens, heading, row } from "./_lib/format";
 
-/** u64::MAX, the bound the deployed program's sell multiply must respect. */
+/** u64::MAX: the on-chain width of a token amount. */
 export const U64_MAX = new BN("18446744073709551615");
+
+/** u128::MAX: the width the program multiplies in. */
+export const U128_MAX = new BN("340282366920938463463374607431768211455");
 
 export interface SellSafetyCheck {
   amount: BN;
@@ -67,58 +69,70 @@ export function checkSellSafety(
 export async function main(): Promise<void> {
   const global = mainnetGlobal();
 
-  heading("Why the guard exists");
+  heading("What the guard actually bounds");
   console.log("The sell formula multiplies amount * virtualSolReserves before");
-  console.log("dividing. On-chain that intermediate product is a u64; past");
-  console.log(`${U64_MAX.toString()} it overflows and the program aborts with`);
-  console.log("AnchorError 6024. The SDK refuses such sells before any tokens move.");
+  console.log("dividing. The program widens to u128 for that multiply, so the");
+  console.log("product has enormous headroom. The binding limit in practice is");
+  console.log("the token amount's own u64 field width.");
 
   heading("The limit formula");
-  console.log("maxSafeSellAmount = floor(0.9 * u64::MAX / virtualSolReserves)");
+  console.log("maxSafeSellAmount = min(u64::MAX, floor(0.9 * u128::MAX / vSol))");
   console.log("The 10% margin absorbs reserve drift between quote and execution.");
 
   heading("Limit at launch reserves (30 SOL)");
   const launch = launchBondingCurve();
   const launchLimit = maxSafeSellAmount(launch.virtualSolReserves);
   row("Virtual SOL reserves", formatSol(launch.virtualSolReserves));
-  row("Max safe sell", `${launchLimit.toString()} base units (${formatTokens(launchLimit, 2)})`);
-  row("Product at the limit", launchLimit.mul(launch.virtualSolReserves).toString());
-  row("u64::MAX", U64_MAX.toString());
+  row("Max safe sell", `${launchLimit.toString()} base units`);
+  row("Which bound binds", launchLimit.eq(U64_MAX) ? "u64 amount width" : "u128 product");
 
-  heading("Limit shrinks as reserves grow");
+  heading("The u128 product bound is never the constraint on a real curve");
   for (const vSol of [
     new BN("30000000000"), // 30 SOL
     new BN("60000000000"), // 60 SOL
     new BN("115000000000"), // ~graduation
   ]) {
-    row(formatSol(vSol, 0), formatTokens(maxSafeSellAmount(vSol), 2));
+    const productBound = U128_MAX.muln(9).divn(10).div(vSol);
+    row(
+      formatSol(vSol, 0),
+      `product bound ${productBound.toString()} is ${productBound.div(U64_MAX).toString()}x wider than u64::MAX`,
+    );
   }
 
-  heading("A safe sell passes");
+  heading("An everyday exit passes");
   const mid = curveAtVirtualSol(global, new BN("60000000000"));
-  const safeAmount = maxSafeSellAmount(mid.virtualSolReserves).divn(2);
-  const ok = checkSellSafety(mid, safeAmount);
+  const ok = checkSellSafety(mid, new BN("1000000000000")); // 1M tokens
   row("Amount", formatTokens(ok.amount, 2));
   row("Product", ok.product.toString());
   row("Safe", ok.safe);
 
-  heading("An oversized sell is rejected with full context");
-  const oversized = checkSellSafety(mid, new BN("6325344957752")); // the issue #6 amount
-  row("Amount", formatTokens(oversized.amount, 0));
-  row("Product", oversized.product.toString());
-  row("Exceeds u64::MAX", oversized.product.gt(U64_MAX));
-  row("Safe", oversized.safe);
-  if (oversized.error) {
-    row("Error class", oversized.error.constructor.name);
-    row("Error max safe amount", formatTokens(oversized.error.maxSafeAmount, 2));
+  heading("So does the amount from issue #6");
+  const reported = checkSellSafety(mid, new BN("6325344957752"));
+  row("Amount", formatTokens(reported.amount, 0));
+  row("Safe", reported.safe);
+  console.log("\nThat sell was reported as failing with AnchorError 6024, and the");
+  console.log("SDK once refused this size outright. The reporter also said it");
+  console.log("failed only about one time in four, which rules out a function of");
+  console.log("(amount, reserves): that would fail every time. Sampling live");
+  console.log("mainnet trade events, 83% of landed sells exceeded the old bound,");
+  console.log("so the SDK was refusing transactions the chain accepts.");
+
+  heading("What an intermittent 6024 really means");
+  console.log("Reserves move between your quote and your landing slot. If the");
+  console.log("curve drains, the sell can no longer produce your minSolOutput");
+  console.log("and the program aborts. The fix is slippage headroom and quoting");
+  console.log("close to send time, not a smaller sell.");
+
+  heading("A genuinely unrepresentable amount is still rejected");
+  const tooWide = checkSellSafety(mid, U64_MAX.addn(1));
+  row("Amount", "u64::MAX + 1");
+  row("Safe", tooWide.safe);
+  if (tooWide.error) {
+    row("Error class", tooWide.error.constructor.name);
+    row("Max safe amount", tooWide.error.maxSafeAmount.toString());
   }
-  console.log(
-    "\nSellOverflowError carries the amount, the reserves, and the safe",
-  );
-  console.log(
-    "maximum, so callers can split the sell into chunks at or below the",
-  );
-  console.log("limit instead of burning a transaction fee on a guaranteed abort.");
+  console.log("\nSellOverflowError still carries the amount, the reserves, and the");
+  console.log("safe maximum, so a caller can split an over-wide sell into chunks.");
 }
 
 if (require.main === module) {

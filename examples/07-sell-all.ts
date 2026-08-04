@@ -38,13 +38,17 @@ export interface SellAllPlan {
 /**
  * Plan a full exit offline.
  *
- * The deployed pump program multiplies `amount * virtualSolReserves` as a
- * u64 in the sell formula. When that product would exceed u64::MAX the
- * program aborts with AnchorError 6024 AFTER your tokens already moved to
- * the curve's token account in the same failed transaction (the transfer
- * is rolled back, but you paid fees and learned nothing). maxSafeSellAmount
- * mirrors the bound, minus a 10% margin for reserve drift, so oversized
- * exits are detected before anything is signed.
+ * `maxSafeSellAmount` bounds what a single sell instruction can carry: the
+ * program widens the sell multiply to u128, so the binding limit is the
+ * token amount's own u64 field width. A balance wider than that needs
+ * chunking, which this plan reports before anything is signed.
+ *
+ * A failing sell is worth distinguishing from a too-large one. AnchorError
+ * 6024 that strikes intermittently at sizes that usually work is slippage:
+ * reserves drift between quote and landing slot, and the abort happens
+ * after your tokens already moved in that same transaction (rolled back,
+ * but you paid the fee). Chunking does not fix that; slippage headroom and
+ * quoting near send time do.
  */
 export function computeSellAllPlan({
   global,

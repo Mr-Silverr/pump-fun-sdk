@@ -5,9 +5,9 @@
  *
  * Answers the exit-planning question "how many tokens must I sell to take
  * home N lamports after fees?" using the SDK's binary search over the sell
- * quote, offline. Also shows the hard ceiling every plan runs into: one
- * sell instruction is clamped to the u64-safe amount, so larger exits must
- * be chunked.
+ * quote, offline. Also shows the hard ceiling every plan runs into: a
+ * single sell cannot draw more than the curve's remaining inventory, so
+ * larger exits must be split across several sells.
  *
  * Run: npm run example 14
  */
@@ -114,10 +114,13 @@ export async function main(): Promise<void> {
   row("Max safe token amount", formatTokens(ceiling.tokenAmount, 2));
   row("SOL that extracts", `${ceiling.solOut.toString()} lamports (${formatSol(ceiling.solOut, 9)})`);
   console.log(
-    "\nThe SDK caps every sell at maxSafeSellAmount so the on-chain",
+    "\nEvery plan is bounded by the smaller of the curve's remaining token",
   );
   console.log(
-    "amount * virtualSolReserves multiply cannot overflow u64 (example 15).",
+    "inventory and maxSafeSellAmount. On any real curve inventory binds",
+  );
+  console.log(
+    "first: the arithmetic limit sits far above it (example 15).",
   );
 
   heading("Binary-searched plans for reachable targets");
@@ -134,17 +137,26 @@ export async function main(): Promise<void> {
     );
   }
 
-  heading("An unreachable target gets clamped");
+  heading("A reachable target is met exactly");
   const oneSol = planTargetSol(global, curve, new BN("1000000000"));
   row("Target", formatSol(oneSol.targetSol));
-  row("Clamped token amount", formatTokens(oneSol.tokenAmount, 2));
-  row("Best possible net", `${oneSol.actualSolOut.toString()} lamports`);
+  row("Tokens to sell", formatTokens(oneSol.tokenAmount, 2));
+  row("Net proceeds", `${oneSol.actualSolOut.toString()} lamports`);
   row("Capped", oneSol.capped);
+
+  heading("An unreachable target gets clamped");
+  // Past the ceiling this curve can yield, so the plan reports the best it
+  // can do rather than a token amount the curve cannot fill.
+  const beyond = planTargetSol(global, curve, ceiling.solOut.muln(2));
+  row("Target", formatSol(beyond.targetSol));
+  row("Clamped token amount", formatTokens(beyond.tokenAmount, 2));
+  row("Best possible net", `${beyond.actualSolOut.toString()} lamports`);
+  row("Capped", beyond.capped);
   console.log(
     "\nWhen the target exceeds the ceiling, the SDK returns the ceiling",
   );
   console.log(
-    "instead of a token amount that would abort on-chain. To extract more,",
+    "instead of a token amount the curve cannot fill. To extract more,",
   );
   console.log(
     "issue several sells: each one shifts the reserves, so re-plan against",

@@ -716,6 +716,13 @@
       "summary": "\"I need 2 SOL back\" is a target, not a token amount. This example uses getTokenAmountForTargetSol, a binary search over the sell quote, to find the minimum tokens to part with, and shows sellToTargetSol and sellChunked f"
     },
     {
+      "file": "09-mayhem-mode.ts",
+      "number": 9,
+      "title": "Mayhem Mode",
+      "category": "Token Lifecycle",
+      "summary": "Builds the same launch twice with createV2Instruction, once with mayhem mode off and once with it on, then diffs the two instructions byte for byte. Shows the four Mayhem program accounts every createv2 carries and exact"
+    },
+    {
       "file": "11-buy-quote-offline.ts",
       "number": 11,
       "title": "Buy Quotes, Fully Offline",
@@ -786,6 +793,13 @@
       "summary": "Decodes the four bonding curve lifecycle events (trade, create, complete, migration) straight off a transaction's log buffers. The decoders take the BARE payload, so the 8-byte anchor discriminator that routes the buffer"
     },
     {
+      "file": "28-volume-accumulators.ts",
+      "number": 28,
+      "title": "Volume Accumulators",
+      "category": "Accounts & Events",
+      "summary": "Reads the live GlobalVolumeAccumulator and a user's UserVolumeAccumulator, then reconstructs the day-window arithmetic behind token incentives: which day index the clock is in, how much supply that day carries, and why a"
+    },
+    {
       "file": "33-graduation-progress.ts",
       "number": 33,
       "title": "Graduation Progress",
@@ -839,6 +853,30 @@
       "number": 2
     },
     {
+      "file": "03-buy-tokens.md",
+      "title": "Example 03: Buy Tokens",
+      "summary": "Quote a SOL budget against a live bonding curve, then build slippage-protected buy instructions from explicit on-chain state.",
+      "words": 1937,
+      "minutes": 9,
+      "number": 3
+    },
+    {
+      "file": "04-sell-tokens.md",
+      "title": "Example 04: Sell Tokens",
+      "summary": "Quote the SOL a token amount returns after fees, then build slippage-protected sell instructions from explicit bonding curve state.",
+      "words": 1974,
+      "minutes": 9,
+      "number": 4
+    },
+    {
+      "file": "05-buy-by-sol-amount.md",
+      "title": "Example 05: Buy by SOL Amount",
+      "summary": "One call takes a SOL budget and returns ready-to-sign buy instructions, and a quote table shows the price impact you pay for size.",
+      "words": 1586,
+      "minutes": 7,
+      "number": 5
+    },
+    {
       "file": "11-buy-quote-offline.md",
       "title": "Buy Quotes, Fully Offline",
       "summary": "Price a Pump bonding curve buy in both directions with zero network access, using the same integer math the on-chain program runs.",
@@ -853,12 +891,52 @@
       "words": 1872,
       "minutes": 9,
       "number": 12
+    },
+    {
+      "file": "13-market-cap.md",
+      "title": "Market Cap Along the Curve",
+      "summary": "Compute a Pump token's SOL-denominated market cap at launch, mid-curve, and at the graduation edge, entirely offline and entirely in integers.",
+      "words": 1788,
+      "minutes": 8,
+      "number": 13
+    },
+    {
+      "file": "14-target-sol.md",
+      "title": "Sell Enough Tokens to Extract N SOL",
+      "summary": "Plan an exit backwards from the SOL you want: binary-search the token amount whose net proceeds hit a target, and find the ceiling one sell instruction can reach.",
+      "words": 1984,
+      "minutes": 9,
+      "number": 14
+    },
+    {
+      "file": "15-max-safe-sell.md",
+      "title": "The Sell Overflow Guard",
+      "summary": "What maxSafeSellAmount really bounds, why the old u64-derived limit refused 83% of sells the chain accepted, and how to tell a width limit apart from an intermittent slippage failure.",
+      "words": 2442,
+      "minutes": 11,
+      "number": 15
+    },
+    {
+      "file": "16-launch-price-ladder.md",
+      "title": "Launch Price Ladder",
+      "summary": "Simulate a sequence of buys from a fresh launch, applying each fill to the reserves, and watch the price ratchet up with nothing but integer arithmetic.",
+      "words": 1898,
+      "minutes": 9,
+      "number": 16
+    },
+    {
+      "file": "41-amm-buy.md",
+      "title": "AMM Buy",
+      "summary": "Quote a buy on a graduated token's PumpSwap pool, decompose the quote into fees and price impact, and build the swap instructions without sending anything.",
+      "words": 2233,
+      "minutes": 10,
+      "number": 41
     }
   ],
   "stats": {
     "docs": 42,
     "tutorials": 45,
-    "examples": 23,
+    "examples": 25,
     "mcpTools": 67,
     "mcpResources": 4,
     "mcpPrompts": 5,

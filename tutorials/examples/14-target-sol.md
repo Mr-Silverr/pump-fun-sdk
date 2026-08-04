@@ -105,7 +105,7 @@ const maxOut = getSellSolAmountFromTokenAmount({
   global, feeConfig, mintSupply, bondingCurve, amount: upper,
 });
 
-// Target unreachable within a single safe sell — return the ceiling
+// Target unreachable within a single safe sell: return the ceiling
 if (maxOut.lte(targetSol)) return upper;
 
 let lo = new BN(0);

@@ -7,119 +7,161 @@
 <title>Dashboard / pump sdk live</title>
 <style>
   :root {
-    --bg: #0a0a0a;
-    --bg-card: #111;
-    --bg-input: #1a1a1a;
+    --bg: #050505;
+    --bg-elevated: #0e0e0e;
+    --bg-hover: #161616;
     --border: #222;
-    --border-focus: #00ff41;
-    --text: #ccc;
-    --text-bright: #fff;
-    --accent: #00ff41;
-    --accent-dim: #00cc33;
-    --red: #ff4141;
-    --yellow: #ffc107;
-    --blue: #4fc3f7;
-    --purple: #bb86fc;
-    --orange: #ff9800;
-    --font: 'Courier New', monospace;
+    --border-strong: #333;
+    --text: #f5f5f5;
+    --text-dim: #9a9a9a;
+    --text-faint: #555;
+    --accent-buy: #00e68a;
+    --accent-sell: #ff5c5c;
+    --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
     --radius: 6px;
   }
   * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { color-scheme: dark; }
   body {
     background: var(--bg);
-    color: var(--text);
-    font-family: var(--font);
+    color: var(--text-dim);
+    font-family: var(--font-sans);
     font-size: 13px;
     line-height: 1.5;
     min-height: 100vh;
   }
+  .mono { font-family: var(--font-mono); }
+  [hidden] { display: none !important; }
+
+  /* ── Shared header ───────────────────────────────────── */
+  .site-header {
+    display: flex; align-items: center; gap: 16px;
+    padding: 0 16px; height: 48px;
+    background: var(--bg); border-bottom: 1px solid var(--border);
+    position: sticky; top: 0; z-index: 60;
+  }
+  .site-header .wordmark {
+    font-family: var(--font-mono); font-size: 13px; font-weight: 600;
+    color: var(--text); text-decoration: none; white-space: nowrap;
+  }
+  .site-header .wordmark span { color: var(--text-faint); font-weight: 400; }
+  .site-nav { display: flex; gap: 2px; overflow-x: auto; scrollbar-width: none; }
+  .site-nav::-webkit-scrollbar { display: none; }
+  .site-nav a {
+    color: var(--text-dim); text-decoration: none; font-size: 12px;
+    padding: 5px 9px; border-radius: var(--radius); white-space: nowrap;
+    transition: color 140ms ease, background 140ms ease;
+  }
+  .site-nav a:hover { color: var(--text); background: var(--bg-hover); }
+  .site-nav a:active { background: var(--bg-elevated); }
+  .site-nav a:focus-visible { outline: 1px solid #fff; outline-offset: 2px; }
+  .site-nav a[aria-current="page"] { color: var(--text); background: var(--bg-elevated); }
+
+  /* ── Shared footer ───────────────────────────────────── */
+  .site-footer {
+    border-top: 1px solid var(--border); padding: 14px 16px;
+    display: flex; gap: 16px; flex-wrap: wrap; align-items: center;
+    font-size: 12px; color: var(--text-faint); font-family: var(--font-mono);
+    margin-left: 220px;
+  }
+  .site-footer a { color: var(--text-dim); text-decoration: none; transition: color 140ms ease; }
+  .site-footer a:hover { color: var(--text); text-decoration: underline; }
+  .site-footer a:focus-visible { outline: 1px solid #fff; outline-offset: 2px; }
+  .site-footer .grow { flex: 1; }
 
   /* ── Layout ──────────────────────────────────────────── */
-  .app { display: flex; min-height: 100vh; }
+  .app { display: flex; min-height: calc(100vh - 48px); }
   .sidebar {
     width: 220px;
-    background: var(--bg-card);
+    background: var(--bg-elevated);
     border-right: 1px solid var(--border);
     display: flex;
     flex-direction: column;
     position: fixed;
-    top: 0; left: 0; bottom: 0;
+    top: 48px; left: 0; bottom: 0;
     z-index: 20;
     overflow-y: auto;
   }
   .sidebar-header {
-    padding: 16px;
+    padding: 14px 16px;
     border-bottom: 1px solid var(--border);
   }
   .sidebar-header h1 {
-    font-size: 14px;
-    color: var(--accent);
-    display: flex;
-    align-items: center;
-    gap: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+    font-family: var(--font-mono);
   }
-  .sidebar-header .version { font-size: 11px; color: #666; }
+  .sidebar-header .version { font-size: 11px; color: var(--text-faint); font-family: var(--font-mono); }
   .sidebar nav { flex: 1; padding: 8px 0; }
   .sidebar nav a {
     display: flex;
     align-items: center;
     gap: 10px;
-    padding: 10px 16px;
-    color: var(--text);
+    padding: 9px 16px;
+    color: var(--text-dim);
     text-decoration: none;
     font-size: 12px;
-    border-left: 3px solid transparent;
-    transition: all 0.15s;
+    border-left: 2px solid transparent;
+    transition: color 140ms ease, background 140ms ease, border-color 140ms ease;
   }
-  .sidebar nav a:hover { background: rgba(0,255,65,0.05); color: var(--text-bright); }
+  .sidebar nav a:hover { background: var(--bg-hover); color: var(--text); }
+  .sidebar nav a:active { background: var(--bg); }
+  .sidebar nav a:focus-visible { outline: 1px solid #fff; outline-offset: -2px; }
   .sidebar nav a.active {
-    background: rgba(0,255,65,0.08);
-    color: var(--accent);
-    border-left-color: var(--accent);
+    background: var(--bg-hover);
+    color: var(--text);
+    border-left-color: var(--text);
   }
-  .sidebar nav a .icon { width: 16px; text-align: center; }
   .sidebar nav .section-label {
     padding: 12px 16px 4px;
     font-size: 10px;
-    color: #555;
+    color: var(--text-faint);
     text-transform: uppercase;
-    letter-spacing: 1px;
+    letter-spacing: 0.08em;
   }
   .sidebar-footer {
     padding: 12px 16px;
     border-top: 1px solid var(--border);
     font-size: 11px;
-    color: #555;
+    color: var(--text-faint);
+    font-family: var(--font-mono);
   }
-  .main { margin-left: 220px; flex: 1; }
+  .main { margin-left: 220px; flex: 1; min-width: 0; }
 
   /* ── Top Bar ─────────────────────────────────────────── */
   .topbar {
-    background: var(--bg-card);
+    background: var(--bg);
     border-bottom: 1px solid var(--border);
-    padding: 12px 24px;
+    padding: 8px 24px;
     display: flex;
     align-items: center;
     gap: 16px;
+    flex-wrap: wrap;
     position: sticky;
-    top: 0;
-    z-index: 10;
+    top: 48px;
+    z-index: 40;
   }
-  .topbar .page-title { font-size: 15px; color: var(--text-bright); }
+  .topbar .page-title { font-size: 13px; font-weight: 600; color: var(--text); white-space: nowrap; }
   .topbar .spacer { flex: 1; }
   .topbar .connection-status {
     display: flex;
     align-items: center;
     gap: 6px;
     font-size: 11px;
+    font-family: var(--font-mono);
+    color: var(--text-dim);
+    white-space: nowrap;
   }
   .topbar .dot {
-    width: 8px; height: 8px;
+    width: 7px; height: 7px;
     border-radius: 50%;
-    background: #555;
+    background: var(--text-faint);
+    transition: background 140ms ease;
   }
-  .topbar .dot.connected { background: var(--accent); box-shadow: 0 0 6px var(--accent); }
-  .topbar .dot.error { background: var(--red); }
+  .topbar .dot.connected { background: var(--accent-buy); }
+  .topbar .dot.error { background: var(--accent-sell); }
 
   /* ── Content ─────────────────────────────────────────── */
   .content { padding: 24px; }
@@ -127,87 +169,97 @@
   /* ── Cards ───────────────────────────────────────────── */
   .stats-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 16px;
+    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+    gap: 12px;
     margin-bottom: 24px;
   }
   .stat-card {
-    background: var(--bg-card);
+    background: var(--bg-elevated);
     border: 1px solid var(--border);
     border-radius: var(--radius);
-    padding: 16px;
+    padding: 14px 16px;
+    transition: border-color 140ms ease;
   }
-  .stat-card .label { font-size: 11px; color: #666; text-transform: uppercase; letter-spacing: 0.5px; }
-  .stat-card .value { font-size: 24px; color: var(--text-bright); margin-top: 4px; }
-  .stat-card .value.green { color: var(--accent); }
-  .stat-card .value.red { color: var(--red); }
-  .stat-card .value.yellow { color: var(--yellow); }
-  .stat-card .value.blue { color: var(--blue); }
-  .stat-card .sub { font-size: 11px; color: #666; margin-top: 4px; }
+  .stat-card:hover { border-color: var(--border-strong); }
+  .stat-card .label { font-size: 11px; color: var(--text-faint); text-transform: uppercase; letter-spacing: 0.06em; }
+  .stat-card .value {
+    font-size: 24px; color: var(--text); margin-top: 4px;
+    font-family: var(--font-mono); font-variant-numeric: tabular-nums;
+  }
+  .stat-card .value.green { color: var(--accent-buy); }
+  .stat-card .value.red { color: var(--accent-sell); }
+  .stat-card .value.yellow, .stat-card .value.blue { color: var(--text); }
+  .stat-card .sub { font-size: 11px; color: var(--text-faint); margin-top: 4px; }
 
   .panel {
-    background: var(--bg-card);
+    background: var(--bg-elevated);
     border: 1px solid var(--border);
     border-radius: var(--radius);
     margin-bottom: 24px;
     overflow: hidden;
   }
   .panel-header {
-    padding: 12px 16px;
+    padding: 10px 16px;
     border-bottom: 1px solid var(--border);
     display: flex;
     align-items: center;
     gap: 12px;
+    flex-wrap: wrap;
   }
   .panel-header h2 {
-    font-size: 13px;
-    color: var(--text-bright);
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
   }
   .panel-header .badge {
-    background: rgba(0,255,65,0.15);
-    color: var(--accent);
-    padding: 2px 8px;
+    background: var(--bg-hover);
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    padding: 1px 8px;
     border-radius: 10px;
     font-size: 10px;
+    font-family: var(--font-mono);
   }
   .panel-header .spacer { flex: 1; }
   .panel-body { padding: 16px; }
   .panel-body.no-pad { padding: 0; }
 
   /* ── Tables ───────────────────────────────────────────── */
+  .table-scroll { overflow-x: auto; }
   table { width: 100%; border-collapse: collapse; }
   th, td {
     padding: 8px 12px;
     text-align: left;
     font-size: 12px;
     border-bottom: 1px solid var(--border);
+    white-space: nowrap;
   }
-  th { color: #666; font-weight: normal; text-transform: uppercase; font-size: 10px; letter-spacing: 0.5px; }
-  td { color: var(--text); }
-  tr:hover td { background: rgba(255,255,255,0.02); }
-  .mono { font-family: var(--font); }
+  th { color: var(--text-faint); font-weight: 400; text-transform: uppercase; font-size: 10px; letter-spacing: 0.06em; }
+  td { color: var(--text-dim); font-family: var(--font-mono); }
+  tbody tr { transition: background 140ms ease; }
+  tbody tr:hover td { background: var(--bg-hover); }
   .addr {
-    color: var(--blue);
-    cursor: pointer;
+    color: var(--text-dim);
     text-decoration: none;
+    transition: color 140ms ease;
   }
-  .addr:hover { text-decoration: underline; }
+  .addr:hover { color: var(--text); text-decoration: underline; }
+  .addr:focus-visible { outline: 1px solid #fff; outline-offset: 2px; }
   .tag {
     display: inline-block;
-    padding: 2px 6px;
+    padding: 1px 6px;
     border-radius: 3px;
     font-size: 10px;
-    font-weight: bold;
+    font-family: var(--font-mono);
+    border: 1px solid var(--border-strong);
+    color: var(--text-dim);
   }
-  .tag-buy { background: rgba(0,255,65,0.15); color: var(--accent); }
-  .tag-sell { background: rgba(255,65,65,0.15); color: var(--red); }
-  .tag-claim { background: rgba(79,195,247,0.15); color: var(--blue); }
-  .tag-grad { background: rgba(187,134,252,0.15); color: var(--purple); }
-  .tag-whale { background: rgba(255,152,0,0.15); color: var(--orange); }
-  .tag-launch { background: rgba(255,193,7,0.15); color: var(--yellow); }
-  .tag-cto { background: rgba(236,72,153,0.15); color: #ec4899; }
-  .tag-dist { background: rgba(168,85,247,0.15); color: #a855f7; }
-  .tag-migrate { background: rgba(34,197,94,0.15); color: #22c55e; }
+  .tag-buy { border-color: var(--accent-buy); color: var(--accent-buy); }
+  .tag-sell { border-color: var(--accent-sell); color: var(--accent-sell); }
+  .tag-claim, .tag-grad, .tag-whale, .tag-launch,
+  .tag-cto, .tag-dist, .tag-migrate { border-color: var(--border-strong); color: var(--text); }
 
   /* ── Buttons ──────────────────────────────────────────── */
   .btn {
@@ -217,40 +269,48 @@
     padding: 6px 14px;
     border: 1px solid var(--border);
     border-radius: var(--radius);
-    background: var(--bg-input);
-    color: var(--text);
-    font-family: var(--font);
+    background: var(--bg-elevated);
+    color: var(--text-dim);
+    font-family: var(--font-sans);
     font-size: 12px;
     cursor: pointer;
-    transition: all 0.15s;
+    transition: background 140ms ease, border-color 140ms ease, color 140ms ease, transform 120ms ease;
   }
-  .btn:hover { border-color: #444; color: var(--text-bright); }
-  .btn-primary { border-color: var(--accent-dim); color: var(--accent); }
-  .btn-primary:hover { background: rgba(0,255,65,0.1); }
-  .btn-danger { border-color: #cc3333; color: var(--red); }
-  .btn-danger:hover { background: rgba(255,65,65,0.1); }
+  .btn:hover { background: var(--bg-hover); border-color: var(--border-strong); color: var(--text); }
+  .btn:active { transform: translateY(1px); }
+  .btn:focus-visible { outline: 1px solid #fff; outline-offset: 2px; }
+  .btn.active { background: var(--bg-hover); border-color: var(--border-strong); color: var(--text); }
+  .btn-primary { background: #fff; border-color: #fff; color: #000; font-weight: 600; }
+  .btn-primary:hover { background: #ddd; border-color: #ddd; color: #000; }
+  .btn-danger { color: var(--accent-sell); }
+  .btn-danger:hover { border-color: var(--accent-sell); color: var(--accent-sell); }
   .btn-sm { padding: 4px 10px; font-size: 11px; }
 
   /* ── Forms ────────────────────────────────────────────── */
   .form-group { margin-bottom: 12px; }
-  .form-group label { display: block; font-size: 11px; color: #888; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
+  .form-group label { display: block; font-size: 11px; color: var(--text-faint); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.06em; }
   .form-group input, .form-group select, .form-group textarea {
     width: 100%;
     padding: 8px 12px;
-    background: var(--bg-input);
+    background: var(--bg);
     border: 1px solid var(--border);
     border-radius: var(--radius);
-    color: var(--text-bright);
-    font-family: var(--font);
+    color: var(--text);
+    font-family: var(--font-mono);
     font-size: 12px;
-    outline: none;
+    transition: border-color 140ms ease, background 140ms ease;
   }
+  .form-group input:hover, .form-group select:hover, .form-group textarea:hover { border-color: var(--border-strong); }
   .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
-    border-color: var(--accent);
+    outline: 1px solid #fff;
+    outline-offset: 2px;
+    border-color: var(--border-strong);
+    background: var(--bg-hover);
   }
-  .form-row { display: flex; gap: 12px; }
-  .form-row .form-group { flex: 1; }
-  .form-inline { display: flex; gap: 8px; align-items: flex-end; }
+  .form-group input::placeholder { color: var(--text-faint); }
+  .form-row { display: flex; gap: 12px; flex-wrap: wrap; }
+  .form-row .form-group { flex: 1; min-width: 160px; }
+  .form-inline { display: flex; gap: 8px; align-items: flex-end; flex-wrap: wrap; }
 
   /* ── Feed ─────────────────────────────────────────────── */
   .feed { max-height: 500px; overflow-y: auto; }
@@ -260,76 +320,82 @@
     display: flex;
     gap: 12px;
     align-items: flex-start;
-    transition: background 0.15s;
+    transition: background 140ms ease;
   }
-  .feed-item:hover { background: rgba(255,255,255,0.02); }
-  .feed-item.new { animation: feedFlash 1s ease-out; }
-  @keyframes feedFlash {
-    0% { background: rgba(0,255,65,0.12); }
-    100% { background: transparent; }
+  .feed-item:hover { background: var(--bg-hover); }
+  .feed-item.new { animation: feedIn 160ms ease-out; }
+  @keyframes feedIn {
+    from { opacity: 0; transform: translateY(-4px); }
+    to { opacity: 1; transform: translateY(0); }
   }
-  .feed-item .time { color: #555; font-size: 11px; white-space: nowrap; min-width: 70px; }
-  .feed-item .body { flex: 1; }
-  .feed-item .title { color: var(--text-bright); font-size: 12px; }
-  .feed-item .detail { color: #888; font-size: 11px; margin-top: 2px; }
+  .feed-item .time { color: var(--text-faint); font-size: 11px; white-space: nowrap; min-width: 66px; font-family: var(--font-mono); }
+  .feed-item .body { flex: 1; min-width: 0; }
+  .feed-item .title { color: var(--text); font-size: 12px; word-break: break-word; }
+  .feed-item .detail { color: var(--text-dim); font-size: 11px; margin-top: 2px; font-family: var(--font-mono); word-break: break-all; }
 
   /* ── Modals ───────────────────────────────────────────── */
   .modal-backdrop {
     position: fixed;
     inset: 0;
-    background: rgba(0,0,0,0.7);
+    background: rgba(0,0,0,0.72);
     z-index: 100;
     display: none;
     align-items: center;
     justify-content: center;
+    padding: 16px;
   }
   .modal-backdrop.open { display: flex; }
   .modal {
-    background: var(--bg-card);
-    border: 1px solid var(--border);
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-strong);
     border-radius: var(--radius);
     width: 480px;
+    max-width: 100%;
     max-height: 80vh;
     overflow-y: auto;
     padding: 20px;
+    animation: feedIn 160ms ease-out;
   }
-  .modal h3 { color: var(--text-bright); font-size: 14px; margin-bottom: 16px; }
+  .modal h3 { color: var(--text); font-size: 13px; margin-bottom: 16px; }
   .modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px; }
 
   /* ── Toggle ───────────────────────────────────────────── */
   .toggle {
     position: relative;
-    width: 36px; height: 20px;
+    width: 34px; height: 19px;
     appearance: none;
-    background: #333;
+    background: var(--bg-hover);
+    border: 1px solid var(--border-strong);
     border-radius: 10px;
     cursor: pointer;
-    outline: none;
-    border: none;
-    transition: background 0.2s;
+    transition: background 140ms ease, border-color 140ms ease;
+    flex-shrink: 0;
   }
   .toggle::before {
     content: '';
     position: absolute;
     top: 2px; left: 2px;
-    width: 16px; height: 16px;
-    background: #888;
+    width: 13px; height: 13px;
+    background: var(--text-dim);
     border-radius: 50%;
-    transition: all 0.2s;
+    transition: transform 140ms ease, background 140ms ease;
   }
-  .toggle:checked { background: var(--accent-dim); }
-  .toggle:checked::before { left: 18px; background: var(--accent); }
+  .toggle:hover { border-color: var(--text-faint); }
+  .toggle:focus-visible { outline: 1px solid #fff; outline-offset: 2px; }
+  .toggle:checked { background: var(--bg); border-color: var(--text); }
+  .toggle:checked::before { transform: translateX(15px); background: var(--text); }
 
   .toggle-row {
     display: flex;
     align-items: center;
     justify-content: space-between;
+    gap: 12px;
     padding: 8px 0;
     border-bottom: 1px solid var(--border);
   }
   .toggle-row:last-child { border-bottom: none; }
-  .toggle-label { font-size: 12px; }
-  .toggle-label .sub { font-size: 10px; color: #666; }
+  .toggle-label { font-size: 12px; color: var(--text); }
+  .toggle-label .sub { font-size: 10px; color: var(--text-faint); }
 
   /* ── Config Editor ────────────────────────────────────── */
   .config-grid {
@@ -337,25 +403,22 @@
     grid-template-columns: 1fr 1fr;
     gap: 16px;
   }
-  @media (max-width: 900px) {
-    .config-grid { grid-template-columns: 1fr; }
-    .sidebar { display: none; }
-    .main { margin-left: 0; }
-  }
 
   /* ── Empty state ──────────────────────────────────────── */
   .empty {
     text-align: center;
-    padding: 40px 20px;
-    color: #555;
+    padding: 32px 20px;
+    color: var(--text-dim);
   }
-  .empty .icon { font-size: 32px; margin-bottom: 12px; }
+  .empty .empty-title { color: var(--text); font-size: 13px; font-weight: 600; margin-bottom: 6px; }
+  .empty .empty-detail { font-size: 12px; max-width: 520px; margin: 0 auto; }
+  td.empty { white-space: normal; font-family: var(--font-sans); }
 
   /* ── Scrollbar ────────────────────────────────────────── */
-  ::-webkit-scrollbar { width: 6px; }
-  ::-webkit-scrollbar-track { background: transparent; }
-  ::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
-  ::-webkit-scrollbar-thumb:hover { background: #444; }
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--border-strong); }
 
   /* ── Toast ─────────────────────────────────────────────── */
   .toast-container {
@@ -366,50 +429,98 @@
     display: flex;
     flex-direction: column;
     gap: 8px;
+    max-width: calc(100vw - 40px);
   }
   .toast {
-    background: var(--bg-card);
-    border: 1px solid var(--border);
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-strong);
     border-radius: var(--radius);
     padding: 10px 16px;
     font-size: 12px;
-    animation: toastIn 0.3s ease-out;
+    color: var(--text-dim);
+    animation: toastIn 160ms ease-out;
     max-width: 360px;
   }
-  .toast.success { border-color: var(--accent-dim); }
-  .toast.error { border-color: var(--red); }
+  .toast.success { border-color: var(--accent-buy); color: var(--accent-buy); }
+  .toast.error { border-color: var(--accent-sell); color: var(--accent-sell); }
   @keyframes toastIn {
     from { opacity: 0; transform: translateY(10px); }
     to { opacity: 1; transform: translateY(0); }
   }
+
+  /* ── Responsive ───────────────────────────────────────── */
+  @media (max-width: 900px) {
+    .config-grid { grid-template-columns: 1fr; }
+    .app { display: block; }
+    .sidebar {
+      position: static;
+      width: auto;
+      flex-direction: row;
+      align-items: center;
+      gap: 8px;
+      border-right: none;
+      border-bottom: 1px solid var(--border);
+      overflow-x: auto;
+      overflow-y: hidden;
+    }
+    .sidebar-header, .sidebar-footer { border: none; padding: 10px 12px; white-space: nowrap; }
+    .sidebar nav { display: flex; padding: 0; flex: 0 0 auto; }
+    .sidebar nav a { border-left: none; border-bottom: 2px solid transparent; padding: 10px 12px; white-space: nowrap; }
+    .sidebar nav a.active { border-left-color: transparent; border-bottom-color: var(--text); }
+    .sidebar nav .section-label { display: none; }
+    .main { margin-left: 0; }
+    .site-footer { margin-left: 0; }
+    .topbar { top: 48px; padding: 8px 16px; }
+    .content { padding: 16px; }
+  }
+  @media (max-width: 420px) {
+    .stats-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
+    .stat-card .value { font-size: 20px; }
+    .content { padding: 12px; }
+    .feed-item { flex-direction: column; gap: 4px; }
+  }
 </style>
 </head>
 <body>
+
+<header class="site-header">
+  <a class="wordmark" href="/live/">pump sdk <span>/ live</span></a>
+  <nav class="site-nav" aria-label="Live dashboards">
+    <a href="/live/">Launches</a>
+    <a href="/live/trades">Trades</a>
+    <a href="/live/dashboard" aria-current="page">Dashboard</a>
+    <a href="/live/vanity">Vanity</a>
+    <a href="/live/sell-demo">Sell Demo</a>
+    <a href="/live/launchpad">Launchpad</a>
+    <a href="/">Docs</a>
+  </nav>
+</header>
+
 <div class="app">
   <!-- ── Sidebar ─────────────────────────── -->
   <aside class="sidebar">
     <div class="sidebar-header">
-      <h1>🤖 PumpBot</h1>
+      <h1>PumpBot</h1>
       <div class="version">Dashboard v1.0</div>
     </div>
-    <nav>
+    <nav aria-label="Dashboard sections">
       <div class="section-label">Overview</div>
-      <a href="#" data-page="dashboard" class="active"><span class="icon">📊</span> Dashboard</a>
-      <a href="#" data-page="feed"><span class="icon">📡</span> Live Feed</a>
+      <a href="#" data-page="dashboard" class="active">Dashboard</a>
+      <a href="#" data-page="feed">Live Feed</a>
 
       <div class="section-label">Bots</div>
-      <a href="#" data-page="watches"><span class="icon">👁</span> Watch List</a>
-      <a href="#" data-page="claims"><span class="icon">💰</span> Fee Claims</a>
-      <a href="#" data-page="alerts"><span class="icon">🚨</span> Alerts</a>
+      <a href="#" data-page="watches">Watch List</a>
+      <a href="#" data-page="claims">Fee Claims</a>
+      <a href="#" data-page="alerts">Alerts</a>
 
       <div class="section-label">Tools</div>
-      <a href="#" data-page="scanner"><span class="icon">🔍</span> Token Scanner</a>
-      <a href="#" data-page="quoting"><span class="icon">📈</span> Quote Engine</a>
-      <a href="#" data-page="vanity"><span class="icon">🔑</span> Vanity Gen</a>
+      <a href="#" data-page="scanner">Token Scanner</a>
+      <a href="#" data-page="quoting">Quote Engine</a>
+      <a href="#" data-page="vanity">Vanity Gen</a>
 
       <div class="section-label">System</div>
-      <a href="#" data-page="config"><span class="icon">⚙️</span> Configuration</a>
-      <a href="#" data-page="api"><span class="icon">🔌</span> API Keys</a>
+      <a href="#" data-page="config">Configuration</a>
+      <a href="#" data-page="api">API Keys</a>
     </nav>
     <div class="sidebar-footer">
       <div id="bot-uptime">Uptime: --</div>
@@ -421,11 +532,11 @@
     <div class="topbar">
       <div class="page-title" id="page-title">Dashboard</div>
       <div class="spacer"></div>
-      <div class="connection-status">
+      <div class="connection-status" role="status" aria-live="polite">
         <span class="dot" id="api-dot"></span>
         <span id="api-status">API: Connecting...</span>
       </div>
-      <div class="connection-status">
+      <div class="connection-status" role="status" aria-live="polite">
         <span class="dot" id="ws-dot"></span>
         <span id="ws-status">WS: Disconnected</span>
       </div>
@@ -440,33 +551,33 @@
           <div class="sub" id="stat-bot-mode">PumpPortal WS</div>
         </div>
         <div class="stat-card">
-          <div class="label">🚀 Launches</div>
-          <div class="value yellow" id="stat-launches">0</div>
+          <div class="label">Launches</div>
+          <div class="value" id="stat-launches">0</div>
           <div class="sub" id="stat-launches-sub">New tokens</div>
         </div>
         <div class="stat-card">
-          <div class="label">🐋 Whales</div>
-          <div class="value orange" id="stat-whales">0</div>
+          <div class="label">Whales</div>
+          <div class="value" id="stat-whales">0</div>
           <div class="sub" id="stat-whales-sub">&gt;5 SOL trades</div>
         </div>
         <div class="stat-card">
-          <div class="label">🎓 Graduations</div>
-          <div class="value purple" id="stat-graduations">0</div>
+          <div class="label">Graduations</div>
+          <div class="value" id="stat-graduations">0</div>
           <div class="sub" id="stat-graduations-sub">Migrated to AMM</div>
         </div>
         <div class="stat-card">
-          <div class="label">💰 Claims</div>
-          <div class="value blue" id="stat-claims">0</div>
+          <div class="label">Claims</div>
+          <div class="value" id="stat-claims">0</div>
           <div class="sub" id="stat-claims-sub">Fee claims</div>
         </div>
         <div class="stat-card">
-          <div class="label">👑 CTO</div>
-          <div class="value" style="color:#ec4899" id="stat-cto">0</div>
+          <div class="label">CTO</div>
+          <div class="value" id="stat-cto">0</div>
           <div class="sub" id="stat-cto-sub">Creator sold</div>
         </div>
         <div class="stat-card">
-          <div class="label">💎 Distributions</div>
-          <div class="value" style="color:#a855f7" id="stat-dist">0</div>
+          <div class="label">Distributions</div>
+          <div class="value" id="stat-dist">0</div>
           <div class="sub" id="stat-dist-sub">Fee payouts</div>
         </div>
         <div class="stat-card">
@@ -485,7 +596,14 @@
         </div>
         <div class="panel-body no-pad">
           <div class="feed" id="dashboard-feed">
-            <div class="empty"><div class="icon">📡</div>Waiting for events...</div>
+            <div class="empty">
+              <div class="empty-title">Waiting for the first event</div>
+              <div class="empty-detail">
+                Launches, trades, whale buys and graduations stream in from PumpPortal
+                (wss://pumpportal.fun/api/data), with fee claims from the relay server.
+                The WS indicator in the top bar turns green once a stream is connected.
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -495,12 +613,12 @@
     <div class="content page" id="page-feed" style="display:none">
       <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;">
         <button class="btn btn-sm filter-btn active" data-filter="all">All</button>
-        <button class="btn btn-sm filter-btn" data-filter="launch">🚀 Launches</button>
-        <button class="btn btn-sm filter-btn" data-filter="whale">🐋 Whales</button>
-        <button class="btn btn-sm filter-btn" data-filter="graduation">🎓 Graduations</button>
-        <button class="btn btn-sm filter-btn" data-filter="claim">💰 Claims</button>
-        <button class="btn btn-sm filter-btn" data-filter="cto">👑 CTO</button>
-        <button class="btn btn-sm filter-btn" data-filter="distribution">💎 Distributions</button>
+        <button class="btn btn-sm filter-btn" data-filter="launch">Launches</button>
+        <button class="btn btn-sm filter-btn" data-filter="whale">Whales</button>
+        <button class="btn btn-sm filter-btn" data-filter="graduation">Graduations</button>
+        <button class="btn btn-sm filter-btn" data-filter="claim">Claims</button>
+        <button class="btn btn-sm filter-btn" data-filter="cto">CTO</button>
+        <button class="btn btn-sm filter-btn" data-filter="distribution">Distributions</button>
       </div>
 
       <div class="panel">
@@ -508,14 +626,21 @@
           <h2>Real-Time Feed</h2>
           <span class="badge" id="feed-count">0</span>
           <div class="spacer"></div>
-          <label style="font-size:11px;color:#888;display:flex;align-items:center;gap:6px;">
+          <label style="font-size:11px;color:var(--text-dim);display:flex;align-items:center;gap:6px;">
             <input type="checkbox" class="toggle" id="feed-pause">Pause
           </label>
           <button class="btn btn-sm" onclick="clearFeed('live-feed')">Clear</button>
         </div>
         <div class="panel-body no-pad">
-          <div class="feed" id="live-feed" style="max-height:calc(100vh - 220px)">
-            <div class="empty"><div class="icon">📡</div>Connect to start receiving events</div>
+          <div class="feed" id="live-feed" style="max-height:calc(100vh - 260px)">
+            <div class="empty">
+              <div class="empty-title">No events yet</div>
+              <div class="empty-detail">
+                This feed mirrors the live PumpPortal and relay streams. If the WS indicator
+                above is red, the stream is retrying automatically; nothing here needs a manual
+                reconnect. Use the filters to narrow the feed once events arrive.
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -523,9 +648,9 @@
 
     <!-- ═══════ Watch List Page ═══════ -->
     <div class="content page" id="page-watches" style="display:none">
-      <div style="display:flex;gap:8px;margin-bottom:16px;">
-        <button class="btn btn-primary" onclick="openModal('add-watch-modal')">+ Add Watch</button>
-        <button class="btn" onclick="refreshWatches()">↻ Refresh</button>
+      <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;">
+        <button class="btn btn-primary" onclick="openModal('add-watch-modal')">Add watch</button>
+        <button class="btn" onclick="refreshWatches()">Refresh</button>
       </div>
 
       <div class="panel">
@@ -534,10 +659,10 @@
           <span class="badge" id="watches-count">0</span>
         </div>
         <div class="panel-body no-pad">
-          <table>
+          <div class="table-scroll"><table>
             <thead><tr><th>Wallet</th><th>Label</th><th>Token Filter</th><th>Webhook</th><th>Created</th><th>Actions</th></tr></thead>
-            <tbody id="watches-table"><tr><td colspan="6" class="empty">No watches configured</td></tr></tbody>
-          </table>
+            <tbody id="watches-table"><tr><td colspan="6" class="empty">Watches come from the bot API configured under Configuration. None are loaded yet.</td></tr></tbody>
+          </table></div>
         </div>
       </div>
     </div>
@@ -546,11 +671,11 @@
     <div class="content page" id="page-claims" style="display:none">
       <div class="form-inline" style="margin-bottom:16px;">
         <div class="form-group" style="flex:2">
-          <label>Filter Wallet</label>
+          <label for="claims-wallet-filter">Filter Wallet</label>
           <input type="text" id="claims-wallet-filter" placeholder="Solana address...">
         </div>
         <div class="form-group" style="flex:1">
-          <label>Type</label>
+          <label for="claims-type-filter">Type</label>
           <select id="claims-type-filter">
             <option value="">All Types</option>
             <option value="creator_fee">Creator Fee</option>
@@ -568,13 +693,13 @@
           <h2>Fee Claims</h2>
           <span class="badge" id="claims-count">0</span>
           <div class="spacer"></div>
-          <button class="btn btn-sm" onclick="exportClaims()">⬇ Export CSV</button>
+          <button class="btn btn-sm" onclick="exportClaims()">Export CSV</button>
         </div>
         <div class="panel-body no-pad">
-          <table>
+          <div class="table-scroll"><table>
             <thead><tr><th>Time</th><th>Wallet</th><th>Type</th><th>Token</th><th>Amount</th><th>TX</th></tr></thead>
-            <tbody id="claims-table"><tr><td colspan="6" class="empty">No claims found</td></tr></tbody>
-          </table>
+            <tbody id="claims-table"><tr><td colspan="6" class="empty">Claims are served by the bot API. Set a wallet or type above and search to load them.</td></tr></tbody>
+          </table></div>
         </div>
       </div>
     </div>
@@ -602,11 +727,11 @@
               <input type="checkbox" class="toggle" id="alert-launch">
             </div>
             <div class="toggle-row">
-              <div class="toggle-label">👑 CTO Alerts<div class="sub">Creator sells tokens — community takeover opportunity</div></div>
+              <div class="toggle-label">CTO Alerts<div class="sub">Creator sells tokens, a community takeover opportunity</div></div>
               <input type="checkbox" class="toggle" id="alert-cto" checked>
             </div>
             <div class="toggle-row">
-              <div class="toggle-label">💎 Distribution Alerts<div class="sub">Fee distribution/payout events</div></div>
+              <div class="toggle-label">Distribution Alerts<div class="sub">Fee distribution/payout events</div></div>
               <input type="checkbox" class="toggle" id="alert-distribution">
             </div>
           </div>
@@ -616,15 +741,15 @@
           <div class="panel-header"><h2>Thresholds</h2></div>
           <div class="panel-body">
             <div class="form-group">
-              <label>Whale Threshold (SOL)</label>
+              <label for="threshold-whale">Whale Threshold (SOL)</label>
               <input type="number" id="threshold-whale" value="10" min="0.1" step="0.1">
             </div>
             <div class="form-group">
-              <label>Min Claim Alert (SOL)</label>
+              <label for="threshold-claim">Min Claim Alert (SOL)</label>
               <input type="number" id="threshold-claim" value="0.5" min="0.01" step="0.01">
             </div>
             <div class="form-group">
-              <label>Trade Alert Cooldown (seconds)</label>
+              <label for="threshold-cooldown">Trade Alert Cooldown (seconds)</label>
               <input type="number" id="threshold-cooldown" value="30" min="5" step="5">
             </div>
             <button class="btn btn-primary" style="margin-top:8px" onclick="saveAlertConfig()">Save Settings</button>
@@ -640,7 +765,13 @@
         </div>
         <div class="panel-body no-pad">
           <div class="feed" id="alert-feed">
-            <div class="empty"><div class="icon">🔔</div>No alerts yet</div>
+            <div class="empty">
+              <div class="empty-title">No alerts yet</div>
+              <div class="empty-detail">
+                Alerts fire from the same live stream as the feed, filtered by the toggles
+                above. Graduations, whale trades and CTO events are on by default.
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -650,12 +781,25 @@
     <div class="content page" id="page-scanner" style="display:none">
       <div class="form-inline" style="margin-bottom:16px;">
         <div class="form-group" style="flex:1">
-          <label>Token Mint Address</label>
+          <label for="scanner-mint">Token Mint Address</label>
           <input type="text" id="scanner-mint" placeholder="Enter Solana token mint address...">
         </div>
         <div class="form-group" style="flex:0">
           <label>&nbsp;</label>
-          <button class="btn btn-primary" onclick="scanToken()">🔍 Scan</button>
+          <button class="btn btn-primary" onclick="scanToken()">Scan</button>
+        </div>
+      </div>
+
+      <div class="panel" id="scanner-empty">
+        <div class="panel-body">
+          <div class="empty">
+            <div class="empty-title">Nothing scanned yet</div>
+            <div class="empty-detail">
+              Paste a mint address and scan. Mint and freeze authority, holder concentration,
+              supply and bonding curve status are read live from the Solana RPC endpoint set
+              under Configuration.
+            </div>
+          </div>
         </div>
       </div>
 
@@ -682,10 +826,10 @@
         <div class="panel">
           <div class="panel-header"><h2>Security Checks</h2></div>
           <div class="panel-body no-pad">
-            <table>
+            <div class="table-scroll"><table>
               <thead><tr><th>Check</th><th>Status</th><th>Detail</th></tr></thead>
               <tbody id="scan-checks"></tbody>
-            </table>
+            </table></div>
           </div>
         </div>
       </div>
@@ -698,15 +842,15 @@
           <div class="panel-header"><h2>Buy Quote</h2></div>
           <div class="panel-body">
             <div class="form-group">
-              <label>Token Mint</label>
+              <label for="quote-buy-mint">Token Mint</label>
               <input type="text" id="quote-buy-mint" placeholder="Token mint address...">
             </div>
             <div class="form-group">
-              <label>SOL Amount</label>
+              <label for="quote-buy-amount">SOL Amount</label>
               <input type="number" id="quote-buy-amount" value="1" min="0.001" step="0.001">
             </div>
             <button class="btn btn-primary" onclick="getBuyQuote()">Get Buy Quote</button>
-            <div id="quote-buy-result" style="margin-top:12px"></div>
+            <div id="quote-buy-result" style="margin-top:12px" role="status" aria-live="polite"></div>
           </div>
         </div>
 
@@ -714,15 +858,15 @@
           <div class="panel-header"><h2>Sell Quote</h2></div>
           <div class="panel-body">
             <div class="form-group">
-              <label>Token Mint</label>
+              <label for="quote-sell-mint">Token Mint</label>
               <input type="text" id="quote-sell-mint" placeholder="Token mint address...">
             </div>
             <div class="form-group">
-              <label>Token Amount</label>
+              <label for="quote-sell-amount">Token Amount</label>
               <input type="number" id="quote-sell-amount" value="1000000" min="1" step="1">
             </div>
             <button class="btn btn-primary" onclick="getSellQuote()">Get Sell Quote</button>
-            <div id="quote-sell-result" style="margin-top:12px"></div>
+            <div id="quote-sell-result" style="margin-top:12px" role="status" aria-live="polite"></div>
           </div>
         </div>
       </div>
@@ -735,19 +879,24 @@
         <div class="panel-body">
           <div class="form-row">
             <div class="form-group">
-              <label>Prefix (optional)</label>
+              <label for="vanity-prefix">Prefix (optional)</label>
               <input type="text" id="vanity-prefix" placeholder="e.g. pump" maxlength="6">
             </div>
             <div class="form-group">
-              <label>Suffix (optional)</label>
+              <label for="vanity-suffix">Suffix (optional)</label>
               <input type="text" id="vanity-suffix" placeholder="e.g. fun" maxlength="6">
             </div>
           </div>
           <div style="display:flex;gap:8px;margin-top:8px">
-            <button class="btn btn-primary" id="vanity-start" onclick="startVanity()">🔑 Generate</button>
-            <button class="btn btn-danger" id="vanity-stop" onclick="stopVanity()" style="display:none">⏹ Stop</button>
+            <button class="btn btn-primary" id="vanity-start" onclick="startVanity()">Generate</button>
+            <button class="btn btn-danger" id="vanity-stop" onclick="stopVanity()" style="display:none">Stop</button>
           </div>
-          <div id="vanity-status" style="margin-top:12px;font-size:12px;color:#888"></div>
+          <p class="empty-detail" style="margin-top:12px;text-align:left;color:var(--text-faint)">
+            Preview search only. The full generator on the
+            <a class="addr" href="/live/vanity">Vanity page</a> produces real Ed25519 keypairs
+            across multiple workers.
+          </p>
+          <div id="vanity-status" style="margin-top:12px;font-size:12px;color:var(--text-dim)" role="status" aria-live="polite"></div>
           <div id="vanity-result" style="margin-top:12px"></div>
         </div>
       </div>
@@ -760,18 +909,18 @@
           <div class="panel-header"><h2>Connection</h2></div>
           <div class="panel-body">
             <div class="form-group">
-              <label>API Base URL</label>
+              <label for="cfg-api-url">API Base URL</label>
               <input type="text" id="cfg-api-url" value="http://localhost:3000">
             </div>
             <div class="form-group">
-              <label>WebSocket URL</label>
+              <label for="cfg-ws-url">WebSocket URL</label>
               <input type="text" id="cfg-ws-url" value="ws://localhost:8080">
             </div>
             <div class="form-group">
-              <label>API Key</label>
+              <label for="cfg-api-key">API Key</label>
               <input type="password" id="cfg-api-key" placeholder="Your API key...">
             </div>
-            <button class="btn btn-primary" onclick="saveConfig()">Save & Reconnect</button>
+            <button class="btn btn-primary" onclick="saveConfig()">Save and reconnect</button>
           </div>
         </div>
 
@@ -779,11 +928,11 @@
           <div class="panel-header"><h2>Solana RPC</h2></div>
           <div class="panel-body">
             <div class="form-group">
-              <label>RPC Endpoint</label>
+              <label for="cfg-rpc-url">RPC Endpoint</label>
               <input type="text" id="cfg-rpc-url" value="https://api.mainnet-beta.solana.com">
             </div>
             <div class="form-group">
-              <label>Commitment Level</label>
+              <label for="cfg-commitment">Commitment Level</label>
               <select id="cfg-commitment">
                 <option value="confirmed" selected>Confirmed</option>
                 <option value="finalized">Finalized</option>
@@ -803,11 +952,11 @@
           <div class="spacer"></div>
         </div>
         <div class="panel-body">
-          <p style="color:#888;font-size:12px;margin-bottom:16px;">
-            API endpoint: <span class="mono" style="color:var(--blue)" id="api-endpoint-display">--</span>
+          <p style="color:var(--text-dim);font-size:12px;margin-bottom:16px;">
+            API endpoint: <span class="mono" style="color:var(--text)" id="api-endpoint-display">--</span>
           </p>
-          <h4 style="color:var(--text-bright);font-size:12px;margin-bottom:8px;">Available Endpoints</h4>
-          <table>
+          <h4 style="color:var(--text);font-size:12px;margin-bottom:8px;">Available Endpoints</h4>
+          <div class="table-scroll"><table>
             <thead><tr><th>Method</th><th>Path</th><th>Description</th><th>Auth</th></tr></thead>
             <tbody>
               <tr><td><span class="tag tag-buy">GET</span></td><td>/api/v1/health</td><td>Health check</td><td>No</td></tr>
@@ -820,11 +969,11 @@
               <tr><td><span class="tag tag-sell">DELETE</span></td><td>/api/v1/watches/:id</td><td>Delete watch</td><td>Yes</td></tr>
               <tr><td><span class="tag tag-buy">GET</span></td><td>/api/v1/openapi</td><td>OpenAPI spec</td><td>No</td></tr>
             </tbody>
-          </table>
-          <h4 style="color:var(--text-bright);font-size:12px;margin:16px 0 8px;">Authentication</h4>
-          <p style="color:#888;font-size:12px;">
-            Send your API key via <code style="color:var(--blue)">X-API-Key</code> header or
-            <code style="color:var(--blue)">Authorization: Bearer &lt;key&gt;</code>.
+          </table></div>
+          <h4 style="color:var(--text);font-size:12px;margin:16px 0 8px;">Authentication</h4>
+          <p style="color:var(--text-dim);font-size:12px;">
+            Send your API key via <code class="mono" style="color:var(--text)">X-API-Key</code> header or
+            <code class="mono" style="color:var(--text)">Authorization: Bearer &lt;key&gt;</code>.
           </p>
         </div>
       </div>
@@ -834,22 +983,22 @@
 
 <!-- ── Add Watch Modal ────────────────── -->
 <div class="modal-backdrop" id="add-watch-modal">
-  <div class="modal">
+  <div class="modal" role="dialog" aria-modal="true" aria-label="Add watch">
     <h3>Add Watch</h3>
     <div class="form-group">
-      <label>Wallet Address *</label>
+      <label for="watch-wallet">Wallet Address (required)</label>
       <input type="text" id="watch-wallet" placeholder="Solana wallet address...">
     </div>
     <div class="form-group">
-      <label>Label</label>
+      <label for="watch-label">Label</label>
       <input type="text" id="watch-label" placeholder="Optional label...">
     </div>
     <div class="form-group">
-      <label>Token Filter (comma-separated mints)</label>
+      <label for="watch-token-filter">Token Filter (comma-separated mints)</label>
       <input type="text" id="watch-token-filter" placeholder="Leave empty for all tokens">
     </div>
     <div class="form-group">
-      <label>Webhook URL</label>
+      <label for="watch-webhook">Webhook URL</label>
       <input type="text" id="watch-webhook" placeholder="https://your-server.com/webhook">
     </div>
     <div class="modal-actions">
@@ -859,7 +1008,14 @@
   </div>
 </div>
 
-<div class="toast-container" id="toasts"></div>
+<footer class="site-footer">
+  <span>pump sdk / live</span>
+  <span class="grow"></span>
+  <a href="https://github.com/nirholas/pump-fun-sdk" target="_blank" rel="noopener">GitHub</a>
+  <a href="/">Docs</a>
+</footer>
+
+<div class="toast-container" id="toasts" role="status" aria-live="polite"></div>
 
 <script>
 // ═══════════════════════════════════════════════════════════════════════
@@ -1361,8 +1517,8 @@ function addFeedItem(feedId, item) {
     detail = d.mint ? shortAddr(d.mint) : '';
     if (d.marketCapSol) detail += ` · MC: ${Number(d.marketCapSol).toFixed(2)} SOL`;
   } else if (item.type === 'buy' || item.type === 'sell' || item.type === 'trade') {
-    const dir = item.type === 'sell' ? '🔴' : '🟢';
-    title = `${dir} ${d.tokenSymbol || '?'} — ${(d.solAmount || 0).toFixed(4)} SOL`;
+    const dir = item.type === 'sell' ? '↓' : '↑';
+    title = `${dir} ${d.tokenSymbol || '?'} ${(d.solAmount || 0).toFixed(4)} SOL`;
     detail = d.user ? shortAddr(d.user) : '';
     if (d.marketCapSol) detail += ` · MC: ${Number(d.marketCapSol).toFixed(2)} SOL`;
   } else if (item.type === 'whale' || item.type === 'whale_trade') {

@@ -3,8 +3,8 @@ FROM node:20-alpine AS build
 
 WORKDIR /app
 
-COPY package.json package-lock.json ./
-RUN npm ci
+COPY package.json ./
+RUN npm install
 
 COPY tsconfig.json ./
 COPY src/ src/
@@ -21,8 +21,8 @@ WORKDIR /app
 # Create non-root user
 RUN addgroup -S bot && adduser -S bot -G bot
 
-COPY package.json package-lock.json ./
-RUN npm ci --omit=dev && npm cache clean --force
+COPY package.json ./
+RUN npm install --omit=dev && npm cache clean ...
 
 COPY --from=build /app/dist dist/
 

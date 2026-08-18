@@ -499,7 +499,7 @@ export function formatGraduationNotification(event: GraduationEvent, token?: Pum
 }
 
 /** Async wrapper that fetches token info then formats the graduation notification. */
-export async function formatGraduationNotificationWithToken(event: GraduationEvent): Promise<string> {
+export async function formatGraduationNotificationWithToken(event: GraduationEvent): Promise<string | null> {
     let token: PumpTokenInfo | null = null;
 
     try {

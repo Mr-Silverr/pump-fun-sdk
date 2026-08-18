@@ -499,13 +499,21 @@ export function formatGraduationNotification(event: GraduationEvent, token?: Pum
 }
 
 /** Async wrapper that fetches token info then formats the graduation notification. */
-export async function formatGraduationNotificationWithToken(event: GraduationEvent): Promise<string> {
+export async function formatGraduationNotificationWithToken(event: GraduationEvent): Promise<string | null> {
     let token: PumpTokenInfo | null = null;
+
     try {
         token = await fetchTokenInfo(event.mintAddress);
     } catch {
-        // Proceed without token info
+        // If we can't get token info, don't send the alert
+        return null;
     }
+
+    // Only alert for graduated tokens with $30,000+ market cap
+    if (token.usdMarketCap < 30_000) {
+        return null;
+    }
+
     return formatGraduationNotification(event, token);
 }
 

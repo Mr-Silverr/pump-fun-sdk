@@ -303,8 +303,9 @@ export class PumpEventMonitor {
 
             if (signatures.length === 0) return;
 
-            const ordered = signatures.reverse();
-            this.lastSignature = signatures[0].signature;
+            const newestSignature = signatures[0].signature;
+const ordered = signatures.reverse();
+this.lastSignature = newestSignature;
 
             for (const sig of ordered) {
                 if (sig.err) continue;

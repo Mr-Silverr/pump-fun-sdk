@@ -510,7 +510,7 @@ export async function formatGraduationNotificationWithToken(event: GraduationEve
     }
 
     // Only alert for graduated tokens with $30,000+ market cap
-    if (token.usdMarketCap < 30_000) {
+    if (!token || token.usdMarketCap < 30_000) {
         return null;
     }
 

@@ -237,39 +237,20 @@ export class PumpEventMonitor {
         if (err) return;
         if (this.processedSignatures.has(signature)) return;
 
-        // Scan "Program data:" lines for event discriminators
-        const events = this.extractEventsFromLogs(logs, signature, 0, 0);
+        const now = Math.floor(Date.now() / 1000);
+const events = this.extractEventsFromLogs(logs, signature, 0, now);
 
-        if (events.length > 0) {
-            this.markProcessed(signature);
+if (events.length === 0) return;
 
-            // For graduation events, we need the full tx to get the slot/blockTime
-            // For trade events, we already have all data from logs
-            // Let's fetch the tx for accurate slot/time if we have events
-            try {
-                const tx = await this.connection.getParsedTransaction(signature, {
-                    commitment: 'confirmed',
-                    maxSupportedTransactionVersion: 0,
-                });
+this.markProcessed(signature);
 
-                const slot = tx?.slot ?? 0;
-                const blockTime = tx?.blockTime ?? Math.floor(Date.now() / 1000);
-
-                for (const event of events) {
-                    event.slot = slot;
-                    event.timestamp = blockTime;
-                    this.state.lastSlot = slot;
-                    this.dispatchEvent(event);
-                }
-            } catch (fetchErr) {
-                // Fall back to dispatching with approximate time
-                for (const event of events) {
-                    event.timestamp = Math.floor(Date.now() / 1000);
-                    this.dispatchEvent(event);
-                }
-            }
-        }
-    }
+for (const event of events) {
+    event.timestamp = event.timestamp || now;
+    this.dispatchEvent(event);
+}
+}            
+        
+    
 
     // ──────────────────────────────────────────────────────────────────────
     // Polling Mode

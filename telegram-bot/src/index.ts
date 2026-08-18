@@ -131,7 +131,12 @@ async function main(): Promise<void> {
                 if (!bot) return;
                 const monitors = getActiveMonitors();
                 const message = await formatGraduationNotificationWithToken(event);
-                for (const entry of monitors) {
+
+if (!message) {
+    return;
+}
+
+for (const entry of monitors) {
                     if (!entry.alerts.graduations) continue;
                     try {
                         await bot.api.sendMessage(entry.chatId, message, {

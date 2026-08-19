@@ -130,25 +130,21 @@ export class PumpEventMonitor {
             features.join(', ') || 'none enabled',
         );
 
-        // Try WebSocket first
-        if (this.config.solanaWsUrl) {
-            try {
-                await this.startWebSocket();
-                this.state.mode = 'websocket';
-                log.info('Pump event monitor started in WebSocket mode');
-                return;
-            } catch (err) {
-                log.warn('WebSocket failed for event monitor, falling back to polling:', err);
-            }
-        }
+  // Use HTTP polling for event monitoring.
+// WebSocket connections are currently being rate-limited (429),
+// so polling provides a stable path for graduation alerts.
+log.info('Using HTTP polling for pump event monitor');
 
-        // Fallback to HTTP polling
-        this.startPolling();
-        this.state.mode = 'polling';
-        log.info(
-            'Pump event monitor started in polling mode (every %ds)',
-            this.config.pollIntervalSeconds,
-        );
+this.startPolling();
+this.state.mode = 'polling';
+
+log.info(
+    'Pump event monitor started in polling mode (every %ds)',
+    this.config.pollIntervalSeconds,
+);
+
+return;
+  
     }
 
     stop(): void {

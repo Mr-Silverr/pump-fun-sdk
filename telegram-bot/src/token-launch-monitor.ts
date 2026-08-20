@@ -129,7 +129,7 @@ export class TokenLaunchMonitor {
         );
 
         // Try WebSocket first
-        if (this.config.solanaWsUrl) {
+      if (this.config.solanaWsUrl && process.env.SOLANA_WS_URL) {
             try {
                 await this.startWebSocket();
                 this.state.mode = 'websocket';

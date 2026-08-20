@@ -130,23 +130,30 @@ export class PumpEventMonitor {
             features.join(', ') || 'none enabled',
         );
 
-  // Use HTTP polling for event monitoring.
-// WebSocket connections are currently being rate-limited (429),
-// so polling provides a stable path for graduation alerts.
-log.info('Using HTTP polling for pump event monitor');
+  // Use WebSocket log streaming for real-time event monitoring.
+// Events are decoded directly from transaction log messages,
+// avoiding getSignaturesForAddress + getParsedTransaction RPC loops.
+log.info('Using WebSocket log streaming for pump event monitor');
 
-this.startPolling();
-this.state.mode = 'polling';
+try {
+    await this.startWebSocket();
+    this.state.mode = 'websocket';
 
-log.info(
-    'Pump event monitor started in polling mode (every %ds)',
-    this.config.pollIntervalSeconds,
-);
+    log.info('Pump event monitor started in WebSocket mode');
+} catch (err) {
+    log.warn('WebSocket startup failed, falling back to HTTP polling:', err);
+
+    this.state.mode = 'polling';
+    this.startPolling();
+
+    log.info(
+        'Pump event monitor started in polling fallback mode (every %ds)',
+        this.config.pollIntervalSeconds,
+    );
+}
 
 return;
-  
     }
-
     stop(): void {
         this.stopped = true;
         this.state.isRunning = false;

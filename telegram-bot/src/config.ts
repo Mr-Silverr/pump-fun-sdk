@@ -26,18 +26,9 @@ export function loadConfig(): BotConfig {
         ? process.env.SOLANA_RPC_URLS.split(',').map((s) => s.trim()).filter(Boolean)
         : [solanaRpcUrl];
 
-    // Derive WebSocket URL from RPC if not explicitly set
-    let solanaWsUrl = process.env.SOLANA_WS_URL;
-    if (!solanaWsUrl) {
-        try {
-            const url = new URL(solanaRpcUrl);
-            url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:';
-            solanaWsUrl = url.toString();
-        } catch {
-            // If URL parsing fails, leave it undefined — monitor will use polling
-        }
-    }
-
+    // WebSocket is only enabled when explicitly provided.
+    const solanaWsUrl = process.env.SOLANA_WS_URL;
+    
     const pollIntervalSeconds = Number.parseInt(
         process.env.POLL_INTERVAL_SECONDS || '60',
         10,

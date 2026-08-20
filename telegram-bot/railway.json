@@ -9,7 +9,7 @@
         "restartPolicyType": "ON_FAILURE",
         "restartPolicyMaxRetries": 10,
         "healthcheckPath": "/api/v1/health",
-        "numReplicas": 1,
+        "numReplicas": 0,
         "envVars": {
             "TELEGRAM_BOT_TOKEN": {
                 "description": "Telegram bot token from @BotFather (optional in API-only mode)",
